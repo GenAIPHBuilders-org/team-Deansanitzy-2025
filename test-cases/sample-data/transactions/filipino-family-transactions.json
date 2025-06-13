@@ -1,0 +1,338 @@
+{
+  "testCase": "filipino-family-transactions",
+  "description": "3 months of realistic Filipino family transactions with cultural context",
+  "userId": "test-user-filipino-family-001",
+  "dateRange": {
+    "start": "2024-10-01",
+    "end": "2024-12-31"
+  },
+  "transactions": [
+    {
+      "id": "txn-001",
+      "date": "2024-10-01",
+      "description": "Salary - IT Company",
+      "amount": 45000,
+      "type": "income",
+      "category": "salary",
+      "account": "bpi-savings",
+      "culturalContext": "monthly_income"
+    },
+    {
+      "id": "txn-002", 
+      "date": "2024-10-02",
+      "description": "Padala to Parents in Province",
+      "amount": -8000,
+      "type": "expense",
+      "category": "padala",
+      "account": "bpi-savings",
+      "culturalContext": "family_obligation",
+      "notes": "Monthly support for parents"
+    },
+    {
+      "id": "txn-003",
+      "date": "2024-10-03",
+      "description": "Paluwagan Contribution",
+      "amount": -2000,
+      "type": "expense", 
+      "category": "savings",
+      "account": "bpi-savings",
+      "culturalContext": "traditional_saving",
+      "notes": "Position 7 out of 10 members"
+    },
+    {
+      "id": "txn-004",
+      "date": "2024-10-05",
+      "description": "SM Hypermarket - Groceries",
+      "amount": -4500,
+      "type": "expense",
+      "category": "groceries",
+      "account": "bpi-savings",
+      "culturalContext": "family_essentials"
+    },
+    {
+      "id": "txn-005",
+      "date": "2024-10-07",
+      "description": "MRT/LRT Load",
+      "amount": -500,
+      "type": "expense",
+      "category": "transport",
+      "account": "gcash-wallet",
+      "culturalContext": "daily_commute"
+    },
+    {
+      "id": "txn-006",
+      "date": "2024-10-10",
+      "description": "Karinderya Lunch",
+      "amount": -120,
+      "type": "expense",
+      "category": "food",
+      "account": "cash",
+      "culturalContext": "office_meal",
+      "notes": "Turo-turo near office"
+    },
+    {
+      "id": "txn-007",
+      "date": "2024-10-12",
+      "description": "Globe Load 500",
+      "amount": -500,
+      "type": "expense",
+      "category": "load",
+      "account": "gcash-wallet",
+      "culturalContext": "communication"
+    },
+    {
+      "id": "txn-008",
+      "date": "2024-10-15",
+      "description": "Children's School Expenses",
+      "amount": -3200,
+      "type": "expense",
+      "category": "education",
+      "account": "bpi-savings",
+      "culturalContext": "children_education"
+    },
+    {
+      "id": "txn-009",
+      "date": "2024-10-18",
+      "description": "Meralco Electric Bill",
+      "amount": -2800,
+      "type": "expense",
+      "category": "utilities",
+      "account": "bpi-savings",
+      "culturalContext": "monthly_bills"
+    },
+    {
+      "id": "txn-010",
+      "date": "2024-10-20",
+      "description": "Barangay Fiesta Contribution",
+      "amount": -1500,
+      "type": "expense",
+      "category": "fiesta",
+      "account": "bpi-savings",
+      "culturalContext": "community_obligation",
+      "notes": "Annual barangay celebration"
+    },
+    {
+      "id": "txn-011",
+      "date": "2024-10-25",
+      "description": "Shopee Purchase - Children Clothes",
+      "amount": -2200,
+      "type": "expense",
+      "category": "shopping",
+      "account": "gcash-wallet",
+      "culturalContext": "family_needs",
+      "notes": "School uniforms and casual wear"
+    },
+    {
+      "id": "txn-012",
+      "date": "2024-10-30",
+      "description": "Emergency Fund Deposit",
+      "amount": -5000,
+      "type": "expense",
+      "category": "savings",
+      "account": "bpi-savings",
+      "culturalContext": "goal_oriented_saving"
+    },
+    {
+      "id": "txn-013",
+      "date": "2024-11-01",
+      "description": "Salary - IT Company",
+      "amount": 45000,
+      "type": "income",
+      "category": "salary",
+      "account": "bpi-savings",
+      "culturalContext": "monthly_income"
+    },
+    {
+      "id": "txn-014",
+      "date": "2024-11-01",
+      "description": "Undas Expenses - Flowers & Candles",
+      "amount": -800,
+      "type": "expense",
+      "category": "cultural",
+      "account": "bpi-savings",
+      "culturalContext": "all_saints_day",
+      "notes": "Cemetery visit for deceased relatives"
+    },
+    {
+      "id": "txn-015",
+      "date": "2024-11-02",
+      "description": "Padala to Parents",
+      "amount": -8000,
+      "type": "expense",
+      "category": "padala",
+      "account": "bpi-savings",
+      "culturalContext": "family_obligation"
+    },
+    {
+      "id": "txn-016",
+      "date": "2024-11-03",
+      "description": "Paluwagan Contribution",
+      "amount": -2000,
+      "type": "expense",
+      "category": "savings",
+      "account": "bpi-savings",
+      "culturalContext": "traditional_saving"
+    },
+    {
+      "id": "txn-017",
+      "date": "2024-11-15",
+      "description": "Jeepney Fare",
+      "amount": -150,
+      "type": "expense",
+      "category": "transport",
+      "account": "cash",
+      "culturalContext": "public_transport",
+      "notes": "Alternative to MRT when overcrowded"
+    },
+    {
+      "id": "txn-018",
+      "date": "2024-11-20",
+      "description": "Fishball and Kwek-kwek",
+      "amount": -50,
+      "type": "expense",
+      "category": "street_food",
+      "account": "cash",
+      "culturalContext": "filipino_snacks"
+    },
+    {
+      "id": "txn-019",
+      "date": "2024-11-25",
+      "description": "Lazada Black Friday Shopping",
+      "amount": -3500,
+      "type": "expense",
+      "category": "shopping",
+      "account": "gcash-wallet",
+      "culturalContext": "sale_shopping",
+      "notes": "Holiday gifts preparation"
+    },
+    {
+      "id": "txn-020",
+      "date": "2024-12-01",
+      "description": "Salary + 13th Month Pay",
+      "amount": 90000,
+      "type": "income",
+      "category": "salary",
+      "account": "bpi-savings",
+      "culturalContext": "christmas_bonus",
+      "notes": "Regular salary plus 13th month pay"
+    },
+    {
+      "id": "txn-021",
+      "date": "2024-12-05",
+      "description": "Christmas Shopping - SM Mall",
+      "amount": -8500,
+      "type": "expense",
+      "category": "christmas",
+      "account": "bpi-savings",
+      "culturalContext": "holiday_shopping",
+      "notes": "Gifts for family and children"
+    },
+    {
+      "id": "txn-022",
+      "date": "2024-12-10",
+      "description": "Noche Buena Preparation",
+      "amount": -5200,
+      "type": "expense",
+      "category": "christmas",
+      "account": "bpi-savings",
+      "culturalContext": "christmas_feast",
+      "notes": "Ham, lechon, and traditional Filipino Christmas foods"
+    },
+    {
+      "id": "txn-023",
+      "date": "2024-12-15",
+      "description": "Aguinaldo for House Help",
+      "amount": -2000,
+      "type": "expense",
+      "category": "christmas",
+      "account": "bpi-savings",
+      "culturalContext": "christmas_bonus_tradition"
+    },
+    {
+      "id": "txn-024",
+      "date": "2024-12-18",
+      "description": "Company Christmas Party Contribution",
+      "amount": -1500,
+      "type": "expense",
+      "category": "social",
+      "account": "bpi-savings",
+      "culturalContext": "office_celebration"
+    },
+    {
+      "id": "txn-025",
+      "date": "2024-12-20",
+      "description": "Christmas Padala to Extended Family",
+      "amount": -15000,
+      "type": "expense",
+      "category": "padala",
+      "account": "bpi-savings",
+      "culturalContext": "christmas_family_support",
+      "notes": "Extra support for relatives during Christmas"
+    },
+    {
+      "id": "txn-026",
+      "date": "2024-12-25",
+      "description": "Family Reunion Expenses",
+      "amount": -3000,
+      "type": "expense",
+      "category": "christmas",
+      "account": "bpi-savings",
+      "culturalContext": "christmas_gathering",
+      "notes": "Transportation and contributions for family reunion"
+    },
+    {
+      "id": "txn-027",
+      "date": "2024-12-30",
+      "description": "Year-End Emergency Fund Boost",
+      "amount": -20000,
+      "type": "expense",
+      "category": "savings",
+      "account": "bpi-savings",
+      "culturalContext": "goal_oriented_saving",
+      "notes": "Using 13th month pay bonus for emergency fund"
+    }
+  ],
+  "summary": {
+    "totalIncome": 180000,
+    "totalExpenses": 111720,
+    "netSavings": 68280,
+    "savingsRate": "37.9%",
+    "culturalExpenses": {
+      "padala": 31000,
+      "fiesta": 1500,
+      "christmas": 20200,
+      "paluwagan": 6000,
+      "culturalEvents": 800
+    },
+    "categoryBreakdown": {
+      "padala": 31000,
+      "christmas": 20200,
+      "savings": 33000,
+      "groceries": 4500,
+      "education": 3200,
+      "shopping": 5700,
+      "utilities": 2800,
+      "other": 11320
+    }
+  },
+  "testingObjectives": {
+    "iponCoach": [
+      "Recognize high Christmas spending pattern",
+      "Suggest optimization for padala frequency",
+      "Recommend emergency fund target based on family obligations",
+      "Identify paluwagan as traditional saving method"
+    ],
+    "peraPlanner": [
+      "Plan for annual 13th month pay utilization",
+      "Project education fund requirements",
+      "Account for cultural spending cycles",
+      "Suggest investment strategy for excess savings"
+    ],
+    "gastosGuardian": [
+      "Detect spending leaks in small daily expenses",
+      "Identify seasonal spending spikes",
+      "Categorize Filipino-specific transactions",
+      "Suggest local alternatives for expensive items"
+    ]
+  }
+} 

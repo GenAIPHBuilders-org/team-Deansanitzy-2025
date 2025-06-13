@@ -1,0 +1,60 @@
+{
+  "name": "kita-kita",
+  "version": "1.0.0",
+  "description": "Kita-kita - AI Banking Platform with secure chatbot integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build:sourcemaps": "sentry-cli sourcemaps inject --org polytechnic-university-of-t-ri --project javascript-react ./ && sentry-cli sourcemaps upload --org polytechnic-university-of-t-ri --project javascript-react ./",
+    "setup": "npm install",
+    "setup-secure": "node setup-secure-config.js",
+    "audit": "npm audit --audit-level=moderate",
+    "update-deps": "npm update",
+    "security-check": "npm audit fix",
+    "security-scan": "node scripts/security-check.js",
+    "security-fix": "node scripts/security-check.js --fix"
+  },
+  "dependencies": {
+    "@sentry/cli": "^2.42.4",
+    "chart.js": "^4.4.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.4.1",
+    "firebase": "^11.5.0",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.0",
+    "node-fetch": "^3.3.2",
+    "react-plaid-link": "^3.6.1",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=20.19.2",
+    "npm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/kita-kita.git"
+  },
+  "keywords": [
+    "banking",
+    "ai",
+    "chatbot",
+    "security",
+    "express",
+    "firebase"
+  ],
+  "author": "Kita-kita Team",
+  "license": "MIT",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/kita-kita"
+  },
+  "security": {
+    "policy": "https://github.com/your-org/kita-kita/security/policy"
+  }
+}

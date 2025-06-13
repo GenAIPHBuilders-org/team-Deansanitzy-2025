@@ -1,0 +1,143 @@
+{
+  "testCase": "filipino-family-profile",
+  "description": "Typical middle-class Filipino family with cultural financial obligations",
+  "userData": {
+    "uid": "test-user-filipino-family-001",
+    "displayName": "Maria Santos",
+    "email": "maria.santos@test.com",
+    "profile": {
+      "age": 35,
+      "maritalStatus": "married",
+      "children": 2,
+      "location": "Metro Manila",
+      "occupation": "IT Professional",
+      "monthlyIncome": 45000,
+      "familyType": "nuclear_with_extended_obligations"
+    },
+    "culturalContext": {
+      "familyObligations": {
+        "parentSupport": true,
+        "monthlyPadala": 8000,
+        "extendedFamilySupport": true,
+        "fiestaContributions": true
+      },
+      "savingTraditions": ["alkansya", "paluwagan"],
+      "currentPaluwagan": {
+        "active": true,
+        "monthlyContribution": 2000,
+        "totalMembers": 10,
+        "position": 7
+      }
+    },
+    "financialGoals": [
+      {
+        "id": "house-and-lot",
+        "type": "house",
+        "description": "Bahay at Lupa",
+        "targetAmount": 2500000,
+        "currentSaved": 180000,
+        "timeline": "10 years",
+        "priority": "high"
+      },
+      {
+        "id": "children-education",
+        "type": "education",
+        "description": "College fund for 2 children",
+        "targetAmount": 800000,
+        "currentSaved": 45000,
+        "timeline": "15 years",
+        "priority": "critical"
+      },
+      {
+        "id": "emergency-fund",
+        "type": "emergency",
+        "description": "Emergency fund with family obligation buffer",
+        "targetAmount": 270000,
+        "currentSaved": 85000,
+        "timeline": "2 years",
+        "priority": "high"
+      }
+    ],
+    "bankAccounts": [
+      {
+        "id": "bpi-savings",
+        "name": "BPI Savings Account",
+        "type": "savings",
+        "balance": 125000,
+        "bank": "Bank of the Philippine Islands"
+      },
+      {
+        "id": "gcash-wallet",
+        "name": "GCash",
+        "type": "e-wallet",
+        "balance": 5500,
+        "bank": "GCash"
+      }
+    ],
+    "preferences": {
+      "savingsFrequency": "bi-weekly",
+      "riskTolerance": "moderate",
+      "investmentInterest": ["time_deposit", "mutual_funds"],
+      "budgetingStyle": "envelope_method",
+      "notificationPreferences": {
+        "spendingAlerts": true,
+        "savingsReminders": true,
+        "culturalEventReminders": true
+      }
+    }
+  },
+  "expectedBehavior": {
+    "iponCoach": {
+      "shouldRecognize": [
+        "Family obligation expenses",
+        "Paluwagan participation", 
+        "Cultural spending patterns",
+        "OFW family dynamics"
+      ],
+      "expectedRecommendations": [
+        "Emergency fund sizing for Filipino families",
+        "Timing for major purchases around cultural events",
+        "Optimization of padala and remittances",
+        "Traditional saving method modernization"
+      ]
+    },
+    "peraPlanner": {
+      "shouldPlan": [
+        "Children's education milestones",
+        "House purchase timeline",
+        "Career progression in IT",
+        "Retirement with family obligations"
+      ],
+      "culturalAwareness": [
+        "Extended family financial responsibilities",
+        "Traditional celebration costs",
+        "Local investment options",
+        "Healthcare obligations for parents"
+      ]
+    },
+    "gastosGuardian": {
+      "shouldDetect": [
+        "Padala transaction patterns",
+        "Fiesta season spending spikes",
+        "Load and e-wallet frequent small purchases",
+        "Transportation expense optimization"
+      ],
+      "culturalCategories": [
+        "Padala & Remittance",
+        "Fiesta & Celebrations", 
+        "Karinderya & Street Food",
+        "Load & E-wallet"
+      ]
+    }
+  },
+  "testingNotes": {
+    "strengths": "Realistic Filipino family financial scenario with cultural context",
+    "challenges": "Multiple competing financial priorities typical of Filipino families",
+    "keyMetrics": [
+      "Savings rate with family obligations",
+      "Emergency fund adequacy",
+      "Cultural event budgeting",
+      "Income allocation optimization"
+    ]
+  }
+} 
