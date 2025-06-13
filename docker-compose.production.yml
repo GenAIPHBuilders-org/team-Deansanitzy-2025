@@ -1,0 +1,295 @@
+version: '3.8'
+
+services:
+  # Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    networks:
+      - kita-kita-network
+    restart: unless-stopped
+
+  # Main Application (Multiple Instances for High Availability)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - AI_API_KEY=${AI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+    volumes:
+      - app-logs:/app/logs
+    networks:
+      - kita-kita-network
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - postgres
+      - redis
+      - mongodb
+
+  # PostgreSQL Database (Primary)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - kita-kita-network
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB (For AI Agent State & Analytics)
+  mongodb:
+    image: mongo:6.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - mongodb-data:/data/db
+      - ./mongo/init.js:/docker-entrypoint-initdb.d/init.js
+    networks:
+      - kita-kita-network
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # Redis (Caching & Session Management)
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - kita-kita-network
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # AI Agent Microservices
+  ipon-coach-service:
+    build:
+      context: ./microservices/ipon-coach
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - AI_MODEL_URL=${AI_MODEL_URL}
+    networks:
+      - kita-kita-network
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gastos-guardian-service:
+    build:
+      context: ./microservices/gastos-guardian
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - AI_MODEL_URL=${AI_MODEL_URL}
+    networks:
+      - kita-kita-network
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  pera-planner-service:
+    build:
+      context: ./microservices/pera-planner
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - AI_MODEL_URL=${AI_MODEL_URL}
+    networks:
+      - kita-kita-network
+    depends_on:
+      - postgres
+      - redis
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Analytics & Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - kita-kita-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - kita-kita-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Log Aggregation
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - kita-kita-network
+    ports:
+      - "9200:9200"
+    restart: unless-stopped
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.0
+    volumes:
+      - ./logging/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    networks:
+      - kita-kita-network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - kita-kita-network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # Security & Backup
+  backup-service:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_URL=${DATABASE_URL}
+      - MONGO_URL=${MONGO_URL}
+      - BACKUP_SCHEDULE="0 2 * * *"  # Daily at 2 AM
+      - S3_BUCKET=${BACKUP_S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - backup-data:/backup
+    networks:
+      - kita-kita-network
+    depends_on:
+      - postgres
+      - mongodb
+    restart: unless-stopped
+
+# Volume Definitions
+volumes:
+  postgres-data:
+    driver: local
+  mongodb-data:
+    driver: local
+  redis-data:
+    driver: local
+  app-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  backup-data:
+    driver: local
+
+# Network Configuration
+networks:
+  kita-kita-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

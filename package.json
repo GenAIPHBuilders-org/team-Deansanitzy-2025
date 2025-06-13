@@ -13,9 +13,25 @@
     "update-deps": "npm update",
     "security-check": "npm audit fix",
     "security-scan": "node scripts/security-check.js",
-    "security-fix": "node scripts/security-check.js --fix"
+    "security-fix": "node scripts/security-check.js --fix",
+    "test": "mocha automated-testing-suite.js --timeout 30000",
+    "test:watch": "mocha automated-testing-suite.js --watch --timeout 30000",
+    "test:coverage": "nyc mocha automated-testing-suite.js --timeout 30000",
+    "test:agents": "mocha automated-testing-suite.js --grep 'Agent Autonomy' --timeout 30000",
+    "test:production": "mocha automated-testing-suite.js --grep 'Production Readiness' --timeout 30000",
+    "test:business": "mocha automated-testing-suite.js --grep 'Business Value' --timeout 30000",
+    "test:integration": "mocha automated-testing-suite.js --grep 'Integration' --timeout 30000",
+    "lint": "eslint public/js/ public/agents/ --fix",
+    "lint:check": "eslint public/js/ public/agents/",
+    "docker:build": "docker build -t kita-kita:latest .",
+    "docker:run": "docker-compose -f docker-compose.production.yml up -d",
+    "docker:stop": "docker-compose -f docker-compose.production.yml down",
+    "deploy:staging": "docker-compose -f docker-compose.staging.yml up -d",
+    "deploy:production": "docker-compose -f docker-compose.production.yml up -d",
+    "monitor": "npm run test:production && npm run lint:check && npm run audit"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@sentry/cli": "^2.42.4",
     "chart.js": "^4.4.8",
     "cors": "^2.8.5",
@@ -28,6 +44,14 @@
     "node-fetch": "^3.3.2",
     "react-plaid-link": "^3.6.1",
     "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "chai": "^4.3.10",
+    "supertest": "^6.3.3",
+    "sinon": "^17.0.1",
+    "nyc": "^15.1.0",
+    "eslint": "^8.55.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
