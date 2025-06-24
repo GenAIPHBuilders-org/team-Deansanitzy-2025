@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#060e21">
+    <title>Transactions - Kita-kita Banking</title>
+    <link rel="stylesheet" href="../../src/index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/transactions.css">
+    <script type="module" src="../js/transactions.js" defer></script>
+    <script type="module" src="../scanReceipt/scan.js" defer></script>
+    <style>
+        .account-name {
+            font-weight: 600;
+            color: white;
+        }
+        
+        .account-provider {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 0.1rem;
+        }
+        
+        .transaction-account-cell {
+            max-width: 150px;
+        }
+        
+        /* Better account dropdown styling */
+        #transaction-account option[disabled] {
+            color: var(--primary-green);
+            font-weight: bold;
+            background: rgba(26, 115, 232, 0.1);
+        }
+        
+        #transaction-account option[value="add-account"] {
+            color: var(--primary-green);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Light Effects -->
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+
+    <div class="page-layout">
+        <!-- Header Navigation -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-coins" style="color: var(--primary-green); font-size: 1.5rem;"></i>
+                <span class="logo-text">Kita-kita</span>
+            </div>
+            <nav class="header-nav">
+                <ul class="header-nav-items">
+                    <li><a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="transactions.html" class="active"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
+                    <li><a href="accounts.html"><i class="fas fa-wallet"></i> Accounts</a></li>
+                    <li><a href="dashboard.html#profile"><i class="fas fa-user"></i> Profile</a></li>
+                    <div class="nav-divider"></div>
+                    <li><a href="../index.html"><i class="fas fa-home"></i> Home</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1>Transaction History</h1>
+                <div class="header-actions">
+                    <button id="scan-transaction-button" class="secondary-button" title="Scan Receipt">
+                        <i class="fas fa-camera"></i> Scan
+                    </button>
+                    <button id="add-transaction-button" class="primary-button">
+                        <i class="fas fa-plus"></i> Add Transaction
+                    </button>
+                </div>
+            </div>
+            
+            <div class="transactions-container">
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Transaction</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Account</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-table-body">
+                        <!-- Transactions will be dynamically loaded here -->
+                    </tbody>
+                </table>
+                <div id="transactions-empty-state" class="empty-state-container" style="display: none;">
+                    <i class="fas fa-file-invoice-dollar empty-state-icon"></i>
+                    <h3>No transactions yet</h3>
+                    <p>Start tracking your financial journey! You can add transactions even without a bank account - just select "Cash" or "I don't have a bank account yet" when adding your first transaction.</p>
+                    <p><strong>💡 Tip:</strong> Track your cash expenses to build good financial habits!</p>
+                </div>
+                 <div id="transactions-loading-state" class="loading-state-container">
+                    <div class="loading-spinner"></div>
+                    <p>Loading transactions...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Transaction Modal -->
+    <div id="add-transaction-modal" class="modal">
+        <div class="modal-content wider-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-plus-circle"></i> Add New Transaction</h2>
+                <button class="modal-close-btn" id="close-add-transaction">×</button>
+            </div>
+            <form id="add-transaction-form">
+                <div class="form-group">
+                    <label for="transaction-name">Transaction Name</label>
+                    <input type="text" id="transaction-name" placeholder="e.g., Groceries, Salary" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transaction-amount">Amount</label>
+                        <div class="currency-input-container">
+                            <span>₱</span>
+                            <input type="number" id="transaction-amount" step="0.01" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="transaction-type">Type</label>
+                        <select id="transaction-type" required>
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transaction-account">Account</label>
+                        <select id="transaction-account" required>
+                            <option value="">-- Select Account --</option>
+                        </select>
+                        <small class="form-help-text">
+                            <i class="fas fa-info-circle"></i>
+                            Don't have a bank account? No problem! You can still track your cash transactions.
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label for="transaction-date">Date</label>
+                        <input type="date" id="transaction-date" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="transaction-category">Category</label>
+                        <select id="transaction-category" required>
+                            <option value="food">Food & Drink</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="bills">Bills & Utilities</option>
+                            <option value="transportation">Transportation</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="health">Health</option>
+                            <option value="housing">Housing</option>
+                            <option value="education">Education</option>
+                            <option value="income">Income</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="transaction-channel">Channel</label>
+                        <select id="transaction-channel" required>
+                            <option value="online">Online</option>
+                            <option value="in-store">In Store</option>
+                            <option value="transfer">Bank Transfer</option>
+                            <option value="mobile">Mobile App</option>
+                            <option value="atm">ATM</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="transaction-notes">Notes (Optional)</label>
+                    <textarea id="transaction-notes" rows="2" placeholder="Add a short note..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="action-button">Add Transaction</button>
+                    <button type="button" class="cancel-button" id="cancel-add-transaction">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+

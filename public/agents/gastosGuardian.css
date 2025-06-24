@@ -1,0 +1,444 @@
+/* Gastos Guardian Specific Styles */
+
+#guardian-dashboard .container {
+    max-width: 1200px;
+}
+
+.tagline {
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0.5rem auto 0;
+}
+
+.guardian-grid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    grid-template-rows: auto;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+@media (min-width: 992px) {
+    .guardian-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.card-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--green-primary);
+}
+
+.card-icon {
+    font-size: 2rem;
+}
+
+/* Card-specific styling */
+.chart-card {
+    grid-column: 1 / -1; /* Span full width on small screens */
+}
+
+@media (min-width: 992px) {
+    .chart-card {
+        grid-row: span 2; /* Span two rows on large screens */
+        grid-column: 1 / 2; /* First column */
+    }
+}
+
+#expense-chart {
+    max-height: 450px;
+    margin: auto;
+    width: 100% !important;
+    height: 400px !important;
+}
+
+.alerts-card .card-header h2 {
+    color: var(--orange-primary);
+}
+
+.tips-card .card-header h2 {
+    color: #3498db; /* A friendly blue for tips */
+}
+
+
+.card-content ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.card-content ul li {
+    background: rgba(0,0,0,0.15);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.8rem;
+    border-left: 3px solid var(--orange-primary);
+    transition: background 0.3s ease;
+}
+
+.card-content ul li:last-child {
+    margin-bottom: 0;
+}
+
+.card-content ul li:hover {
+    background: rgba(0,0,0,0.25);
+}
+
+.tips-card .card-content ul li {
+    border-left-color: #3498db;
+}
+
+.card-content p:first-child {
+    margin-top: 0;
+}
+.card-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* State Management Styles */
+.hidden {
+    display: none !important;
+}
+
+.loading-container, .empty-container {
+    text-align: center;
+    padding: 4rem 1rem;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.empty-container .empty-icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.spinner {
+    border: 6px solid rgba(255, 255, 255, 0.1);
+    border-top: 6px solid var(--green-primary);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Spending Leaks Styles */
+.leak-item {
+    background: rgba(233, 109, 31, 0.1);
+    border: 1px solid rgba(233, 109, 31, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.leak-item:hover {
+    background: rgba(233, 109, 31, 0.15);
+    transform: translateY(-2px);
+}
+
+.leak-item.priority-high {
+    border-left: 4px solid #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.leak-item.priority-medium {
+    border-left: 4px solid #f39c12;
+    background: rgba(243, 156, 18, 0.1);
+}
+
+.leak-item.priority-low {
+    border-left: 4px solid #3498db;
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.leak-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.leak-header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.1rem;
+}
+
+.leak-amount {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+.leak-details p {
+    margin: 0.5rem 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+}
+
+/* Tipid Tips Styles */
+.tip-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.tip-item:hover {
+    background: rgba(76, 175, 80, 0.15);
+    transform: translateY(-2px);
+}
+
+.tip-number {
+    background: linear-gradient(135deg, var(--primary-green), #0ea5e9);
+    color: white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.tip-content {
+    flex: 1;
+}
+
+.tip-content h4 {
+    margin: 0 0 0.75rem 0;
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+.tip-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.tip-category,
+.tip-savings,
+.tip-impact {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.tip-category {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+    border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.tip-savings {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+.tip-impact {
+    border: 1px solid;
+}
+
+.tip-impact.impact-high {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+.tip-impact.impact-medium {
+    background: rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+    border-color: rgba(243, 156, 18, 0.3);
+}
+
+.tip-impact.impact-low {
+    background: rgba(52, 152, 219, 0.2);
+    color: #3498db;
+    border-color: rgba(52, 152, 219, 0.3);
+}
+
+/* Error Message Styles */
+.error-message {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    color: #e74c3c;
+    padding: 1.5rem;
+    border-radius: 12px;
+    max-width: 400px;
+    z-index: 1000;
+    animation: slideInFromRight 0.5s ease-out;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.error-message h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.error-message p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.error-message i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    text-align: center;
+}
+
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .guardian-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .chart-card {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    
+    .leak-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .tip-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .tip-details {
+        justify-content: center;
+    }
+    
+    .error-message {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+}
+
+/* Chart Container Improvements */
+.chart-card .card-content {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Chart Error State */
+.chart-error {
+    text-align: center;
+    padding: 2rem;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+}
+
+.chart-error h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: #ff6b6b;
+    font-size: 1.2rem;
+}
+
+.chart-error p {
+    margin: 0.5rem 0;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.chart-error .btn {
+    background: linear-gradient(135deg, var(--primary-green), #0ea5e9);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chart-error .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* Chart Loading State */
+.chart-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: #fff;
+}
+
+.chart-loading .spinner {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 1rem;
+}
+
+.chart-loading p {
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+}
+

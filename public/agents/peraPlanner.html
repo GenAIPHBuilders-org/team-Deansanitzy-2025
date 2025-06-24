@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pera Planner - Your AI Long-term Financial Architect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main theme stylesheet -->
+    <link rel="stylesheet" href="../css/theme.css">
+    <!-- Page-specific stylesheet -->
+    <link rel="stylesheet" href="peraPlanner.css">
+</head>
+
+<body>
+    <!-- Light Effects from theme -->
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+
+    <div class="dashboard-layout">
+        <!-- Enhanced Header -->
+        <header class="header">
+            <div class="logo">
+                <a href="../pages/dashboard.html" class="logo-text">Kita-kita</a>
+            </div>
+            <nav class="header-nav">
+                <ul class="header-nav-items">
+                    <li><a href="../pages/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#" class="active"><i class="fas fa-map-marked-alt"></i> Pera Planner</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Enhanced Hero Section -->
+            <div class="welcome-banner">
+                <h1><i class="fas fa-map-marked-alt"></i> Pera Planner</h1>
+                <p class="tagline">Your AI architect for a long-term financial roadmap tailored for Filipino life. Strategic planning from today to retirement.</p>
+            </div>
+
+            <!-- Planner Dashboard Content -->
+            <section id="planner-dashboard">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Planner is charting your financial future...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden empty-container">
+                    <span class="empty-icon">⏳</span>
+                    <h2>Not Enough Data</h2>
+                    <p>Your Pera Planner needs more data to build a long-term strategy. Add more transactions or update your profile.</p>
+                    <a href="../pages/dashboard.html" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Transactions
+                    </a>
+                </div>
+
+                <!-- Main Content -->
+                <div id="content-state" class="hidden">
+                    <div class="planner-grid">
+                        <!-- Financial Roadmap -->
+                        <div class="card theme-card timeline-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-route"></i> Your Financial Roadmap</h2>
+                                <span class="card-icon">🗺️</span>
+                            </div>
+                            <div class="card-content">
+                                <div id="financial-timeline" class="timeline-container">
+                                    <!-- AI-generated timeline events will be injected here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Investment Insights -->
+                        <div class="card theme-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-chart-line"></i> Investment Insights</h2>
+                                <span class="card-icon">📈</span>
+                            </div>
+                            <div class="card-content" id="investment-content">
+                                <!-- AI-generated investment advice -->
+                            </div>
+                        </div>
+
+                        <!-- Career Path Simulation -->
+                        <div class="card theme-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-rocket"></i> Career Path Simulation</h2>
+                                <span class="card-icon">🚀</span>
+                            </div>
+                            <div class="card-content" id="career-content">
+                                <!-- AI-generated career path analysis -->
+                            </div>
+                        </div>
+
+                        <!-- Balancing Act -->
+                        <div class="card theme-card timeline-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-balance-scale"></i> The Balancing Act: Personal vs. Family</h2>
+                                <span class="card-icon">⚖️</span>
+                            </div>
+                            <div class="card-content" id="balancing-act-content">
+                                <!-- AI-generated advice on balancing goals -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Enhanced JavaScript Module -->
+    <script type="module" src="peraPlanner.js"></script>
+    
+    <!-- Fallback for browsers that don't support modules -->
+    <script nomodule>
+        alert('Your browser does not support ES6 modules. Please update your browser to use Pera Planner AI.');
+    </script>
+</body>
+</html>
+

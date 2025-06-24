@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ipon Coach AI - Your Intelligent Filipino Savings Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main theme stylesheet -->
+    <link rel="stylesheet" href="../css/theme.css">
+    <!-- Page-specific stylesheet -->
+    <link rel="stylesheet" href="iponCoach.css">
+</head>
+
+<body>
+    <!-- Light Effects from theme -->
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+
+    <div class="dashboard-layout">
+        <!-- Enhanced Header -->
+        <header class="header">
+            <div class="logo">
+                <a href="../pages/dashboard.html" class="logo-text">Kita-kita</a>
+            </div>
+            <nav class="header-nav">
+                <ul class="header-nav-items">
+                    <li><a href="../pages/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#" class="active"><i class="fas fa-robot"></i> Ipon Coach AI</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Enhanced Hero Section -->
+            <div class="welcome-banner">
+                <h1><i class="fas fa-robot"></i> Ipon Coach AI</h1>
+                <p class="tagline">Your intelligent Filipino savings assistant powered by AI. Personalized guidance based on your actual spending patterns.</p>
+            </div>
+
+            <!-- AI Dashboard Content -->
+            <section id="coach-dashboard">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-indicator">
+                    <div class="spinner"></div>
+                    <p>Analyzing your financial data with AI...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-message" style="display: none;">
+                    <h2><i class="fas fa-chart-line"></i> Insufficient Data for AI Analysis</h2>
+                    <p>I need at least 5 transactions to provide meaningful AI-powered insights. Start tracking your expenses to unlock personalized Filipino savings strategies!</p>
+                    <a href="../pages/dashboard.html" class="btn-primary">
+                        <i class="fas fa-plus"></i> Add Transactions
+                    </a>
+                </div>
+
+                <!-- Main Content -->
+                <div id="content-loaded" style="display: none;">
+                    <!-- AI-Powered Card Grid -->
+                    <div class="card-grid">
+                        <!-- AI Coach's Personalized Tip Card -->
+                        <div class="theme-card" id="coach-tip-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-brain"></i> AI Coach's Insight</h2>
+                                <span class="ai-badge">🤖 AI-Powered</span>
+                            </div>
+                            <div class="card-content">
+                                <div id="coach-tip-text">
+                                    <div class="coach-message">
+                                        <div class="coach-avatar">🤖</div>
+                                        <div class="coach-text">Analyzing your spending patterns...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filipino Wisdom Card -->
+                        <div class="theme-card" id="motivation-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-quote-left"></i> Karunungang Filipino</h2>
+                                <span class="wisdom-badge">💎 Daily Wisdom</span>
+                            </div>
+                            <div class="card-content">
+                                <blockquote id="motivational-quote-text">
+                                    Loading inspirational Filipino wisdom...
+                                </blockquote>
+                                <cite id="motivational-quote-author">Filipino Proverb</cite>
+                            </div>
+                        </div>
+
+                        <!-- AI-Generated Savings Goals -->
+                        <div class="theme-card wide-card" id="savings-goals-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-bullseye"></i> AI-Recommended Goals</h2>
+                                <span class="ai-badge">🎯 Smart Goals</span>
+                            </div>
+                            <div class="card-content" id="savings-goals-list">
+                                <div class="loading-goals">
+                                    <i class="fas fa-cog fa-spin"></i> Generating personalized savings goals...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Weekly Challenge Card -->
+                        <div class="theme-card" id="alkansya-challenge-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-trophy"></i> Weekly Challenge</h2>
+                                <span class="challenge-badge">⚡ Active</span>
+                            </div>
+                            <div class="card-content">
+                                <h3 id="alkansya-challenge-name">Loading Challenge...</h3>
+                                <p id="alkansya-challenge-desc">Preparing your personalized challenge...</p>
+                                <div class="challenge-progress">
+                                    <strong>Target: <span id="alkansya-challenge-target">₱0</span></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights Section (Dynamically Generated) -->
+                    <!-- This section will be populated by JavaScript with:
+                         - Spending Analysis
+                         - Savings Opportunities  
+                         - Risk Assessment
+                         - Filipino Method Recommendations -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Enhanced JavaScript Module -->
+    <script type="module" src="iponCoach.js"></script>
+    
+    <!-- Fallback for browsers that don't support modules -->
+    <script nomodule>
+        alert('Your browser does not support ES6 modules. Please update your browser to use Ipon Coach AI.');
+    </script>
+</body>
+
+</html>
+

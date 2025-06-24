@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Handler</title>
+    <style>
+        body {
+            font-family: -webkit-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #060e21;
+            color: white;
+        }
+        .loading {
+            text-align: center;
+        }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #10df6f;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+        <p>Completing authentication...</p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+        import { getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+        import { firebaseConfig } from "./js/config.js";
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Flag to prevent multiple authentication attempts
+        let isHandlingAuth = false;
+
+        function postMessageToParent(message) {
+            if (window.opener && !window.opener.closed) {
+                try {
+                    window.opener.postMessage(message, window.location.origin);
+                    console.log('Posted message to parent:', message);
+                } catch (error) {
+                    console.error('Error posting message to parent:', error);
+                }
+            }
+        }
+
+        function closeWindow() {
+            // Close the window after a short delay to ensure message is sent
+            setTimeout(() => {
+                if (window.opener) {
+                    window.close();
+                } else {
+                    // If no opener, redirect to dashboard or login
+                    window.location.href = '/dashboard.html';
+                }
+            }, 100);
+        }
+
+        async function handleAuthResult() {
+            if (isHandlingAuth) {
+                console.log('Already handling authentication, skipping...');
+                return;
+            }
+
+            isHandlingAuth = true;
+
+            try {
+                console.log('Checking for redirect result...');
+                
+                // Get the result of the redirect authentication
+                const result = await getRedirectResult(auth);
+                
+                if (result) {
+                    // Authentication was successful
+                    console.log("Authentication successful:", result.user);
+                    
+                    // Send message to parent window if this is in a popup
+                    postMessageToParent({
+                        type: 'FIREBASE_AUTH_SUCCESS',
+                        user: {
+                            uid: result.user.uid,
+                            email: result.user.email,
+                            displayName: result.user.displayName
+                        }
+                    });
+                    
+                    closeWindow();
+                } else {
+                    // No redirect result, check if user is already authenticated
+                    console.log('No redirect result, checking current user...');
+                    
+                    // Wait for auth state to be determined
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            console.log("User already authenticated:", user);
+                            postMessageToParent({
+                                type: 'FIREBASE_AUTH_SUCCESS',
+                                user: {
+                                    uid: user.uid,
+                                    email: user.email,
+                                    displayName: user.displayName
+                                }
+                            });
+                            closeWindow();
+                        } else {
+                            // No authentication result
+                            console.log("No authentication result");
+                            postMessageToParent({
+                                type: 'FIREBASE_AUTH_ERROR',
+                                error: 'No authentication result'
+                            });
+                            closeWindow();
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Auth handler error:", error);
+                
+                postMessageToParent({
+                    type: 'FIREBASE_AUTH_ERROR',
+                    error: error.message
+                });
+                
+                closeWindow();
+            }
+        }
+
+        // Handle authentication result
+        handleAuthResult();
+
+        // Fallback: close popup after 10 seconds if nothing happens
+        setTimeout(() => {
+            if (!isHandlingAuth) {
+                console.log("Fallback: closing popup after timeout");
+                postMessageToParent({
+                    type: 'FIREBASE_AUTH_ERROR',
+                    error: 'Authentication timeout'
+                });
+                closeWindow();
+            }
+        }, 10000);
+
+        // Listen for messages from parent window to handle cleanup
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) return;
+            
+            if (event.data.type === 'CLOSE_AUTH_POPUP') {
+                console.log('Received close command from parent');
+                closeWindow();
+            }
+        });
+    </script>
+</body>
+</html> 

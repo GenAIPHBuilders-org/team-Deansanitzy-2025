@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gastos Guardian - Your AI Expense Tracking Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main theme stylesheet -->
+    <link rel="stylesheet" href="../css/theme.css">
+    <!-- Page-specific stylesheet -->
+    <link rel="stylesheet" href="gastosGuardian.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Light Effects from theme -->
+    <div class="light light-1"></div>
+    <div class="light light-2"></div>
+    <div class="light light-3"></div>
+
+    <div class="dashboard-layout">
+        <!-- Enhanced Header -->
+        <header class="header">
+            <div class="logo">
+                <a href="../pages/dashboard.html" class="logo-text">Kita-kita</a>
+            </div>
+            <nav class="header-nav">
+                <ul class="header-nav-items">
+                    <li><a href="../pages/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#" class="active"><i class="fas fa-shield-alt"></i> Gastos Guardian</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Enhanced Hero Section -->
+            <div class="welcome-banner">
+                <h1><i class="fas fa-shield-alt"></i> Gastos Guardian</h1>
+                <p class="tagline">Your AI partner for smart expense tracking and Filipino-centric savings. Let me analyze your spending patterns and find ways to save!</p>
+            </div>
+
+            <!-- Guardian Dashboard Content -->
+            <section id="guardian-dashboard">
+                <!-- Loading State -->
+                <div id="loading-state" class="loading-container">
+                    <div class="spinner"></div>
+                    <p>Guardian is analyzing your spending patterns...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden empty-container">
+                    <span class="empty-icon">🧾</span>
+                    <h2>Not Enough Data</h2>
+                    <p>Your Gastos Guardian needs transactions to analyze. Please add some to get started.</p>
+                    <a href="../pages/dashboard.html" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Transactions
+                    </a>
+                </div>
+
+                <!-- Main Content -->
+                <div id="content-state" class="hidden">
+                    <div class="guardian-grid">
+                        <!-- Expense Breakdown Chart -->
+                        <div class="card theme-card chart-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-chart-pie"></i> Expense Breakdown</h2>
+                                <span class="card-icon">📊</span>
+                            </div>
+                            <div class="card-content">
+                                <canvas id="expense-chart" width="400" height="400"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Spending Leaks Card -->
+                        <div class="card theme-card alerts-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-exclamation-triangle"></i> Spending Leaks</h2>
+                                <span class="card-icon">💧</span>
+                            </div>
+                            <div class="card-content" id="spending-leaks-content">
+                                <!-- AI-generated spending leaks will be injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Tipid Tips Card -->
+                        <div class="card theme-card tips-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-lightbulb"></i> Guardian's Tipid Tips</h2>
+                                <span class="card-icon">💡</span>
+                            </div>
+                            <div class="card-content" id="tipid-tips-content">
+                                <!-- AI-generated tipid tips will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Enhanced JavaScript Module -->
+    <script type="module" src="gastosGuardian.js"></script>
+    
+    <!-- Fallback for browsers that don't support modules -->
+    <script nomodule>
+        alert('Your browser does not support ES6 modules. Please update your browser to use Gastos Guardian AI.');
+    </script>
+</body>
+</html>
+

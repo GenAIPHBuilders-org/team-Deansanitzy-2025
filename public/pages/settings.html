@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Kita-kita</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/settings.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <h1>Kita-kita</h1>
+            </div>
+            <div class="nav-links">
+                <a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a>
+                <a href="transactions.html"><i class="fas fa-receipt"></i> Transactions</a>
+                <a href="settings.html" class="active"><i class="fas fa-cog"></i> Settings</a>
+                <a href="#" onclick="signOut()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header">
+                <h2>Settings</h2>
+                <p>Manage your account preferences and integrations</p>
+            </div>
+
+            <div class="settings-container">
+                <!-- Telegram Integration Section -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3><i class="fab fa-telegram"></i> Telegram Integration</h3>
+                        <p>Connect your Telegram account to scan receipts directly through our bot</p>
+                    </div>
+                    
+                    <div class="telegram-status" id="telegramStatus">
+                        <div class="status-card" id="statusCard">
+                            <div class="status-icon" id="statusIcon">
+                                <i class="fas fa-unlink"></i>
+                            </div>
+                            <div class="status-info">
+                                <h4 id="statusTitle">Not Connected</h4>
+                                <p id="statusDescription">Connect your Telegram to start scanning receipts on the go</p>
+                            </div>
+                            <div class="status-action">
+                                <button class="btn btn-primary" id="telegramActionBtn" onclick="handleTelegramAction()">
+                                    <i class="fab fa-telegram"></i> Connect Telegram
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Link Code Modal (Hidden by default) -->
+                    <div class="link-modal" id="linkModal" style="display: none;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h4><i class="fab fa-telegram"></i> Link Telegram Account</h4>
+                                <button class="close-btn" onclick="closeLinkModal()">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Follow these steps to connect your Telegram:</p>
+                                <div class="steps">
+                                    <div class="step">
+                                        <span class="step-number">1</span>
+                                        <div class="step-content">
+                                            <strong>Open Telegram</strong>
+                                            <p>Search for our bot: <code>@kitakita_receipt_bot</code></p>
+                                        </div>
+                                    </div>
+                                    <div class="step">
+                                        <span class="step-number">2</span>
+                                        <div class="step-content">
+                                            <strong>Start the bot</strong>
+                                            <p>Send <code>/start</code> to begin</p>
+                                        </div>
+                                    </div>
+                                    <div class="step">
+                                        <span class="step-number">3</span>
+                                        <div class="step-content">
+                                            <strong>Send the link command</strong>
+                                            <p>Send <code>/link</code> or use the "Link Account" button</p>
+                                        </div>
+                                    </div>
+                                    <div class="step">
+                                        <span class="step-number">4</span>
+                                        <div class="step-content">
+                                            <strong>Enter this code</strong>
+                                            <div class="link-code" id="linkCodeDisplay">
+                                                <span id="linkCodeText">------</span>
+                                                <button class="copy-btn" onclick="copyLinkCode()">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                            <p class="code-expires">Code expires in <span id="codeTimer">10:00</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-actions">
+                                    <button class="btn btn-secondary" onclick="refreshLinkCode()">
+                                        <i class="fas fa-refresh"></i> Generate New Code
+                                    </button>
+                                    <button class="btn btn-primary" onclick="openTelegramBot()">
+                                        <i class="fab fa-telegram"></i> Open Bot
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Features List -->
+                    <div class="features-list">
+                        <h4>What you can do with Telegram:</h4>
+                        <ul>
+                            <li><i class="fas fa-camera"></i> Scan receipts by sending photos</li>
+                            <li><i class="fas fa-robot"></i> AI-powered transaction extraction</li>
+                            <li><i class="fas fa-sync"></i> Automatic sync with your account</li>
+                            <li><i class="fas fa-mobile-alt"></i> Quick access on any device</li>
+                            <li><i class="fas fa-clock"></i> Real-time transaction updates</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Account Settings Section -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-user-cog"></i> Account Settings</h3>
+                        <p>Manage your account information and preferences</p>
+                    </div>
+                    
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label for="userEmail">Email Address</label>
+                            <input type="email" id="userEmail" readonly>
+                            <small>Contact support to change your email</small>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="userName">Display Name</label>
+                            <input type="text" id="userName" placeholder="Enter your name">
+                            <button class="btn btn-sm" onclick="updateDisplayName()">Update</button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="currency">Default Currency</label>
+                            <select id="currency">
+                                <option value="PHP">PHP (Philippine Peso)</option>
+                                <option value="USD">USD (US Dollar)</option>
+                                <option value="EUR">EUR (Euro)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Privacy & Security Section -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-shield-alt"></i> Privacy & Security</h3>
+                        <p>Control your data and account security</p>
+                    </div>
+                    
+                    <div class="settings-grid">
+                        <div class="setting-toggle">
+                            <div class="toggle-info">
+                                <strong>Data Sync</strong>
+                                <p>Sync your data across devices</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="dataSync" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-toggle">
+                            <div class="toggle-info">
+                                <strong>Email Notifications</strong>
+                                <p>Receive transaction summaries via email</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="emailNotifications">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Management Section -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-database"></i> Data Management</h3>
+                        <p>Export or clear your data</p>
+                    </div>
+                    
+                    <div class="data-actions">
+                        <button class="btn btn-outline" onclick="exportData()">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                        <button class="btn btn-danger" onclick="clearAllData()">
+                            <i class="fas fa-trash"></i> Clear All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Firebase and App Scripts -->
+    <script src="../js/config.js"></script>
+    <script type="module" src="../js/auth.js"></script>
+    <script type="module" src="../js/firestoredb.js"></script>
+    <script src="../js/settings.js"></script>
+</body>
+</html> 

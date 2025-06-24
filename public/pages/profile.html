@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#060e21">
+    <title>Profile - Kita-kita Banking</title>
+    <link rel="stylesheet" href="../../src/index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="css/profile.css">
+    
+    <style>
+        /* Profile Page Specific Styles */
+        :root {
+            --primary-green: #10df6f;
+            --secondary-orange: #e96d1f;
+            --dark-blue: #060e21;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: var(--dark-blue);
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(16, 223, 111, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(233, 109, 31, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(16, 223, 111, 0.05) 0%, transparent 50%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: -webkit-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+            color: white;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+
+        .logo i {
+            color: var(--primary-green);
+            font-size: 1.5rem;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-green);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 223, 111, 0.2);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 100px;
+            padding: 2rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .profile-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .profile-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, white, var(--primary-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.1rem;
+        }
+
+        /* Profile Cards Grid */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .profile-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(16, 223, 111, 0.1);
+            border-color: rgba(16, 223, 111, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .card-icon.user {
+            background: linear-gradient(135deg, #4CAF50, #66BB6A);
+        }
+
+        .card-icon.telegram {
+            background: linear-gradient(135deg, #0088cc, #229ED9);
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: white;
+            margin: 0;
+        }
+
+        /* User Info Styles */
+        .user-info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: white;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+                 .verified-badge {
+             background: rgba(16, 223, 111, 0.2);
+             color: var(--primary-green);
+             padding: 0.25rem 0.75rem;
+             border-radius: 20px;
+             font-size: 0.8rem;
+             font-weight: 500;
+         }
+
+         .verified-badge.unverified {
+             background: rgba(233, 109, 31, 0.2);
+             color: var(--secondary-orange);
+         }
+
+        /* Telegram Integration Styles */
+        .telegram-key-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .key-display {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .key-value {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            flex: 1;
+            color: var(--primary-green);
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .copy-btn {
+            background: rgba(16, 223, 111, 0.2);
+            border: 1px solid rgba(16, 223, 111, 0.3);
+            color: var(--primary-green);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .copy-btn:hover {
+            background: rgba(16, 223, 111, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .telegram-instructions {
+            background: rgba(14, 165, 233, 0.1);
+            border-left: 3px solid #0ea5e9;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .telegram-instructions h4 {
+            color: #0ea5e9;
+            margin: 0 0 0.75rem 0;
+            font-size: 1rem;
+        }
+
+        .telegram-instructions ol {
+            margin: 0;
+            padding-left: 1.5rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .telegram-instructions li {
+            margin-bottom: 0.5rem;
+        }
+
+        .telegram-bot-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #0088cc, #229ED9);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .telegram-bot-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 136, 204, 0.3);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 223, 111, 0.1);
+            border: 1px solid rgba(16, 223, 111, 0.3);
+            color: var(--primary-green);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(233, 109, 31, 0.1);
+            border: 1px solid rgba(233, 109, 31, 0.3);
+            color: var(--secondary-orange);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Actions */
+        .profile-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-orange));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .action-btn.secondary {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(16, 223, 111, 0.3);
+        }
+
+        .action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary-green);
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .loading i {
+            margin-right: 0.5rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+
+            .main-content {
+                padding: 1rem;
+                margin-top: 80px;
+            }
+
+            .profile-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .profile-header h1 {
+                font-size: 2rem;
+            }
+
+            .key-display {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .profile-actions {
+                flex-direction: column;
+            }
+        }
+
+        /* Copy Success Animation */
+        .copy-success {
+            background: rgba(16, 223, 111, 0.4) !important;
+            transform: scale(1.05) !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <i class="fas fa-coins"></i>
+            <span>Kita-kita</span>
+        </div>
+        <nav class="header-nav">
+            <a href="dashboard.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Back to Dashboard
+            </a>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="profile-header">
+            <h1>Your Profile</h1>
+            <p>Manage your account information and connect to Telegram bot</p>
+        </div>
+
+        <div class="profile-grid">
+            <!-- User Information Card -->
+            <div class="profile-card">
+                <div class="card-header">
+                    <div class="card-icon user">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h2 class="card-title">Account Information</h2>
+                </div>
+
+                <div class="user-info-item">
+                    <span class="info-label">Display Name</span>
+                    <span class="info-value" id="user-display-name">
+                        <div class="loading"><i class="fas fa-spinner"></i> Loading...</div>
+                    </span>
+                </div>
+
+                <div class="user-info-item">
+                    <span class="info-label">Email Address</span>
+                    <span class="info-value" id="user-email">
+                        <div class="loading"><i class="fas fa-spinner"></i> Loading...</div>
+                    </span>
+                </div>
+
+                <div class="user-info-item">
+                    <span class="info-label">Account Status</span>
+                    <span class="info-value" id="user-status">
+                        <span class="verified-badge">
+                            <i class="fas fa-check-circle"></i> Verified
+                        </span>
+                    </span>
+                </div>
+
+                <div class="user-info-item">
+                    <span class="info-label">Member Since</span>
+                    <span class="info-value" id="user-joined">
+                        <div class="loading"><i class="fas fa-spinner"></i> Loading...</div>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Telegram Integration Card -->
+            <div class="profile-card">
+                <div class="card-header">
+                    <div class="card-icon telegram">
+                        <i class="fab fa-telegram-plane"></i>
+                    </div>
+                    <h2 class="card-title">Telegram Bot Connection</h2>
+                </div>
+
+                <div class="telegram-instructions">
+                    <h4><i class="fas fa-info-circle"></i> How to Connect</h4>
+                    <ol>
+                        <li>Copy your unique connection key below</li>
+                        <li>Open Telegram and search for <strong>@KitakitaAIBot</strong></li>
+                        <li>Start a conversation with the bot by sending <code>/start</code></li>
+                        <li>Click "🔗 Connect Account" or send <code>/connect [your-key]</code></li>
+                        <li>Enjoy scanning receipts and managing your finances through Telegram!</li>
+                    </ol>
+                </div>
+
+                <div class="telegram-key-container">
+                    <h4 style="margin: 0 0 1rem 0; color: rgba(255, 255, 255, 0.9);">
+                        <i class="fas fa-key"></i> Your Connection Key
+                    </h4>
+                    <div class="key-display">
+                        <div class="key-value" id="telegram-key">
+                            <div class="loading"><i class="fas fa-spinner"></i> Generating...</div>
+                        </div>
+                        <button class="copy-btn" id="copy-key-btn" disabled>
+                            <i class="fas fa-copy"></i>
+                            Copy
+                        </button>
+                    </div>
+                    <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 0.9rem;" class="key-info-text">
+                        <i class="fas fa-lock"></i> This key is fixed to your email address and never changes
+                    </p>
+                </div>
+
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <a href="https://t.me/KitakitaAIBot" target="_blank" class="telegram-bot-link">
+                        <i class="fab fa-telegram-plane"></i>
+                        Open Kita-kita Bot
+                    </a>
+                </div>
+
+                <div class="connection-status disconnected" id="connection-status">
+                    <div class="status-dot"></div>
+                    <span>Not Connected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Actions -->
+        <div class="profile-actions">
+            <a href="settings.html" class="action-btn secondary">
+                <i class="fas fa-cog"></i>
+                Account Settings
+            </a>
+            <button class="action-btn secondary" onclick="signOut()">
+                <i class="fas fa-sign-out-alt"></i>
+                Sign Out
+            </button>
+        </div>
+    </main>
+
+    <!-- Firebase and App Scripts -->
+    <script type="module" src="../js/profile.js"></script>
+</body>
+</html>
