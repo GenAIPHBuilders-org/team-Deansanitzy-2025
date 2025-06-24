@@ -39,6 +39,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^7.4.1",
     "firebase": "^11.5.0",
+    "firebase-admin": "^13.4.0",
     "helmet": "^8.1.0",
     "multer": "^2.0.0",
     "node-fetch": "^3.3.2",
@@ -46,15 +47,13 @@
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
-    "mocha": "^10.2.0",
     "chai": "^4.3.10",
-    "supertest": "^6.3.3",
-    "sinon": "^17.0.1",
+    "eslint": "^8.55.0",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.1.9",
     "nyc": "^15.1.0",
-    "eslint": "^8.55.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.9"
+    "sinon": "^17.0.1",
+    "supertest": "^6.3.3"
   },
   "engines": {
     "node": ">=20.19.2",

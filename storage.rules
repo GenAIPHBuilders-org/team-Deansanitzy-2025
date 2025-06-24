@@ -28,12 +28,11 @@ service firebase.storage {
       allow delete: if isSignedIn() && isOwner(userId);
     }
     
-    // Public documents/images - read access to all, write access to owners
+    // Public documents/images - read access to all, write access to signed in users
     match /public/{document=**} {
       allow read: if true;
       allow write: if isSignedIn() && 
-                   request.resource.size < 10 * 1024 * 1024 && // 10MB max size
-                   request.auth.token.email_verified == true; // Require verified email
+                   request.resource.size < 10 * 1024 * 1024; // 10MB max size
       allow delete: if false; // Only admins can delete public resources
     }
     
