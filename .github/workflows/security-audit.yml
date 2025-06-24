@@ -64,9 +64,10 @@ jobs:
     - name: Check for critical vulnerabilities
       run: |
         echo "🚨 Checking for critical vulnerabilities..."
-        if npm audit --audit-level=critical --json | jq -e '.vulnerabilities | length > 0' > /dev/null 2>&1; then
+        AUDIT_OUTPUT=$(npm audit --audit-level=critical --json || true)
+        if echo "$AUDIT_OUTPUT" | grep -q '"total":' && echo "$AUDIT_OUTPUT" | grep -v '"total": 0'; then
           echo "CRITICAL vulnerabilities found!"
-          npm audit --audit-level=critical
+          npm audit --audit-level=critical || true
           exit 1
         else
           echo "No critical vulnerabilities found."
@@ -196,7 +197,7 @@ jobs:
         
         # Create security status badge
         AUDIT_RESULT=$(npm audit --audit-level=moderate --json || true)
-        VULN_COUNT=$(echo "$AUDIT_RESULT" | jq -r '.metadata.vulnerabilities.total // 0')
+        VULN_COUNT=$(echo "$AUDIT_RESULT" | grep -o '"total":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
         
         if [ "$VULN_COUNT" -eq 0 ]; then
           BADGE_COLOR="brightgreen"
