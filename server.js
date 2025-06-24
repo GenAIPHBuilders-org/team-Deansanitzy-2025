@@ -191,16 +191,33 @@ const dbHelpers = {
 
   // Generate special telegram connection key for new users
   generateTelegramKey() {
-    // Generate exactly the format the bot expects: TG-[6chars]-[7+chars]-[6chars]
+    // Generate telegram key (format: TG-[6chars]-[7chars]-[6chars])
     const part1 = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 chars
     const part2 = Math.random().toString(36).substring(2, 9).toUpperCase(); // 7 chars
     const part3 = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 chars
     return `TG-${part1}-${part2}-${part3}`;
   },
 
+  generateFixedTelegramKey(email) {
+    // Generate a fixed key based on email address (deterministic)
+    const emailHash = Buffer.from(email).toString('base64').replace(/[^A-Z0-9]/g, '');
+    
+    // Create consistent parts from email hash
+    let hash = emailHash;
+    while (hash.length < 20) {
+      hash += emailHash; // Repeat if too short
+    }
+    
+    const part1 = hash.substring(0, 6);
+    const part2 = hash.substring(6, 13);
+    const part3 = hash.substring(13, 19);
+    
+    return `TG-${part1}-${part2}-${part3}`;
+  },
+
   async createUserWithTelegramKey(userId, userData) {
     try {
-      const telegramKey = this.generateTelegramKey();
+      const telegramKey = this.generateFixedTelegramKey(userData.email);
       
       const userDataWithKey = {
         ...userData,
@@ -211,71 +228,75 @@ const dbHelpers = {
       };
 
       await db.collection('users').doc(userId).set(userDataWithKey);
-      
-      // Store the key mapping for quick lookup (permanent, no expiration)
-      await db.collection('telegram_keys').doc(telegramKey).set({
-        userId,
-        email: userData.email, // Store email for verification
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        used: false,
-        permanent: true // Mark as permanent key
-      });
 
       return { ...userDataWithKey, userId };
     } catch (error) {
-      console.error('Error creating user with telegram key:', error);
-      throw error;
-    }
-  },
-
-  async getTelegramKey(userId) {
-    try {
-      const userDoc = await db.collection('users').doc(userId).get();
-      if (userDoc.exists) {
-        const data = userDoc.data();
-        return {
-          telegramKey: data.telegramKey,
-          telegramKeyUsed: data.telegramKeyUsed,
-          telegramKeyCreatedAt: data.telegramKeyCreatedAt
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching telegram key:', error);
+      console.error('Error creating user with fixed telegram key:', error);
       throw error;
     }
   },
 
   async verifyEmailAndTelegramKey(email, telegramKey) {
     try {
-      // Look up the telegram key
-      const keyDoc = await db.collection('telegram_keys').doc(telegramKey).get();
+      // Look up user by telegram key within users collection
+      const usersQuery = await db.collection('users')
+        .where('telegramKey', '==', telegramKey)
+        .where('email', '==', email)
+        .limit(1)
+        .get();
       
-      if (!keyDoc.exists) {
-        return { valid: false, reason: 'Invalid telegram key' };
+      if (usersQuery.empty) {
+        return { valid: false, reason: 'Invalid email and telegram key combination' };
       }
 
-      const keyData = keyDoc.data();
+      const userDoc = usersQuery.docs[0];
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      return { 
+        valid: true, 
+        userId: userId,
+        userData: userData,
+        keyData: {
+          telegramKey: userData.telegramKey,
+          email: userData.email,
+          used: userData.telegramKeyUsed || false
+        }
+      };
+    } catch (error) {
+      console.error('Error verifying email and telegram key:', error);
+      throw error;
+    }
+  },
+
+  async validateTelegramKey(telegramKey) {
+    try {
+      // Look up user by telegram key within users collection
+      const usersQuery = await db.collection('users')
+        .where('telegramKey', '==', telegramKey)
+        .limit(1)
+        .get();
       
-      // Check if the email matches
-      if (keyData.email !== email) {
-        return { valid: false, reason: 'Email does not match telegram key' };
+      if (usersQuery.empty) {
+        return { valid: false, reason: 'Telegram key not found' };
       }
 
-      // Get user data
-      const userDoc = await db.collection('users').doc(keyData.userId).get();
-      if (!userDoc.exists) {
-        return { valid: false, reason: 'User not found' };
+      const userDoc = usersQuery.docs[0];
+      const userData = userDoc.data();
+      const userId = userDoc.id;
+
+      if (userData.telegramKeyUsed) {
+        return { valid: false, reason: 'Telegram key already used' };
       }
 
       return { 
         valid: true, 
-        userId: keyData.userId,
-        userData: userDoc.data(),
-        keyData: keyData
+        userId: userId,
+        userEmail: userData.email,
+        userData: userData
       };
     } catch (error) {
-      console.error('Error verifying email and telegram key:', error);
+      console.error('Error validating telegram key:', error);
       throw error;
     }
   }
@@ -390,14 +411,18 @@ app.get('/api/user/:userId/telegram-key', authenticateUser, async (req, res) => 
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const keyData = await dbHelpers.getTelegramKey(userId);
-    if (!keyData) {
+    const userData = await dbHelpers.getUserData(userId);
+    if (!userData) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     res.json({ 
       success: true, 
-      data: keyData
+      data: {
+        telegramKey: userData.telegramKey,
+        telegramKeyUsed: userData.telegramKeyUsed || false,
+        telegramKeyCreatedAt: userData.telegramKeyCreatedAt
+      }
     });
   } catch (error) {
     console.error('Error fetching telegram key:', error);
@@ -405,67 +430,52 @@ app.get('/api/user/:userId/telegram-key', authenticateUser, async (req, res) => 
   }
 });
 
-// Regenerate user's telegram connection key
-app.post('/api/user/:userId/regenerate-telegram-key', authenticateUser, async (req, res) => {
+// Ensure user has a fixed telegram key (no regeneration allowed)
+app.post('/api/user/ensure-fixed-key', authenticateUser, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { userId, email, displayName, fixedKey } = req.body;
     
     if (req.user.uid !== userId) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    // Generate new key
-    const newTelegramKey = dbHelpers.generateTelegramKey();
-    
-    // Get user data to get email - if user doesn't exist, create minimal data
+    // Get or create user data
     let userData = await dbHelpers.getUserData(userId);
     if (!userData) {
-      console.log('User not found in database, creating minimal user data');
+      console.log('User not found in database, creating user data');
       
-      // Create minimal user data from Firebase Auth user
+      // Create user data from Firebase Auth user
       const authUser = req.user;
-      const nameParts = authUser.name ? authUser.name.split(' ') : [];
+      const nameParts = displayName ? displayName.split(' ') : [];
       
       userData = {
-        firstName: nameParts[0] || authUser.email.split('@')[0],
+        firstName: nameParts[0] || email.split('@')[0],
         lastName: nameParts.slice(1).join(' ') || '',
-        email: authUser.email,
+        email: email,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
         accountStatus: 'active'
       };
-      
-      // Store the new user data first
-      await dbHelpers.storeUserData(userId, userData);
     }
     
-    // Update user record with telegram key
+    // Update user record with fixed telegram key (only if they don't have one or it's different)
     const updatedUserData = {
       ...userData,
-      telegramKey: newTelegramKey,
+      telegramKey: fixedKey,
       telegramKeyCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      telegramKeyUsed: false
+      telegramKeyUsed: userData.telegramKeyUsed || false // Preserve existing connection status
     };
     
     await dbHelpers.storeUserData(userId, updatedUserData);
 
-    // Update key mapping
-    await db.collection('telegram_keys').doc(newTelegramKey).set({
-      userId,
-      email: userData.email,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      used: false,
-      permanent: true
-    });
-
     res.json({ 
       success: true, 
-      message: 'Telegram key regenerated successfully',
-      data: { telegramKey: newTelegramKey }
+      message: 'Fixed telegram key ensured',
+      data: { telegramKey: fixedKey }
     });
   } catch (error) {
-    console.error('Error regenerating telegram key:', error);
-    res.status(500).json({ error: 'Failed to regenerate telegram key' });
+    console.error('Error ensuring fixed telegram key:', error);
+    res.status(500).json({ error: 'Failed to ensure fixed telegram key' });
   }
 });
 
@@ -723,50 +733,75 @@ app.post('/api/upload', authenticateUser, upload.single('file'), async (req, res
   }
 });
 
-// API endpoint for Telegram bot to validate connection keys
+// Validate telegram key (for telegram bot use)
 app.post('/api/telegram/validate-key', async (req, res) => {
-    try {
-        const { key } = req.body;
-        
-        if (!key) {
-            return res.status(400).json({ error: 'Key is required' });
-        }
-        
-        console.log('Validating Telegram key:', key);
-        
-        // Use the existing Firebase functions
-        const firestoreModule = await import('./public/js/firestoredb.js');
-        const validateTelegramKey = firestoreModule.validateTelegramKey;
-        const validation = await validateTelegramKey(key);
-        
-        res.json(validation);
-    } catch (error) {
-        console.error('Error validating key:', error);
-        res.status(500).json({ error: 'Internal server error' });
+  try {
+    const { key } = req.body;
+    
+    if (!key) {
+      return res.status(400).json({ error: 'Telegram key is required' });
     }
+
+    const validation = await dbHelpers.validateTelegramKey(key);
+    
+    if (!validation.valid) {
+      return res.json({ 
+        valid: false, 
+        reason: validation.reason 
+      });
+    }
+
+    res.json({
+      valid: true,
+      userId: validation.userId,
+      userEmail: validation.userEmail,
+      userData: validation.userData
+    });
+  } catch (error) {
+    console.error('Error validating telegram key:', error);
+    res.status(500).json({ error: 'Failed to validate telegram key' });
+  }
 });
 
-// API endpoint for Telegram bot to connect account
+// Connect telegram account (mark key as used)
 app.post('/api/telegram/connect', async (req, res) => {
-    try {
-        const { key, telegramUserData } = req.body;
-        
-        if (!key || !telegramUserData) {
-            return res.status(400).json({ error: 'Key and telegram user data are required' });
-        }
-        
-        console.log('Connecting Telegram account:', key, telegramUserData);
-        
-        // Use the existing Firebase functions
-        const firestoreModule = await import('./public/js/firestoredb.js');
-        const connectTelegramAccount = firestoreModule.connectTelegramAccount;
-        const result = await connectTelegramAccount(key, telegramUserData);
-        
-        res.json(result);
-    } catch (error) {
-        console.error('Error connecting account:', error);
-        res.status(500).json({ error: 'Failed to connect account' });
+  try {
+    const { key, telegramUserData } = req.body;
+    
+    if (!key || !telegramUserData) {
+      return res.status(400).json({ error: 'Key and telegram user data are required' });
     }
+
+    // Validate the key first
+    const validation = await dbHelpers.validateTelegramKey(key);
+    
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.reason });
+    }
+
+    // Mark key as used and store telegram user info
+    const updatedUserData = {
+      ...validation.userData,
+      telegramKeyUsed: true,
+      telegramLinkedAt: admin.firestore.FieldValue.serverTimestamp(),
+      telegramUserId: telegramUserData.id.toString(),
+      telegramUsername: telegramUserData.username,
+      telegramFirstName: telegramUserData.first_name,
+      telegramLastName: telegramUserData.last_name
+    };
+
+    await dbHelpers.storeUserData(validation.userId, updatedUserData);
+
+    res.json({
+      success: true,
+      userId: validation.userId,
+      userEmail: validation.userEmail,
+      userData: updatedUserData
+    });
+  } catch (error) {
+    console.error('Error connecting telegram account:', error);
+    res.status(500).json({ error: 'Failed to connect telegram account' });
+  }
 });
 
 // API endpoint for Telegram bot to verify email and telegram key

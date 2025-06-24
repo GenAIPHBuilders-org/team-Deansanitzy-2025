@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 3000;
 
 // Simple in-memory storage for development
 const users = new Map();
-const telegramKeys = new Map();
 
 // Simple function to extract email from Firebase token (for development)
 function extractEmailFromToken(token) {
@@ -98,11 +97,8 @@ app.post('/api/user/register', mockAuth, (req, res) => {
         });
     }
     
-    // Generate telegram key (format: TG-[6chars]-[7chars]-[6chars])
-    const part1 = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 chars
-    const part2 = Math.random().toString(36).substring(2, 9).toUpperCase(); // 7 chars
-    const part3 = Math.random().toString(36).substring(2, 8).toUpperCase(); // 6 chars
-    const telegramKey = `TG-${part1}-${part2}-${part3}`;
+    // Generate fixed telegram key based on email
+    const telegramKey = generateFixedTelegramKey(userEmail);
     
     // Store user data with real email and all provided data
     const userDataWithKey = {
@@ -115,15 +111,6 @@ app.post('/api/user/register', mockAuth, (req, res) => {
     };
     
     users.set(userId, userDataWithKey);
-    
-    // Store key mapping with real email
-    telegramKeys.set(telegramKey, {
-        userId,
-        email: userEmail, // Store real email for validation
-        createdAt: new Date().toISOString(),
-        used: false,
-        permanent: true
-    });
     
     console.log(`✅ User ${userId} registered with key ${telegramKey} and email ${userEmail}`);
     
@@ -140,28 +127,15 @@ app.post('/api/user/register', mockAuth, (req, res) => {
 
 app.post('/api/user/:userId/regenerate-telegram-key', mockAuth, (req, res) => {
     const userId = req.params.userId;
-    let user = users.get(userId);
+    const { email: userEmail, displayName, emailVerified } = req.body;
     
-    // Get all user data from request body
-    const requestData = req.body || {};
-    const userEmail = requestData.email;
-    const displayName = requestData.displayName;
-    const emailVerified = requestData.emailVerified;
-    
-    console.log(`🔑 Regenerate key request for ${userId}:`, {
-        requestEmail: userEmail,
+    console.log(`🔄 Key regeneration request for ${userId}:`, {
+        userEmail: userEmail,
         displayName: displayName,
-        emailVerified: emailVerified,
-        existingUser: !!user,
-        fullRequestBody: requestData
+        emailVerified: emailVerified
     });
     
-    // CRITICAL: Ensure we have the real email
-    if (!userEmail || userEmail.includes('@example.com')) {
-        console.log(`⚠️  WARNING: Invalid or mock email detected: ${userEmail}`);
-        console.log(`🔍 Request headers:`, req.headers);
-        console.log(`🔍 Auth user:`, req.user);
-    }
+    let user = users.get(userId);
     
     if (!user) {
         // Create new user with all the real data
@@ -213,15 +187,6 @@ app.post('/api/user/:userId/regenerate-telegram-key', mockAuth, (req, res) => {
     
     users.set(userId, user);
     
-    // Store new key mapping with correct email
-    telegramKeys.set(newTelegramKey, {
-        userId,
-        email: user.email,
-        createdAt: new Date().toISOString(),
-        used: false,
-        permanent: true
-    });
-    
     console.log(`🔑 Generated new key for ${userId} (${user.email}): ${newTelegramKey}`);
     
     res.json({
@@ -239,61 +204,36 @@ app.post('/api/telegram/validate-key', (req, res) => {
     console.log(`🔑 Key: ${key}`);
     console.log(`🕐 Time: ${new Date().toISOString()}`);
     console.log(`📡 Request from: ${req.ip}`);
-    console.log(`🔍 User-Agent: ${req.get('User-Agent')}`);
     
     if (!key) {
         console.log(`❌ No key provided in request`);
         return res.status(400).json({ error: 'Key is required' });
     }
     
-    const keyData = telegramKeys.get(key);
+    const validation = validateTelegramKey(key);
     
-    if (!keyData) {
-        console.log(`❌ Key not found: ${key}`);
-        console.log(`📋 Available keys:`, Array.from(telegramKeys.keys()));
-        return res.json({ valid: false, reason: 'Key not found' });
+    if (!validation.valid) {
+        console.log(`❌ Key validation failed: ${validation.reason}`);
+        return res.json({ valid: false, reason: validation.reason });
     }
-    
-    if (keyData.used) {
-        console.log(`❌ Key already used: ${key}`);
-        return res.json({ valid: false, reason: 'Key already used' });
-    }
-    
-    // Get full user data for complete info
-    const userData = users.get(keyData.userId);
     
     console.log(`✅ Valid key found:`, {
         key: key,
-        userId: keyData.userId,
-        email: keyData.email,
-        userData: userData ? {
-            email: userData.email,
-            displayName: userData.displayName,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            emailVerified: userData.emailVerified,
-            createdAt: userData.createdAt
+        userId: validation.userId,
+        email: validation.userEmail,
+        userData: validation.userData ? {
+            email: validation.userData.email,
+            displayName: validation.userData.displayName,
+            firstName: validation.userData.firstName,
+            lastName: validation.userData.lastName
         } : 'No user data'
     });
     
-    // CRITICAL DEBUG: Check if email is mock
-    if (keyData.email && keyData.email.includes('@example.com')) {
-        console.log(`🚨 MOCK EMAIL DETECTED IN KEY VALIDATION:`, {
-            keyEmail: keyData.email,
-            userDataEmail: userData ? userData.email : 'none',
-            allUsers: Array.from(users.entries()).map(([id, data]) => ({
-                id: id,
-                email: data.email,
-                displayName: data.displayName
-            }))
-        });
-    }
-    
     res.json({
         valid: true,
-        userId: keyData.userId,
-        userEmail: keyData.email,
-        userData: userData || null
+        userId: validation.userId,
+        userEmail: validation.userEmail,
+        userData: validation.userData
     });
 });
 
@@ -309,21 +249,15 @@ app.post('/api/telegram/connect', (req, res) => {
         return res.status(400).json({ error: 'Key and telegram user data are required' });
     }
     
-    const keyData = telegramKeys.get(key);
+    const validation = validateTelegramKey(key);
     
-    if (!keyData || keyData.used) {
-        console.log(`❌ Invalid or used key: ${key}`, { keyData: keyData });
-        return res.status(400).json({ error: 'Invalid or already used key' });
+    if (!validation.valid) {
+        console.log(`❌ Invalid key: ${key}`, { reason: validation.reason });
+        return res.status(400).json({ error: validation.reason });
     }
     
-    // Mark key as used
-    keyData.used = true;
-    keyData.usedAt = new Date().toISOString();
-    keyData.telegramUserId = telegramUserData.id.toString();
-    telegramKeys.set(key, keyData);
-    
-    // Update user data
-    const user = users.get(keyData.userId);
+    // Mark key as used and update user data
+    const user = users.get(validation.userId);
     if (user) {
         user.telegramKeyUsed = true;
         user.telegramLinkedAt = new Date().toISOString();
@@ -331,28 +265,22 @@ app.post('/api/telegram/connect', (req, res) => {
         user.telegramUsername = telegramUserData.username;
         user.telegramFirstName = telegramUserData.first_name;
         user.telegramLastName = telegramUserData.last_name;
-        users.set(keyData.userId, user);
+        users.set(validation.userId, user);
         
         console.log(`✅ Connected Telegram account:`, {
-            userId: keyData.userId,
-            userEmail: keyData.email,
+            userId: validation.userId,
+            userEmail: validation.userEmail,
             telegramId: telegramUserData.id,
-            telegramUsername: telegramUserData.username,
-            finalUserData: {
-                email: user.email,
-                displayName: user.displayName,
-                firstName: user.firstName,
-                lastName: user.lastName
-            }
+            telegramUsername: telegramUserData.username
         });
     } else {
-        console.log(`⚠️ No user data found for userId: ${keyData.userId}`);
+        console.log(`⚠️ No user data found for userId: ${validation.userId}`);
     }
     
     res.json({
         success: true,
-        userId: keyData.userId,
-        userEmail: keyData.email,
+        userId: validation.userId,
+        userEmail: validation.userEmail,
         userData: user || null
     });
 });
@@ -367,7 +295,7 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Debug endpoint to check all stored keys and users
+// Debug endpoint to check all stored users
 app.get('/api/debug/keys', (req, res) => {
     const allUsers = Array.from(users.entries()).map(([id, data]) => ({
         userId: id,
@@ -377,19 +305,9 @@ app.get('/api/debug/keys', (req, res) => {
         displayName: data.displayName
     }));
     
-    const allKeys = Array.from(telegramKeys.entries()).map(([key, data]) => ({
-        key: key,
-        userId: data.userId,
-        email: data.email,
-        used: data.used,
-        createdAt: data.createdAt
-    }));
-    
     res.json({
         users: allUsers,
-        keys: allKeys,
-        totalUsers: users.size,
-        totalKeys: telegramKeys.size
+        totalUsers: users.size
     });
 });
 
@@ -428,18 +346,6 @@ app.post('/api/user/ensure-permanent-key', mockAuth, (req, res) => {
         user.telegramKeyCreatedAt = new Date().toISOString();
         users.set(userId, user);
         console.log(`📝 Updated user with permanent key: ${userId}`);
-    }
-    
-    // Ensure key mapping exists
-    if (!telegramKeys.has(permanentKey)) {
-        telegramKeys.set(permanentKey, {
-            userId: userId,
-            email: email,
-            createdAt: new Date().toISOString(),
-            used: false,
-            permanent: true
-        });
-        console.log(`🔑 Created permanent key mapping: ${permanentKey}`);
     }
     
     res.json({
@@ -481,15 +387,6 @@ app.post('/api/generate-simple-key', (req, res) => {
     };
     
     users.set(userId, userData);
-    
-    // Store key mapping
-    telegramKeys.set(telegramKey, {
-        userId: userId,
-        email: email,
-        createdAt: new Date().toISOString(),
-        used: false,
-        permanent: true
-    });
     
     console.log(`✅ Generated key ${telegramKey} for ${email}`);
     
@@ -577,6 +474,95 @@ app.get('/simple-connect', (req, res) => {
 </html>
     `);
 });
+
+// Ensure user has fixed telegram key (no regeneration)
+app.post('/api/user/ensure-fixed-key', mockAuth, (req, res) => {
+    const { userId, email, displayName, fixedKey } = req.body;
+    
+    console.log(`🔑 Ensuring fixed key for ${userId}: ${fixedKey}`);
+    
+    // Check if user already exists
+    let user = users.get(userId);
+    
+    if (!user) {
+        // Create new user with fixed key
+        user = {
+            email: email,
+            displayName: displayName || email.split('@')[0],
+            firstName: displayName ? displayName.split(' ')[0] : email.split('@')[0],
+            lastName: displayName ? displayName.split(' ').slice(1).join(' ') : '',
+            telegramKey: fixedKey,
+            telegramKeyCreatedAt: new Date().toISOString(),
+            telegramKeyUsed: false,
+            createdAt: new Date().toISOString()
+        };
+        
+        users.set(userId, user);
+        console.log(`📝 Created new user with fixed key: ${userId}`);
+    } else {
+        // Update existing user with fixed key only if they don't have the same one
+        if (!user.telegramKey || user.telegramKey !== fixedKey) {
+            user.telegramKey = fixedKey;
+            user.telegramKeyCreatedAt = new Date().toISOString();
+            users.set(userId, user);
+            console.log(`📝 Updated user with fixed key: ${userId}`);
+        }
+    }
+    
+    res.json({
+        success: true,
+        message: 'Fixed key ensured',
+        telegramKey: fixedKey
+    });
+});
+
+// Generate fixed telegram key based on email address
+function generateFixedTelegramKey(email) {
+    // Generate a fixed key based on email address (deterministic)
+    const emailHash = Buffer.from(email).toString('base64').replace(/[^A-Z0-9]/g, '');
+    
+    // Create consistent parts from email hash
+    let hash = emailHash;
+    while (hash.length < 20) {
+        hash += emailHash; // Repeat if too short
+    }
+    
+    const part1 = hash.substring(0, 6);
+    const part2 = hash.substring(6, 13);
+    const part3 = hash.substring(13, 19);
+    
+    return `TG-${part1}-${part2}-${part3}`;
+}
+
+// Helper function to find user by telegram key
+function findUserByTelegramKey(telegramKey) {
+    for (const [userId, userData] of users.entries()) {
+        if (userData.telegramKey === telegramKey) {
+            return { userId, userData };
+        }
+    }
+    return null;
+}
+
+// Helper function to validate telegram key
+function validateTelegramKey(telegramKey) {
+    const userMatch = findUserByTelegramKey(telegramKey);
+    
+    if (!userMatch) {
+        return { valid: false, reason: 'Telegram key not found' };
+    }
+    
+    if (userMatch.userData.telegramKeyUsed) {
+        return { valid: false, reason: 'Telegram key already used' };
+    }
+    
+    return {
+        valid: true,
+        userId: userMatch.userId,
+        userEmail: userMatch.userData.email,
+        userData: userMatch.userData
+    };
+}
 
 // Start server
 app.listen(PORT, () => {
