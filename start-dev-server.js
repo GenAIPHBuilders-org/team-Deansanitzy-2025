@@ -28,21 +28,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Mock authentication middleware for development
-const mockAuth = (req, res, next) => {
-    // For development, extract user ID from request or use mock
+// Development authentication middleware 
+const devAuth = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    let userId = 'dev-user-123'; // default
+    let userId = 'dev-user-123';
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        // Try to decode Firebase token for real user ID
         const token = authHeader.substring(7);
         try {
-            // For development, just use a hash of the token as user ID
             const crypto = require('crypto');
             userId = crypto.createHash('md5').update(token).digest('hex').substring(0, 16);
-            
-            // Store the token for potential email extraction
             req.firebaseToken = token;
         } catch (error) {
             console.log('Could not parse token, using default user ID');
@@ -54,7 +49,7 @@ const mockAuth = (req, res, next) => {
 };
 
 // Development API endpoints
-app.get('/api/user/:userId/telegram-key', mockAuth, (req, res) => {
+app.get('/api/user/:userId/telegram-key', devAuth, (req, res) => {
     const userId = req.params.userId;
     const user = users.get(userId);
     
@@ -72,12 +67,12 @@ app.get('/api/user/:userId/telegram-key', mockAuth, (req, res) => {
     }
 });
 
-app.post('/api/user/register', mockAuth, (req, res) => {
+app.post('/api/user/register', devAuth, (req, res) => {
     const userId = req.user.uid;
     const userData = req.body;
     
     // Prioritize email from request body (real Firebase user email)
-    const userEmail = userData.email || `user.${userId.substring(0, 5)}@example.com`;
+    const userEmail = userData.email || `user.${userId.substring(0, 5)}@temp.local`;
     
     console.log(`📝 User registration for ${userId}:`, {
         email: userEmail,
@@ -125,7 +120,7 @@ app.post('/api/user/register', mockAuth, (req, res) => {
     });
 });
 
-app.post('/api/user/:userId/regenerate-telegram-key', mockAuth, (req, res) => {
+app.post('/api/user/:userId/regenerate-telegram-key', devAuth, (req, res) => {
     const userId = req.params.userId;
     const { email: userEmail, displayName, emailVerified } = req.body;
     
@@ -140,7 +135,7 @@ app.post('/api/user/:userId/regenerate-telegram-key', mockAuth, (req, res) => {
     if (!user) {
         // Create new user with all the real data
         const nameParts = displayName ? displayName.split(' ') : [];
-        const finalEmail = userEmail || `user.${userId.substring(0, 5)}@example.com`;
+        const finalEmail = userEmail || `user.${userId.substring(0, 5)}@temp.local`;
         
         user = {
             email: finalEmail,
@@ -285,6 +280,136 @@ app.post('/api/telegram/connect', (req, res) => {
     });
 });
 
+// Save transaction from Telegram bot (development mode)
+app.post('/api/telegram/save-transaction', (req, res) => {
+    const { userId, userEmail, transactionData } = req.body;
+    
+    if (!userId || !userEmail || !transactionData) {
+        return res.status(400).json({ 
+            error: 'User ID, email, and transaction data are required' 
+        });
+    }
+
+    console.log(`💾 Telegram bot saving transaction for user ${userId} (${userEmail}):`, transactionData);
+
+    // Find the user by ID
+    const user = users.get(userId);
+    if (!user) {
+        console.log(`❌ User not found: ${userId}`);
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.telegramKeyUsed) {
+        console.log(`❌ User ${userId} does not have a connected Telegram account`);
+        return res.status(403).json({ 
+            error: 'User does not have a connected Telegram account' 
+        });
+    }
+
+    if (user.email !== userEmail) {
+        console.log(`❌ Email mismatch for user ${userId}: expected ${user.email}, got ${userEmail}`);
+        return res.status(403).json({ 
+            error: 'Email mismatch for user account' 
+        });
+    }
+
+    // Initialize transactions array if not exists
+    if (!user.transactions) {
+        user.transactions = [];
+    }
+
+    // Create transaction with ID and metadata
+    const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const enhancedTransaction = {
+        id: transactionId,
+        ...transactionData,
+        source: 'telegram_bot',
+        scannedAt: new Date().toISOString(),
+        telegramUserId: user.telegramUserId,
+        verified: false,
+        timestamp: new Date().toISOString()
+    };
+
+    // Add to user's transactions
+    user.transactions.push(enhancedTransaction);
+    users.set(userId, user);
+    
+    console.log(`✅ Transaction saved successfully: ${transactionId} for user ${userId}`);
+    console.log(`💰 Transaction details:`, {
+        id: transactionId,
+        amount: transactionData.amount,
+        category: transactionData.category,
+        merchant: transactionData.receiptData?.merchant || 'Unknown'
+    });
+
+    res.json({ 
+        success: true, 
+        transactionId: transactionId,
+        message: 'Transaction saved successfully from Telegram bot',
+        data: {
+            transactionId,
+            userId,
+            amount: transactionData.amount,
+            category: transactionData.category,
+            merchant: transactionData.receiptData?.merchant
+        }
+    });
+});
+
+// Get user's Telegram connection status and info
+app.get('/api/user/:userId/telegram-status', devAuth, (req, res) => {
+    const { userId } = req.params;
+    
+    const user = users.get(userId);
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    const status = {
+        connected: user.telegramKeyUsed || false,
+        telegramKey: user.telegramKey,
+        connectionInfo: user.telegramKeyUsed ? {
+            telegramUserId: user.telegramUserId,
+            telegramUsername: user.telegramUsername,
+            telegramFirstName: user.telegramFirstName,
+            telegramLastName: user.telegramLastName,
+            connectedAt: user.telegramLinkedAt
+        } : null,
+        botInfo: {
+            botName: 'Kita-kita Bot',
+            botUsername: '@KitakitaAIBot',
+            botUrl: 'https://t.me/KitakitaAIBot'
+        }
+    };
+    
+    res.json({ success: true, data: status });
+});
+
+// Get user's transactions (including Telegram scanned ones)
+app.get('/api/user/:userId/transactions', devAuth, (req, res) => {
+    const { userId } = req.params;
+    
+    const user = users.get(userId);
+    if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+
+    const transactions = user.transactions || [];
+    
+    // Add some metadata about transaction sources
+    const transactionStats = {
+        total: transactions.length,
+        telegramScanned: transactions.filter(t => t.source === 'telegram_bot').length,
+        webApp: transactions.filter(t => t.source !== 'telegram_bot').length
+    };
+
+    res.json({ 
+        success: true, 
+        data: transactions,
+        stats: transactionStats
+    });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({
@@ -317,7 +442,7 @@ app.get('/', (req, res) => {
 });
 
 // Endpoint to ensure permanent key exists
-app.post('/api/user/ensure-permanent-key', mockAuth, (req, res) => {
+app.post('/api/user/ensure-permanent-key', devAuth, (req, res) => {
     const { userId, email, displayName, permanentKey } = req.body;
     
     console.log(`🔑 Ensuring permanent key for ${userId}: ${permanentKey}`);
@@ -476,7 +601,7 @@ app.get('/simple-connect', (req, res) => {
 });
 
 // Ensure user has fixed telegram key (no regeneration)
-app.post('/api/user/ensure-fixed-key', mockAuth, (req, res) => {
+app.post('/api/user/ensure-fixed-key', devAuth, (req, res) => {
     const { userId, email, displayName, fixedKey } = req.body;
     
     console.log(`🔑 Ensuring fixed key for ${userId}: ${fixedKey}`);

@@ -11,20 +11,20 @@ if (!process.env.DISABLE_FIREBASE) {
     try {
         if (!admin.apps.length) {
             // For now, we'll use a simple in-memory store until Firebase is properly configured
-            console.log('🔥 Firebase disabled - using in-memory storage for demo');
+            console.log('🔥 Firebase disabled - using in-memory storage');
         }
     } catch (error) {
         console.log('🔥 Firebase initialization skipped:', error.message);
     }
 } else {
-    console.log('🔥 Firebase disabled by environment variable - using in-memory storage for demo');
+    console.log('🔥 Firebase disabled by environment variable - using in-memory storage');
 }
 
-// In-memory storage for demo (replace with Firebase when ready)
+// In-memory storage for development
 const userConnections = new Map(); // telegramUserId -> { userId, email, connectedAt }
 const pendingKeys = new Map(); // key -> { userId, email, expiresAt }
 
-// Clear any existing demo connections on restart
+// Clear any existing connections on restart
 userConnections.clear();
 
 // Telegram Bot Configuration
@@ -49,9 +49,9 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 // User session storage
 const userSessions = new Map();
 
-console.log('🤖 Kita-kita Receipt Bot is starting...');
-console.log('✅ Kita-kita Receipt Bot is running!');
-console.log('🤖 Bot username: @kitakita_receipt_bot (if configured)');
+console.log('🤖 Kita-kita Bot is starting...');
+console.log('✅ Kita-kita Bot is running!');
+console.log('🤖 Bot username: @KitakitaAIBot (if configured)');
 console.log('📱 Send /start to begin using the bot');
 
 // Bot Commands
@@ -91,7 +91,7 @@ bot.onText(/\/start/, async (msg) => {
     if (isConnected) {
         const connection = await getUserConnection(user.id);
         welcomeMessage = `
-🎉 *Welcome back to Kita\\-kita Receipt Bot*\\! 
+🎉 *Welcome back to Kita\\-kita Bot*\\! 
 
 ✅ *Account Connected* \\- You're linked to your Kita\\-kita account
 👤 *Connected as:* ${connection.email}
@@ -120,7 +120,7 @@ I can help you scan receipts and extract transaction details using AI\\. Here's 
         };
     } else {
         welcomeMessage = `
-🎉 *Welcome to Kita\\-kita Receipt Bot*\\! 
+🎉 *Welcome to Kita\\-kita Bot*\\! 
 
 I can help you scan receipts and extract transaction details using AI\\. 
 
@@ -129,7 +129,7 @@ I can help you scan receipts and extract transaction details using AI\\.
 *Two ways to get started:*
 
 🔗 *Connect Account* \\- Link to your Kita\\-kita web app account for full features
-📸 *Try Without Account* \\- Scan receipts without saving \\(demo mode\\)
+📸 *Try Without Account* \\- Scan receipts without saving
 
 *What you get with a connected account:*
 ✅ Save transactions to your profile
@@ -143,7 +143,7 @@ I can help you scan receipts and extract transaction details using AI\\.
             inline_keyboard: [
                 [
                     { text: '🔗 Connect Account', callback_data: 'connect_account' },
-                    { text: '📸 Try Demo', callback_data: 'scan_receipt' }
+                    { text: '📸 Try Scanning', callback_data: 'scan_receipt' }
                 ],
                 [
                     { text: '❓ Help', callback_data: 'show_help' }
@@ -195,7 +195,7 @@ bot.on('callback_query', async (callbackQuery) => {
             if (isConnected) {
                 const connection = await getUserConnection(user.id);
                 welcomeMessage = `
-🎉 *Welcome back to Kita\\-kita Receipt Bot*\\! 
+🎉 *Welcome back to Kita\\-kita Bot*\\! 
 
 ✅ *Account Connected* \\- You're linked to your Kita\\-kita account
 👤 *Connected as:* ${connection.email}
@@ -224,7 +224,7 @@ I can help you scan receipts and extract transaction details using AI\\. Here's 
                 };
             } else {
                 welcomeMessage = `
-🎉 *Welcome to Kita\\-kita Receipt Bot*\\! 
+🎉 *Welcome to Kita\\-kita Bot*\\! 
 
 I can help you scan receipts and extract transaction details using AI\\. 
 
@@ -233,7 +233,7 @@ I can help you scan receipts and extract transaction details using AI\\.
 *Two ways to get started:*
 
 🔗 *Connect Account* \\- Link to your Kita\\-kita web app account for full features
-📸 *Try Without Account* \\- Scan receipts without saving \\(demo mode\\)
+📸 *Try Without Account* \\- Scan receipts without saving
 
 *What you get with a connected account:*
 ✅ Save transactions to your profile
@@ -247,7 +247,7 @@ I can help you scan receipts and extract transaction details using AI\\.
                     inline_keyboard: [
                         [
                             { text: '🔗 Connect Account', callback_data: 'connect_account' },
-                            { text: '📸 Try Demo', callback_data: 'scan_receipt' }
+                            { text: '📸 Try Scanning', callback_data: 'scan_receipt' }
                         ],
                         [
                             { text: '❓ Help', callback_data: 'show_help' }
@@ -599,7 +599,7 @@ Use \`/connect YOUR\\-KEY\` to link your account\\.
 ✅ AI spending insights  
 ✅ Web app synchronization
 
-*Statistics:* \\(Demo data\\)
+*Statistics:*
 📸 Receipts scanned: 0
 💰 Total transactions: $0\\.00
 📊 Categories tracked: 0
@@ -642,7 +642,7 @@ bot.onText(/\/disconnect/, async (msg) => {
 
 Your Telegram has been unlinked from: ${connection.email}
 
-You can still use the bot in demo mode, but receipts won't be saved to your account\\.
+You can still use the bot without an account, but receipts won't be saved\\.
 
 To reconnect, use \`/connect YOUR\\-KEY\` anytime\\.
     `, { parse_mode: 'MarkdownV2' });
@@ -659,7 +659,7 @@ bot.onText(/\/help/, async (msg) => {
 // Show help message
 async function showHelp(chatId) {
     const helpMessage = `
-🤖 *Kita\\-kita Receipt Bot Help*
+🤖 *Kita\\-kita Bot Help*
 
 *Available Commands:*
 ${COMMANDS.START} \\- Welcome message and main menu
@@ -711,7 +711,7 @@ async function runBotTest(chatId) {
 ✅ Message Handling: Working
 ✅ Keyboard Buttons: Functional
 ✅ Account System: Active
-${db ? '✅' : '⚠️'} Firebase: ${db ? 'Connected' : 'Demo Mode'}
+${db ? '✅' : '⚠️'} Firebase: ${db ? 'Connected' : 'Disconnected'}
 
 🚀 *Ready to scan receipts\\!*
 
@@ -752,7 +752,7 @@ bot.on('photo', async (msg) => {
     const processingMsg = await bot.sendMessage(chatId, `
 🔄 *Processing your receipt\\.\\.\\.*
 
-${isConnected ? '💾 Will save to your account when complete' : '⚠️ Demo mode \\- not saving to account'}
+${isConnected ? '💾 Will save to your account when complete' : '⚠️ Not connected \\- not saving to account'}
     `, {
         parse_mode: 'MarkdownV2',
         reply_markup: {
@@ -905,39 +905,211 @@ ${data.location ? `📍 *Location:* ${data.location}` : ''}
 ${itemsList}
 
 ${data.tax ? `💸 *Tax:* ${data.currency || 'PHP'} ${data.tax}` : ''}
-
-${isConnected ? 
-    '✅ *Saved to your account* \\- View in web app' : 
-    '⚠️ *Demo mode* \\- Connect account to save transactions'
-}
         `;
         
-        const keyboard = {
-            inline_keyboard: [
-                [
-                    { text: '📸 Scan Another', callback_data: 'scan_receipt' }
-                ],
-                isConnected ? 
-                    [{ text: '👤 Account Info', callback_data: 'account_info' }] :
-                    [{ text: '🔗 Connect Account', callback_data: 'connect_account' }]
-            ]
-        };
-        
-        await bot.sendMessage(chatId, resultsMessage, {
-            parse_mode: 'MarkdownV2',
-            reply_markup: keyboard
-        });
-        
-        // If connected, simulate saving to account (would use Firebase in production)
+        // If connected, save transaction to user's account
+        let saveResult = null;
         if (isConnected) {
-            console.log(`💾 Saving transaction to account for user ${userId}:`, data);
-            // Here you would save to Firebase Firestore
+            try {
+                const connection = await getUserConnection(userId);
+                saveResult = await saveTransactionToAccount(connection.userId, data, connection.email);
+                
+                const finalMessage = resultsMessage + `
+
+✅ *Transaction saved to your account\\!*
+🆔 *Transaction ID:* \`${saveResult.transactionId}\`
+📱 *View in web app* to see full details
+                `;
+                
+                const keyboard = {
+                    inline_keyboard: [
+                        [
+                            { text: '📸 Scan Another', callback_data: 'scan_receipt' },
+                            { text: '👤 Account Info', callback_data: 'account_info' }
+                        ],
+                        [
+                            { text: '💰 View Transactions', url: `${WEB_APP_URL}/public/pages/dashboard.html` }
+                        ]
+                    ]
+                };
+                
+                await bot.sendMessage(chatId, finalMessage, {
+                    parse_mode: 'MarkdownV2',
+                    reply_markup: keyboard
+                });
+                
+            } catch (saveError) {
+                console.error('❌ Failed to save transaction:', saveError);
+                
+                const finalMessage = resultsMessage + `
+
+⚠️ *Analysis complete, but failed to save transaction*
+Please check your connection and try again\\.
+                `;
+                
+                const keyboard = {
+                    inline_keyboard: [
+                        [
+                            { text: '📸 Scan Another', callback_data: 'scan_receipt' },
+                            { text: '🔄 Retry Save', callback_data: 'retry_save' }
+                        ]
+                    ]
+                };
+                
+                await bot.sendMessage(chatId, finalMessage, {
+                    parse_mode: 'MarkdownV2',
+                    reply_markup: keyboard
+                });
+            }
+        } else {
+            const finalMessage = resultsMessage + `
+
+⚠️ *Account not connected* \\- Transaction not saved
+🔗 Connect your account to automatically save scanned receipts
+            `;
+            
+            const keyboard = {
+                inline_keyboard: [
+                    [
+                        { text: '📸 Scan Another', callback_data: 'scan_receipt' },
+                        { text: '🔗 Connect Account', callback_data: 'connect_account' }
+                    ]
+                ]
+            };
+            
+            await bot.sendMessage(chatId, finalMessage, {
+                parse_mode: 'MarkdownV2',
+                reply_markup: keyboard
+            });
         }
         
     } catch (error) {
-        console.error('Error showing receipt results:', error);
-        await bot.sendMessage(chatId, '❌ Error displaying results. Please try again.');
+        console.error('❌ Error showing receipt results:', error);
+        await bot.sendMessage(chatId, '❌ Error displaying results\\. Please try again\\.', {
+            parse_mode: 'MarkdownV2'
+        });
     }
+}
+
+// Save transaction to user's account via web app API
+async function saveTransactionToAccount(userId, receiptData, userEmail) {
+    try {
+        console.log(`💾 Saving transaction to account for user ${userId}:`, receiptData);
+        
+        // Transform receipt data to transaction format
+        const transactionData = {
+            name: receiptData.merchant || 'Receipt Transaction',
+            amount: parseFloat(receiptData.total) || 0,
+            type: 'expense',
+            category: mapReceiptCategoryToTransactionCategory(receiptData.category),
+            date: receiptData.date || new Date().toISOString().split('T')[0],
+            notes: buildTransactionNotes(receiptData),
+            source: 'telegram_bot',
+            receiptData: receiptData // Store original receipt data for reference
+        };
+        
+        // Call the web app API to save the transaction
+        const webAppUrl = process.env.WEB_APP_URL || 'http://localhost:3000';
+        
+        // For now, we'll simulate the API call since we need authentication
+        // In a production environment, you'd use a service account or internal API key
+        const response = await fetch(`${webAppUrl}/api/telegram/save-transaction`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: userId,
+                userEmail: userEmail,
+                transactionData: transactionData
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`API error: ${response.status} - ${error}`);
+        }
+        
+        const result = await response.json();
+        console.log(`✅ Transaction saved successfully:`, result);
+        
+        return result;
+        
+    } catch (error) {
+        console.error('❌ Error saving transaction to account:', error);
+        throw error;
+    }
+}
+
+// Map receipt categories to transaction categories
+function mapReceiptCategoryToTransactionCategory(receiptCategory) {
+    if (!receiptCategory) return 'other';
+    
+    const categoryMap = {
+        'food': 'food',
+        'grocery': 'food',
+        'restaurant': 'food',
+        'dining': 'food',
+        'shopping': 'shopping',
+        'retail': 'shopping',
+        'transport': 'transportation',
+        'transportation': 'transportation',
+        'gas': 'transportation',
+        'fuel': 'transportation',
+        'entertainment': 'entertainment',
+        'movie': 'entertainment',
+        'games': 'entertainment',
+        'health': 'health',
+        'medical': 'health',
+        'pharmacy': 'health',
+        'bills': 'bills',
+        'utilities': 'bills',
+        'phone': 'bills',
+        'internet': 'bills',
+        'housing': 'housing',
+        'rent': 'housing',
+        'education': 'education',
+        'school': 'education',
+        'books': 'education'
+    };
+    
+    const lowerCategory = receiptCategory.toLowerCase();
+    return categoryMap[lowerCategory] || 'other';
+}
+
+// Build transaction notes from receipt data
+function buildTransactionNotes(receiptData) {
+    let notes = [];
+    
+    if (receiptData.merchant) {
+        notes.push(`Store: ${receiptData.merchant}`);
+    }
+    
+    if (receiptData.location) {
+        notes.push(`Location: ${receiptData.location}`);
+    }
+    
+    if (receiptData.paymentMethod) {
+        notes.push(`Payment: ${receiptData.paymentMethod}`);
+    }
+    
+    if (receiptData.items && receiptData.items.length > 0) {
+        const itemCount = receiptData.items.length;
+        notes.push(`Items: ${itemCount} item${itemCount > 1 ? 's' : ''}`);
+        
+        // Add first few items if not too many
+        if (itemCount <= 3) {
+            receiptData.items.forEach(item => {
+                notes.push(`- ${item.name} (${item.quantity}x)`);
+            });
+        } else {
+            notes.push(`- ${receiptData.items[0].name} (${receiptData.items[0].quantity}x) and ${itemCount - 1} more`);
+        }
+    }
+    
+    notes.push('Scanned via Telegram bot');
+    
+    return notes.join(' | ');
 }
 
 // Error handlers
@@ -962,6 +1134,6 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-console.log('🚀 Kita-kita Receipt Bot with Account Connection is ready!');
+console.log('🚀 Kita-kita Bot with Account Connection is ready!');
 console.log('📱 Available commands: /start, /connect, /account, /help, /scan, /test');
 console.log('🔗 Users can connect their web app accounts using connection keys'); 

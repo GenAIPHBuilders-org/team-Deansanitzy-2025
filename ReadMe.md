@@ -387,8 +387,7 @@ else:
 
 For testing purposes, you can use the following credentials:
 
-- Email: `demo@example.com`
-- Password: `password123`
+
 
 In development mode, the application will also accept credentials from `sample_data.json`.
 

@@ -123,43 +123,218 @@ const upload = multer({
   }
 });
 
-// Authentication middleware
+// Enhanced authentication middleware with audit logging
 const authenticateUser = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // Log authentication failure
+      await dbHelpers.logUserActivity('anonymous', 'AUTHENTICATION_FAILED', {
+        ip: req.ip,
+        userAgent: req.get('User-Agent'),
+        path: req.path,
+        method: req.method,
+        reason: 'no_token'
+      }, true);
       return res.status(401).json({ error: 'No valid authorization token provided' });
     }
 
     const token = authHeader.substring(7);
     const decodedToken = await admin.auth().verifyIdToken(token);
+    
+    // Add request context for audit logging
     req.user = decodedToken;
+    req.auditContext = {
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      path: req.path,
+      method: req.method,
+      sessionId: req.headers['x-session-id'] || 'unknown'
+    };
+
+    // Log successful authentication
+    await dbHelpers.logUserActivity(decodedToken.uid, 'AUTHENTICATION_SUCCESS', req.auditContext);
+    
+    // Check for suspicious activity
+    const suspiciousCheck = await dbHelpers.checkSuspiciousActivity(decodedToken.uid);
+    if (suspiciousCheck.suspicious) {
+      console.warn(`⚠️ Suspicious activity detected for user ${decodedToken.uid}`);
+      // Still allow access but flag for review
+    }
+    
     next();
   } catch (error) {
     console.error('Authentication error:', error);
+    await dbHelpers.logUserActivity('unknown', 'AUTHENTICATION_ERROR', {
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      path: req.path,
+      method: req.method,
+      error: error.message
+    }, true);
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
 
 // Database helper functions
 const dbHelpers = {
-  async getUserData(userId) {
+  // Audit logging function
+  async logUserActivity(userId, activity, details = {}, sensitiveData = false) {
     try {
+      const auditEntry = {
+        userId,
+        activity,
+        details: this.sanitizeAuditData(details),
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        ip: details.ip || 'unknown',
+        userAgent: details.userAgent || 'unknown',
+        sessionId: details.sessionId || 'unknown',
+        sensitiveData,
+        environment: process.env.NODE_ENV || 'development'
+      };
+      
+      // Store in both user-specific and system-wide audit logs
+      const batch = db.batch();
+      
+      // User-specific audit log
+      const userAuditRef = db.collection('users').doc(userId).collection('audit_logs').doc();
+      batch.set(userAuditRef, auditEntry);
+      
+      // System-wide audit log for sensitive operations
+      if (sensitiveData) {
+        const systemAuditRef = db.collection('system_audit').doc();
+        batch.set(systemAuditRef, {
+          ...auditEntry,
+          auditLevel: 'CRITICAL',
+          requiresReview: true
+        });
+      }
+      
+      await batch.commit();
+      
+      // Log to console for immediate monitoring
+      const logLevel = sensitiveData ? 'SECURITY' : 'AUDIT';
+      console.log(`[${logLevel}] User ${userId}: ${activity}`, 
+        sensitiveData ? '(SENSITIVE DATA - details redacted)' : details);
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to log user activity:', error);
+      // Never let audit failure block the main operation
+      return false;
+    }
+  },
+
+  // Sanitize audit data to remove sensitive information
+  sanitizeAuditData(data) {
+    const sensitiveFields = ['password', 'token', 'key', 'secret', 'credential'];
+    const sanitized = { ...data };
+    
+    Object.keys(sanitized).forEach(key => {
+      if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
+        sanitized[key] = '[REDACTED]';
+      }
+    });
+    
+    return sanitized;
+  },
+
+  // Enhanced user data retrieval with audit
+  async getUserData(userId, requestDetails = {}) {
+    try {
+      // Log data access
+      await this.logUserActivity(userId, 'USER_DATA_ACCESS', {
+        ...requestDetails,
+        operation: 'read'
+      });
+      
       const userDoc = await db.collection('users').doc(userId).get();
-      return userDoc.exists ? userDoc.data() : null;
+      
+      if (userDoc.exists) {
+        // Update last access time
+        await this.updateUserLastAccess(userId);
+        return userDoc.data();
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error fetching user data:', error);
+      await this.logUserActivity(userId, 'USER_DATA_ACCESS_ERROR', {
+        ...requestDetails,
+        error: error.message
+      }, true);
       throw error;
     }
   },
 
-  async storeUserData(userId, data) {
+  // Enhanced user data storage with audit and validation
+  async storeUserData(userId, data, requestDetails = {}) {
     try {
-      await db.collection('users').doc(userId).set(data, { merge: true });
+      // Validate that sensitive fields include audit information
+      const auditData = {
+        lastModified: admin.firestore.FieldValue.serverTimestamp(),
+        modifiedBy: userId,
+        modificationReason: requestDetails.reason || 'user_update',
+        previousValues: {} // Will be populated below
+      };
+
+      // Get existing data to track changes
+      const existingDoc = await db.collection('users').doc(userId).get();
+      const existingData = existingDoc.exists ? existingDoc.data() : {};
+      
+      // Track sensitive field changes
+      const sensitiveFields = ['email', 'telegramKey', 'telegramKeyUsed', 'role', 'permissions'];
+      const changedSensitiveFields = [];
+      
+      sensitiveFields.forEach(field => {
+        if (data[field] !== undefined && data[field] !== existingData[field]) {
+          changedSensitiveFields.push(field);
+          auditData.previousValues[field] = existingData[field] || '[NOT_SET]';
+        }
+      });
+
+      // Add audit data to the update
+      const dataWithAudit = {
+        ...data,
+        ...auditData
+      };
+
+      // Store the updated data
+      await db.collection('users').doc(userId).set(dataWithAudit, { merge: true });
+
+      // Log the operation with appropriate security level
+      const isSensitiveUpdate = changedSensitiveFields.length > 0;
+      await this.logUserActivity(userId, 
+        isSensitiveUpdate ? 'SENSITIVE_DATA_UPDATE' : 'USER_DATA_UPDATE', 
+        {
+          ...requestDetails,
+          changedFields: isSensitiveUpdate ? changedSensitiveFields : Object.keys(data),
+          operation: 'update'
+        }, 
+        isSensitiveUpdate
+      );
+
       return true;
     } catch (error) {
       console.error('Error storing user data:', error);
+      await this.logUserActivity(userId, 'USER_DATA_STORE_ERROR', {
+        ...requestDetails,
+        error: error.message
+      }, true);
       throw error;
+    }
+  },
+
+  // Update user last access time
+  async updateUserLastAccess(userId) {
+    try {
+      await db.collection('users').doc(userId).update({
+        lastAccess: admin.firestore.FieldValue.serverTimestamp(),
+        accessCount: admin.firestore.FieldValue.increment(1)
+      });
+    } catch (error) {
+      // Don't throw error for last access update failures
+      console.warn('Failed to update last access time:', error.message);
     }
   },
 
@@ -174,17 +349,34 @@ const dbHelpers = {
     }
   },
 
-  async storeTransaction(userId, transactionData) {
+  async storeTransaction(userId, transactionData, requestDetails = {}) {
     try {
       const transactionRef = db.collection('users').doc(userId).collection('transactions').doc();
-      await transactionRef.set({
+      const auditedTransaction = {
         ...transactionData,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        userId
+        userId,
+        lastModified: admin.firestore.FieldValue.serverTimestamp(),
+        modifiedBy: userId
+      };
+      
+      await transactionRef.set(auditedTransaction);
+      
+      // Log transaction creation
+      await this.logUserActivity(userId, 'TRANSACTION_CREATED', {
+        ...requestDetails,
+        transactionId: transactionRef.id,
+        amount: transactionData.amount,
+        category: transactionData.category
       });
+      
       return transactionRef.id;
     } catch (error) {
       console.error('Error storing transaction:', error);
+      await this.logUserActivity(userId, 'TRANSACTION_STORE_ERROR', {
+        ...requestDetails,
+        error: error.message
+      }, true);
       throw error;
     }
   },
@@ -215,7 +407,7 @@ const dbHelpers = {
     return `TG-${part1}-${part2}-${part3}`;
   },
 
-  async createUserWithTelegramKey(userId, userData) {
+  async createUserWithTelegramKey(userId, userData, requestDetails = {}) {
     try {
       const telegramKey = this.generateFixedTelegramKey(userData.email);
       
@@ -224,20 +416,43 @@ const dbHelpers = {
         telegramKey,
         telegramKeyCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
         telegramKeyUsed: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: userId,
+        lastModified: admin.firestore.FieldValue.serverTimestamp(),
+        modifiedBy: userId
       };
 
       await db.collection('users').doc(userId).set(userDataWithKey);
 
+      // Log user creation with sensitive data flag
+      await this.logUserActivity(userId, 'USER_CREATED', {
+        ...requestDetails,
+        email: userData.email,
+        hasEmail: !!userData.email,
+        hasTelegramKey: true
+      }, true);
+
       return { ...userDataWithKey, userId };
     } catch (error) {
       console.error('Error creating user with fixed telegram key:', error);
+      await this.logUserActivity(userId, 'USER_CREATION_ERROR', {
+        ...requestDetails,
+        error: error.message
+      }, true);
       throw error;
     }
   },
 
-  async verifyEmailAndTelegramKey(email, telegramKey) {
+  async verifyEmailAndTelegramKey(email, telegramKey, requestDetails = {}) {
     try {
+      // Log verification attempt
+      const tempUserId = 'verification_attempt';
+      await this.logUserActivity(tempUserId, 'CREDENTIAL_VERIFICATION_ATTEMPT', {
+        ...requestDetails,
+        email: email,
+        hasKey: !!telegramKey
+      }, true);
+
       // Look up user by telegram key within users collection
       const usersQuery = await db.collection('users')
         .where('telegramKey', '==', telegramKey)
@@ -246,12 +461,25 @@ const dbHelpers = {
         .get();
       
       if (usersQuery.empty) {
+        // Log failed verification
+        await this.logUserActivity(tempUserId, 'CREDENTIAL_VERIFICATION_FAILED', {
+          ...requestDetails,
+          email: email,
+          reason: 'invalid_combination'
+        }, true);
+        
         return { valid: false, reason: 'Invalid email and telegram key combination' };
       }
 
       const userDoc = usersQuery.docs[0];
       const userData = userDoc.data();
       const userId = userDoc.id;
+
+      // Log successful verification
+      await this.logUserActivity(userId, 'CREDENTIAL_VERIFICATION_SUCCESS', {
+        ...requestDetails,
+        email: email
+      }, true);
 
       return { 
         valid: true, 
@@ -265,12 +493,23 @@ const dbHelpers = {
       };
     } catch (error) {
       console.error('Error verifying email and telegram key:', error);
+      await this.logUserActivity('verification_error', 'CREDENTIAL_VERIFICATION_ERROR', {
+        ...requestDetails,
+        error: error.message
+      }, true);
       throw error;
     }
   },
 
-  async validateTelegramKey(telegramKey) {
+  async validateTelegramKey(telegramKey, requestDetails = {}) {
     try {
+      // Log validation attempt
+      const tempUserId = 'key_validation_attempt';
+      await this.logUserActivity(tempUserId, 'TELEGRAM_KEY_VALIDATION_ATTEMPT', {
+        ...requestDetails,
+        hasKey: !!telegramKey
+      }, true);
+
       // Look up user by telegram key within users collection
       const usersQuery = await db.collection('users')
         .where('telegramKey', '==', telegramKey)
@@ -278,6 +517,11 @@ const dbHelpers = {
         .get();
       
       if (usersQuery.empty) {
+        await this.logUserActivity(tempUserId, 'TELEGRAM_KEY_VALIDATION_FAILED', {
+          ...requestDetails,
+          reason: 'key_not_found'
+        }, true);
+        
         return { valid: false, reason: 'Telegram key not found' };
       }
 
@@ -286,8 +530,19 @@ const dbHelpers = {
       const userId = userDoc.id;
 
       if (userData.telegramKeyUsed) {
+        await this.logUserActivity(userId, 'TELEGRAM_KEY_VALIDATION_FAILED', {
+          ...requestDetails,
+          reason: 'key_already_used'
+        }, true);
+        
         return { valid: false, reason: 'Telegram key already used' };
       }
+
+      // Log successful validation
+      await this.logUserActivity(userId, 'TELEGRAM_KEY_VALIDATION_SUCCESS', {
+        ...requestDetails,
+        email: userData.email
+      }, true);
 
       return { 
         valid: true, 
@@ -297,7 +552,96 @@ const dbHelpers = {
       };
     } catch (error) {
       console.error('Error validating telegram key:', error);
+      await this.logUserActivity('validation_error', 'TELEGRAM_KEY_VALIDATION_ERROR', {
+        ...requestDetails,
+        error: error.message
+      }, true);
       throw error;
+    }
+  },
+
+  // Security monitoring functions
+  async checkSuspiciousActivity(userId) {
+    try {
+      const recentAudits = await db.collection('users')
+        .doc(userId)
+        .collection('audit_logs')
+        .where('timestamp', '>', new Date(Date.now() - 24 * 60 * 60 * 1000)) // Last 24 hours
+        .get();
+
+      const activities = recentAudits.docs.map(doc => doc.data());
+      
+      // Check for suspicious patterns
+      const failedAttempts = activities.filter(a => 
+        a.activity.includes('FAILED') || a.activity.includes('ERROR')).length;
+      
+      const sensitiveChanges = activities.filter(a => 
+        a.activity.includes('SENSITIVE_DATA_UPDATE')).length;
+      
+      const multipleIPs = new Set(activities.map(a => a.ip)).size;
+      
+      const suspicious = failedAttempts > 5 || sensitiveChanges > 3 || multipleIPs > 3;
+      
+      if (suspicious) {
+        await this.logUserActivity(userId, 'SUSPICIOUS_ACTIVITY_DETECTED', {
+          failedAttempts,
+          sensitiveChanges,
+          uniqueIPs: multipleIPs,
+          timeWindow: '24h'
+        }, true);
+      }
+      
+      return {
+        suspicious,
+        failedAttempts,
+        sensitiveChanges,
+        uniqueIPs: multipleIPs
+      };
+    } catch (error) {
+      console.error('Error checking suspicious activity:', error);
+      return { suspicious: false };
+    }
+  },
+
+  // Get audit trail for user
+  async getUserAuditTrail(userId, limit = 50) {
+    try {
+      const auditSnapshot = await db.collection('users')
+        .doc(userId)
+        .collection('audit_logs')
+        .orderBy('timestamp', 'desc')
+        .limit(limit)
+        .get();
+
+      return auditSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate()?.toISOString()
+      }));
+    } catch (error) {
+      console.error('Error fetching audit trail:', error);
+      return [];
+    }
+  }ges = activities.filter(a => 
+        a.activity.includes('SENSITIVE_DATA_UPDATE') || a.activity.includes('USER_DATA_UPDATE')).length;
+      
+      const suspicious = failedAttempts > 3 || sensitiveChanges > 3;
+      
+      if (suspicious) {
+        await this.logUserActivity(userId, 'SUSPICIOUS_ACTIVITY_DETECTED', {
+          recentAudits: activities.map(a => ({
+            activity: a.activity,
+            timestamp: a.timestamp.toDate().toISOString()
+          })),
+          failedAttempts,
+          sensitiveChanges
+        }, true);
+      }
+      
+      return suspicious;
+    } catch (error) {
+      console.error('Error checking suspicious activity:', error);
+      return false;
     }
   }
 };
@@ -358,14 +702,79 @@ app.get('/api/user/:userId', authenticateUser, async (req, res) => {
     
     // Verify user can only access their own data
     if (req.user.uid !== userId) {
+      await dbHelpers.logUserActivity(req.user.uid, 'UNAUTHORIZED_ACCESS_ATTEMPT', {
+        ...req.auditContext,
+        targetUserId: userId,
+        reason: 'attempted_access_other_user_data'
+      }, true);
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const userData = await dbHelpers.getUserData(userId);
+    const userData = await dbHelpers.getUserData(userId, req.auditContext);
     res.json({ success: true, data: userData });
   } catch (error) {
     console.error('Error fetching user data:', error);
     res.status(500).json({ error: 'Failed to fetch user data' });
+  }
+});
+
+// New audit trail endpoint
+app.get('/api/user/:userId/audit', authenticateUser, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 50;
+    
+    // Verify user can only access their own audit data
+    if (req.user.uid !== userId) {
+      await dbHelpers.logUserActivity(req.user.uid, 'UNAUTHORIZED_AUDIT_ACCESS_ATTEMPT', {
+        ...req.auditContext,
+        targetUserId: userId
+      }, true);
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    await dbHelpers.logUserActivity(userId, 'AUDIT_TRAIL_ACCESS', {
+      ...req.auditContext,
+      limit
+    });
+
+    const auditTrail = await dbHelpers.getUserAuditTrail(userId, limit);
+    res.json({ success: true, data: auditTrail });
+  } catch (error) {
+    console.error('Error fetching audit trail:', error);
+    res.status(500).json({ error: 'Failed to fetch audit trail' });
+  }
+});
+
+// Security status endpoint
+app.get('/api/user/:userId/security-status', authenticateUser, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Verify user can only access their own security status
+    if (req.user.uid !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const suspiciousCheck = await dbHelpers.checkSuspiciousActivity(userId);
+    
+    await dbHelpers.logUserActivity(userId, 'SECURITY_STATUS_CHECK', req.auditContext);
+
+    res.json({ 
+      success: true, 
+      data: {
+        suspicious: suspiciousCheck.suspicious,
+        stats: {
+          failedAttempts: suspiciousCheck.failedAttempts,
+          sensitiveChanges: suspiciousCheck.sensitiveChanges,
+          uniqueIPs: suspiciousCheck.uniqueIPs
+        },
+        timeWindow: '24h'
+      }
+    });
+  } catch (error) {
+    console.error('Error checking security status:', error);
+    res.status(500).json({ error: 'Failed to check security status' });
   }
 });
 
@@ -376,8 +785,13 @@ app.post('/api/user/register', authenticateUser, async (req, res) => {
     const userData = req.body;
 
     // Check if user already exists
-    const existingUser = await dbHelpers.getUserData(userId);
+    const existingUser = await dbHelpers.getUserData(userId, req.auditContext);
     if (existingUser) {
+      await dbHelpers.logUserActivity(userId, 'DUPLICATE_REGISTRATION_ATTEMPT', {
+        ...req.auditContext,
+        existingEmail: existingUser.email
+      }, true);
+      
       return res.status(400).json({ 
         error: 'User already exists',
         telegramKey: existingUser.telegramKey 
@@ -385,7 +799,10 @@ app.post('/api/user/register', authenticateUser, async (req, res) => {
     }
 
     // Create user with telegram key
-    const newUser = await dbHelpers.createUserWithTelegramKey(userId, userData);
+    const newUser = await dbHelpers.createUserWithTelegramKey(userId, userData, {
+      ...req.auditContext,
+      reason: 'user_registration'
+    });
     
     res.status(201).json({ 
       success: true, 
@@ -398,6 +815,10 @@ app.post('/api/user/register', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Error registering user:', error);
+    await dbHelpers.logUserActivity(req.user?.uid || 'unknown', 'USER_REGISTRATION_ERROR', {
+      ...req.auditContext,
+      error: error.message
+    }, true);
     res.status(500).json({ error: 'Failed to register user' });
   }
 });
@@ -436,11 +857,15 @@ app.post('/api/user/ensure-fixed-key', authenticateUser, async (req, res) => {
     const { userId, email, displayName, fixedKey } = req.body;
     
     if (req.user.uid !== userId) {
+      await dbHelpers.logUserActivity(req.user.uid, 'UNAUTHORIZED_KEY_GENERATION_ATTEMPT', {
+        ...req.auditContext,
+        targetUserId: userId
+      }, true);
       return res.status(403).json({ error: 'Access denied' });
     }
 
     // Get or create user data
-    let userData = await dbHelpers.getUserData(userId);
+    let userData = await dbHelpers.getUserData(userId, req.auditContext);
     if (!userData) {
       console.log('User not found in database, creating user data');
       
@@ -458,7 +883,10 @@ app.post('/api/user/ensure-fixed-key', authenticateUser, async (req, res) => {
       };
     }
     
-    // Update user record with fixed telegram key (only if they don't have one or it's different)
+    // Check if this is a key change (security critical)
+    const isKeyChange = userData.telegramKey && userData.telegramKey !== fixedKey;
+    
+    // Update user record with fixed telegram key
     const updatedUserData = {
       ...userData,
       telegramKey: fixedKey,
@@ -466,7 +894,22 @@ app.post('/api/user/ensure-fixed-key', authenticateUser, async (req, res) => {
       telegramKeyUsed: userData.telegramKeyUsed || false // Preserve existing connection status
     };
     
-    await dbHelpers.storeUserData(userId, updatedUserData);
+    await dbHelpers.storeUserData(userId, updatedUserData, {
+      ...req.auditContext,
+      reason: isKeyChange ? 'telegram_key_change' : 'telegram_key_creation',
+      previousKey: userData.telegramKey || '[NOT_SET]'
+    });
+
+    // Log the key operation with high security level
+    await dbHelpers.logUserActivity(userId, 
+      isKeyChange ? 'TELEGRAM_KEY_CHANGED' : 'TELEGRAM_KEY_CREATED', 
+      {
+        ...req.auditContext,
+        email: email,
+        keyChanged: isKeyChange
+      }, 
+      true
+    );
 
     res.json({ 
       success: true, 
@@ -475,6 +918,10 @@ app.post('/api/user/ensure-fixed-key', authenticateUser, async (req, res) => {
     });
   } catch (error) {
     console.error('Error ensuring fixed telegram key:', error);
+    await dbHelpers.logUserActivity(req.user?.uid || 'unknown', 'TELEGRAM_KEY_OPERATION_ERROR', {
+      ...req.auditContext,
+      error: error.message
+    }, true);
     res.status(500).json({ error: 'Failed to ensure fixed telegram key' });
   }
 });
@@ -506,11 +953,7 @@ app.post('/api/telegram/verify-credentials', async (req, res) => {
         userId: verification.userId,
         email: email,
         telegramKey: telegramKey,
-        userData: {
-          name: verification.userData.name,
-          email: verification.userData.email,
-          telegramKeyUsed: verification.userData.telegramKeyUsed
-        }
+        userData: verification.userData
       }
     });
   } catch (error) {
@@ -767,15 +1210,30 @@ app.post('/api/telegram/validate-key', async (req, res) => {
 app.post('/api/telegram/connect', async (req, res) => {
   try {
     const { key, telegramUserData } = req.body;
+    const auditContext = {
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      path: req.path,
+      method: req.method
+    };
     
     if (!key || !telegramUserData) {
+      await dbHelpers.logUserActivity('telegram_connection', 'TELEGRAM_CONNECT_INVALID_REQUEST', {
+        ...auditContext,
+        hasKey: !!key,
+        hasTelegramData: !!telegramUserData
+      }, true);
       return res.status(400).json({ error: 'Key and telegram user data are required' });
     }
 
     // Validate the key first
-    const validation = await dbHelpers.validateTelegramKey(key);
+    const validation = await dbHelpers.validateTelegramKey(key, auditContext);
     
     if (!validation.valid) {
+      await dbHelpers.logUserActivity('telegram_connection', 'TELEGRAM_CONNECT_FAILED', {
+        ...auditContext,
+        reason: validation.reason
+      }, true);
       return res.status(400).json({ error: validation.reason });
     }
 
@@ -790,7 +1248,17 @@ app.post('/api/telegram/connect', async (req, res) => {
       telegramLastName: telegramUserData.last_name
     };
 
-    await dbHelpers.storeUserData(validation.userId, updatedUserData);
+    await dbHelpers.storeUserData(validation.userId, updatedUserData, {
+      ...auditContext,
+      reason: 'telegram_account_connection'
+    });
+
+    // Log successful telegram connection
+    await dbHelpers.logUserActivity(validation.userId, 'TELEGRAM_ACCOUNT_CONNECTED', {
+      ...auditContext,
+      telegramUserId: telegramUserData.id.toString(),
+      telegramUsername: telegramUserData.username || 'unknown'
+    }, true);
 
     res.json({
       success: true,
@@ -800,7 +1268,74 @@ app.post('/api/telegram/connect', async (req, res) => {
     });
   } catch (error) {
     console.error('Error connecting telegram account:', error);
+    await dbHelpers.logUserActivity('telegram_connection', 'TELEGRAM_CONNECT_ERROR', {
+      ip: req.ip,
+      error: error.message
+    }, true);
     res.status(500).json({ error: 'Failed to connect telegram account' });
+  }
+});
+
+// Save transaction from Telegram bot (for connected accounts)
+app.post('/api/telegram/save-transaction', async (req, res) => {
+  try {
+    const { userId, userEmail, transactionData } = req.body;
+    
+    if (!userId || !userEmail || !transactionData) {
+      return res.status(400).json({ 
+        error: 'User ID, email, and transaction data are required' 
+      });
+    }
+
+    console.log(`💾 Telegram bot saving transaction for user ${userId} (${userEmail}):`, transactionData);
+
+    // Verify that the user exists and has Telegram connection
+    const userData = await dbHelpers.getUserData(userId);
+    if (!userData) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!userData.telegramKeyUsed) {
+      return res.status(403).json({ 
+        error: 'User does not have a connected Telegram account' 
+      });
+    }
+
+    if (userData.email !== userEmail) {
+      return res.status(403).json({ 
+        error: 'Email mismatch for user account' 
+      });
+    }
+
+    // Add Telegram bot specific metadata
+    const enhancedTransactionData = {
+      ...transactionData,
+      source: 'telegram_bot',
+      scannedAt: admin.firestore.FieldValue.serverTimestamp(),
+      telegramUserId: userData.telegramUserId,
+      verified: false // Telegram scans start as unverified
+    };
+
+    // Store the transaction
+    const transactionId = await dbHelpers.storeTransaction(userId, enhancedTransactionData);
+    
+    console.log(`✅ Transaction saved successfully: ${transactionId} for user ${userId}`);
+
+    res.json({ 
+      success: true, 
+      transactionId: transactionId,
+      message: 'Transaction saved successfully from Telegram bot',
+      data: {
+        transactionId,
+        userId,
+        amount: transactionData.amount,
+        category: transactionData.category,
+        merchant: transactionData.receiptData?.merchant
+      }
+    });
+  } catch (error) {
+    console.error('Error saving telegram transaction:', error);
+    res.status(500).json({ error: 'Failed to save transaction from Telegram bot' });
   }
 });
 

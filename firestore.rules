@@ -1,9 +1,136 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // COMPLETELY OPEN - NO RESTRICTIONS AT ALL
+    
+    // Helper functions for authentication and security
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             resource.data.role == 'admin' && 
+             request.auth.uid in resource.data.adminUsers;
+    }
+    
+    // Audit trail functions
+    function hasValidAuditFields() {
+      return request.resource.data.keys().hasAll(['lastModified', 'modifiedBy']) &&
+             request.resource.data.lastModified is timestamp &&
+             request.resource.data.modifiedBy == request.auth.uid;
+    }
+    
+    function isSecureUpdate() {
+      // Prevent modification of critical security fields without proper audit
+      let sensitiveFields = ['email', 'telegramKey', 'telegramKeyUsed', 'role', 'permissions'];
+      let changedSensitiveFields = request.resource.data.diff(resource.data).affectedKeys()
+                                   .toSet().intersection(sensitiveFields.toSet());
+      
+      return changedSensitiveFields.size() == 0 || hasValidAuditFields();
+    }
+    
+    // Users collection - strict access control with audit
+    match /users/{userId} {
+      // Read: users can only read their own data
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // Create: authenticated users can create their own user document
+      allow create: if isAuthenticated() && 
+                    isOwner(userId) && 
+                    hasValidAuditFields() &&
+                    request.resource.data.createdAt is timestamp &&
+                    request.resource.data.createdBy == request.auth.uid;
+      
+      // Update: users can update their own data with audit trail
+      allow update: if isAuthenticated() && 
+                    isOwner(userId) && 
+                    isSecureUpdate();
+      
+      // Delete: only admins can delete user accounts
+      allow delete: if isAdmin();
+      
+      // User transactions subcollection
+      match /transactions/{transactionId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // AI decisions subcollection
+      match /ai_decisions/{decisionId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // AI plans subcollection
+      match /ai_plans/{planId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // User audit logs - read-only for user, write for system
+      match /audit_logs/{auditId} {
+        allow read: if isAuthenticated() && isOwner(userId);
+        allow write: if false; // Only system can write audit logs
+      }
+    }
+    
+    // System audit logs - admin access only
+    match /system_audit/{auditId} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Telegram links - strict access control
+    match /telegram_links/{linkId} {
+      allow read: if isAuthenticated() && 
+                  (isOwner(linkId) || resource.data.userId == request.auth.uid);
+      allow write: if isAuthenticated() && 
+                   hasValidAuditFields() &&
+                   (isOwner(linkId) || request.resource.data.userId == request.auth.uid);
+    }
+    
+    // Link codes - temporary access codes
+    match /link_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasValidAuditFields();
+    }
+    
+    // Telegram keys - strict access control
+    match /telegram_keys/{keyId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if isAuthenticated() && 
+                   hasValidAuditFields() &&
+                   request.resource.data.userId == request.auth.uid;
+    }
+    
+    // File uploads metadata
+    match /uploads/{uploadId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if isAuthenticated() && 
+                   request.resource.data.userId == request.auth.uid &&
+                   hasValidAuditFields();
+    }
+    
+    // Public health checks (read-only)
+    match /health/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    // AI engine data - system access with audit
+    match /ai_decisions/{decisionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasValidAuditFields();
+    }
+    
+    match /ai_plans/{planId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasValidAuditFields();
+    }
+    
+    // Default deny everything else
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 } 
