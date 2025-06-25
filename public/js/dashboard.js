@@ -92,7 +92,7 @@ function initializeNavigation() {
   const menuToggle = document.getElementById('menu-toggle');
   const headerMenu = document.querySelector('.header-menu');
 
-  if (menuToggle) {
+  if (menuToggle && headerMenu) {
     menuToggle.addEventListener('click', () => {
       headerMenu.classList.toggle('active');
 
@@ -112,6 +112,8 @@ function initializeNavigation() {
         menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
       });
     });
+  } else {
+    console.warn('Mobile menu toggle elements not found - skipping mobile menu initialization');
   }
 
   // Handle page navigation only for links with data-page attribute
@@ -140,16 +142,14 @@ function initializeNavigation() {
 
 async function updateUserInterface(user) {
   const welcomeElement = document.getElementById('welcomeUsername');
-  const userDisplayName = document.getElementById('user-display-name');
-
-  if (!welcomeElement || !userDisplayName) {
-    console.error('Welcome elements not found in the DOM');
+  
+  if (!welcomeElement) {
+    console.error('Welcome element not found in the DOM');
     return;
   }
 
   // Set temporary state while loading
   welcomeElement.textContent = user.email ? user.email.split('@')[0] : 'User';
-  userDisplayName.textContent = user.displayName || user.email || 'User';
 
   try {
     // First try to get data from secure storage
@@ -212,30 +212,24 @@ async function updateUserInterface(user) {
     // Update the UI with user data
     if (userData && userData.firstName) {
       // We have the user data with a first name
-      const fullName = `${userData.firstName} ${userData.lastName || ''}`.trim();
-      // Use the user's first name from userData
       welcomeElement.textContent = userData.firstName;
-      userDisplayName.textContent = fullName || user.email;
       console.log('Updated welcome message with name:', userData.firstName);
     } else if (user.displayName) {
       // Fallback to display name if available
       const nameParts = user.displayName.split(' ');
       const firstName = nameParts[0] || 'User';
       welcomeElement.textContent = firstName;
-      userDisplayName.textContent = user.displayName || user.email;
       console.log('Updated welcome message with display name:', firstName);
     } else {
       // Final fallback to email or generic 'User'
       const emailName = user.email ? user.email.split('@')[0] : 'User';
       welcomeElement.textContent = emailName;
-      userDisplayName.textContent = user.email || 'User';
       console.log('Updated welcome message with email name:', emailName);
     }
   } catch (error) {
     console.error('Error updating user interface:', error);
     // Ensure we have a fallback name even if there's an error
     welcomeElement.textContent = user.email ? user.email.split('@')[0] : 'User';
-    userDisplayName.textContent = user.displayName || user.email || 'User';
   }
 }
 
@@ -261,7 +255,7 @@ async function initializeDashboard() {
 function initializeSpendingChart() {
   const ctx = document.getElementById('spendingChart');
   if (!ctx) {
-    console.error('Spending chart canvas not found');
+    console.warn('Spending chart canvas not found - skipping chart initialization');
     return;
   }
 
@@ -423,6 +417,12 @@ function initializeTransactionHistory() {
   const closeTransactionModal = document.getElementById('close-transaction-modal');
   const transactionForm = document.getElementById('transaction-form');
   const transactionsList = document.getElementById('transactions-list');
+  
+  // Check if any required elements are missing
+  if (!addTransactionBtn || !transactionModal || !closeTransactionModal || !transactionForm || !transactionsList) {
+    console.warn('Some transaction UI elements not found - skipping transaction history initialization');
+    return;
+  }
 
   // Show add transaction modal
   if (addTransactionBtn) {

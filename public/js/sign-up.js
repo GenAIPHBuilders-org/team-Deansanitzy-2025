@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (user) {
       console.log("User already signed in:", user.uid);
       // Don't auto-redirect - let the user decide what to do
-      // The showAuthenticatedMessage function will handle this
+      showAuthenticatedMessage(user);
     }
   });
   // Initialize Google login button
@@ -180,6 +180,199 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Animate error message
     errorDiv.style.animation = 'slideIn 0.3s ease-out';
   }
+
+  // Function to show authenticated user message
+  function showAuthenticatedMessage(user) {
+    const authCard = document.querySelector('.auth-card');
+    const existingMessage = document.querySelector('.authenticated-message');
+    
+    // Remove existing message if any
+    if (existingMessage) existingMessage.remove();
+    
+    // Create authenticated message
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'authenticated-message';
+    messageDiv.style.cssText = `
+        background: rgba(16, 223, 111, 0.1);
+        border: 1px solid rgba(16, 223, 111, 0.3);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        color: #10df6f;
+    `;
+    
+    const email = user.email || 'Unknown user';
+    const displayName = user.displayName || email.split('@')[0];
+    
+    messageDiv.innerHTML = `
+        <i class="fas fa-check-circle" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #10df6f;"></i>
+        <h3 style="margin: 0.5rem 0; color: white;">You're already signed in!</h3>
+        <p style="margin: 0.5rem 0; color: rgba(255, 255, 255, 0.8);">Signed in as: <strong>${displayName}</strong></p>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+            <button onclick="window.location.href='dashboard.html'" 
+                    style="background: linear-gradient(135deg, #10df6f, #0ea5e9); 
+                           color: white; border: none; padding: 0.75rem 1.5rem; 
+                           border-radius: 8px; cursor: pointer; font-weight: 600;">
+                Go to Dashboard
+            </button>
+            <button onclick="signOutAndStay()" 
+                    style="background: rgba(233, 109, 31, 0.2); color: #e96d1f; 
+                           border: 1px solid #e96d1f; padding: 0.75rem 1.5rem; 
+                           border-radius: 8px; cursor: pointer; font-weight: 600;">
+                Sign Out & Create New Account
+            </button>
+        </div>
+    `;
+    
+    // Insert message at the top of the auth card
+    if (authCard) {
+      authCard.insertBefore(messageDiv, authCard.firstChild);
+    }
+  }
+
+  // Make signOutAndStay globally available
+  window.signOutAndStay = async function() {
+    try {
+      console.log("Attempting to sign out...");
+      
+      // Force sign out from Firebase
+      await auth.signOut();
+      
+      // Clear all possible storage locations
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear cookies
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
+      // Clear IndexedDB (Firebase uses this)
+      if ('indexedDB' in window) {
+        try {
+          const databases = await indexedDB.databases();
+          await Promise.all(databases.map(db => {
+            if (db.name.includes('firebase') || db.name.includes('firestore')) {
+              return new Promise((resolve, reject) => {
+                const deleteReq = indexedDB.deleteDatabase(db.name);
+                deleteReq.onsuccess = () => resolve();
+                deleteReq.onerror = () => resolve(); // Don't fail on errors
+              });
+            }
+          }));
+        } catch (err) {
+          console.warn("Could not clear IndexedDB:", err);
+        }
+      }
+      
+      // Remove the authenticated message
+      const existingMessage = document.querySelector('.authenticated-message');
+      if (existingMessage) existingMessage.remove();
+      
+      console.log("User signed out successfully and all data cleared");
+      
+      // Show success message
+      const successDiv = document.createElement('div');
+      successDiv.style.cssText = `
+          background: rgba(16, 223, 111, 0.1);
+          border: 1px solid rgba(16, 223, 111, 0.3);
+          color: #10df6f;
+          padding: 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+          text-align: center;
+      `;
+      successDiv.innerHTML = '<i class="fas fa-check"></i> Successfully signed out and cleared all data. You can now create a new account.';
+      
+      const authCard = document.querySelector('.auth-card');
+      if (authCard) {
+        authCard.insertBefore(successDiv, authCard.firstChild);
+      }
+      
+      // Remove success message after 4 seconds
+      setTimeout(() => {
+        if (successDiv.parentNode) {
+          successDiv.remove();
+        }
+      }, 4000);
+      
+      // Force reload the page after a short delay to ensure clean state
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Error signing out:", error);
+      
+      // Even if there's an error, try to clear everything manually
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Show error but also provide manual reload option
+      const errorDiv = document.createElement('div');
+      errorDiv.style.cssText = `
+          background: rgba(255, 59, 48, 0.1);
+          border: 1px solid rgba(255, 59, 48, 0.3);
+          color: #ff3b30;
+          padding: 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+          text-align: center;
+      `;
+      errorDiv.innerHTML = `
+          <i class="fas fa-exclamation-triangle"></i> Error signing out: ${error.message}<br>
+          <button onclick="window.location.reload()" style="margin-top: 0.5rem; background: #ff3b30; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
+              Force Reload Page
+          </button>
+      `;
+      
+      const authCard = document.querySelector('.auth-card');
+      if (authCard) {
+        authCard.insertBefore(errorDiv, authCard.firstChild);
+      }
+    }
+  };
+
+  // Add a nuclear option function for complete reset
+  window.forceCompleteReset = async function() {
+    try {
+      // Sign out if possible
+      if (auth.currentUser) {
+        await auth.signOut();
+      }
+    } catch (e) {
+      console.warn("Could not sign out:", e);
+    }
+    
+    // Clear everything
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear all cookies
+    document.cookie.split(";").forEach(function(c) { 
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    });
+    
+    // Try to clear IndexedDB
+    if ('indexedDB' in window) {
+      try {
+        const databases = await indexedDB.databases();
+        await Promise.all(databases.map(db => {
+          return new Promise((resolve) => {
+            const deleteReq = indexedDB.deleteDatabase(db.name);
+            deleteReq.onsuccess = () => resolve();
+            deleteReq.onerror = () => resolve();
+          });
+        }));
+      } catch (err) {
+        console.warn("Could not clear IndexedDB:", err);
+      }
+    }
+    
+    console.log("Complete reset performed, reloading page...");
+    window.location.reload();
+  };
 
   const form = document.querySelector('.auth-form');
   const firstNameInput = document.getElementById('firstName');

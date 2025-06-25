@@ -1,57 +1,46 @@
 /**
- * Enhanced Ipon Coach AI - Autonomous Filipino Financial Assistant v2.0
- * Production-ready agent with advanced cultural intelligence and autonomous behaviors
- * Combines real-time AI analysis with proactive financial monitoring
+ * Smart Ipon Coach AI - Intelligent Filipino Financial Assistant
+ * Features: Auto-categorization, Overspending detection, Smart budgeting, Real-time alerts
  */
 
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { BaseAgent } from "./BaseAgent.js";
+import { GEMINI_API_KEY, GEMINI_MODEL } from "../js/config.js";
 
-class IponCoachAI extends BaseAgent {
+class SmartIponCoachAI extends BaseAgent {
     constructor() {
-        super('iponCoach', {
+        super('smartIponCoach', {
             autonomyLevel: 'high',
             planningHorizon: 'long_term',
-            learningRate: 0.3,
+            learningRate: 0.4,
             riskTolerance: 'adaptive'
         });
         
-        // Enhanced AI Configuration
-        this.geminiApiKey = 'AIzaSyCdyWLIr2dJmtPJ8eBXdj7nYNNz3cjMfFo';
-        this.geminiModel = 'gemini-1.5-pro'; // Upgraded to Pro for better reasoning
-        this.fallbackModel = 'gemini-1.5-flash';
+        // AI Configuration
+        this.geminiApiKey = GEMINI_API_KEY || 'AIzaSyCdyWLIr2dJmtPJ8eBXdj7nYNNz3cjMfFo';
+        this.geminiModel = GEMINI_MODEL || 'gemini-1.5-flash';
         
-        // Core Systems
-        this.conversationHistory = [];
-        this.analysisCache = new Map();
-        this.lastAnalysisTime = null;
+        // Smart Features State
+        this.categorizedTransactions = new Map();
+        this.spendingPatterns = new Map();
+        this.budgetRecommendations = [];
+        this.activeAlerts = [];
+        this.userBudgets = new Map();
         
-        // Autonomous Systems
-        this.autonomousTimer = null;
-        this.interventionQueue = [];
-        this.userModel = new Map();
-        this.behaviorPatterns = new Map();
-        
-        // Cultural Intelligence
-        this.culturalFactors = new Map([
-            ['family_support', { weight: 0.8, importance: 'high' }],
-            ['remittances', { weight: 0.7, importance: 'high' }],
-            ['utang_culture', { weight: 0.6, importance: 'medium' }],
-            ['bayanihan_spirit', { weight: 0.5, importance: 'medium' }],
-            ['pakikipagkapwa', { weight: 0.4, importance: 'medium' }]
-        ]);
-        
-        // Performance Monitoring
-        this.performanceMetrics = {
-            responseTime: [],
-            aiAccuracy: [],
-            userSatisfaction: [],
-            goalCompletionRate: []
+        // Filipino Category Mapping
+        this.filipinoCategories = {
+            'food': ['kakainin', 'pagkain', 'restaurant', 'grocery', 'tindahan', 'palengke', 'fast food', 'delivery'],
+            'transport': ['jeepney', 'bus', 'tricycle', 'grab', 'taxi', 'mrt', 'lrt', 'gas', 'gasolina'],
+            'utilities': ['kuryente', 'electricity', 'tubig', 'water', 'internet', 'phone', 'meralco'],
+            'rent': ['upa', 'rent', 'dormitory', 'condo', 'apartment'],
+            'entertainment': ['sine', 'movie', 'gala', 'gimik', 'bar', 'party', 'shopping'],
+            'health': ['gamot', 'medicine', 'doctor', 'hospital', 'checkup'],
+            'education': ['tuition', 'school', 'books', 'supplies'],
+            'remittance': ['padala', 'family', 'pamilya', 'utang', 'loan']
         };
         
         this.initializeElements();
         this.initializeEventListeners();
-        this.initializeAutonomousBehavior();
     }
 
     // Initialize DOM elements
@@ -60,15 +49,10 @@ class IponCoachAI extends BaseAgent {
             loadingState: document.getElementById('loading-state'),
             contentLoaded: document.getElementById('content-loaded'),
             emptyState: document.getElementById('empty-state'),
-            aiAnalysisContent: document.getElementById('ai-analysis-content'),
-            aiRecommendationsContent: document.getElementById('ai-recommendations-content'),
-            savingsGoalsList: document.getElementById('savings-goals-list'),
-            financialHealthContent: document.getElementById('financial-health-content'),
-            marketInsightsContent: document.getElementById('market-insights-content'),
-            riskAssessmentContent: document.getElementById('risk-assessment-content'),
-            chatMessages: document.getElementById('chat-messages'),
-            chatInput: document.getElementById('chat-input'),
-            sendButton: document.getElementById('send-message')
+            categorizationContent: document.getElementById('categorization-content'),
+            overspendingContent: document.getElementById('overspending-content'),
+            budgetContent: document.getElementById('budget-content'),
+            alertsContent: document.getElementById('alerts-content')
         };
 
         // Validate elements
@@ -81,165 +65,60 @@ class IponCoachAI extends BaseAgent {
 
     // Initialize event listeners
     initializeEventListeners() {
-        if (this.elements.sendButton) {
-            this.elements.sendButton.addEventListener('click', () => this.sendChatMessage());
-        }
-        
-        if (this.elements.chatInput) {
-            this.elements.chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.sendChatMessage();
-                }
-            });
-        }
+        // No manual event listeners needed - this agent operates autonomously
+        console.log("🤖 Autonomous agent initialized - no manual interactions required");
     }
 
-    // Initialize autonomous behaviors and monitoring
-    initializeAutonomousBehavior() {
-        console.log("🤖 Initializing autonomous behaviors...");
-        
-        // Start proactive monitoring after initialization
-        setTimeout(() => {
-            this.startProactiveMonitoring();
-        }, 5000); // Wait 5 seconds for initial data loading
-        
-        // Set up cultural adaptation
-        this.initializeCulturalIntelligence();
-        
-        // Initialize learning system
-        this.initializeLearningSystem();
-    }
-
-    // Start proactive monitoring system
-    startProactiveMonitoring() {
-        if (this.autonomousTimer) {
-            clearInterval(this.autonomousTimer);
-        }
-        
-        this.autonomousTimer = setInterval(async () => {
-            try {
-                console.log("🔄 Running autonomous analysis...");
-                await this.performAutonomousAnalysis();
-                await this.detectFinancialOpportunities();
-                await this.assessRiskFactors();
-                await this.generateProactiveInterventions();
-            } catch (error) {
-                console.error("❌ Autonomous monitoring error:", error);
-            }
-        }, 300000); // Every 5 minutes
-        
-        console.log("✅ Proactive monitoring started");
-    }
-
-    // Initialize cultural intelligence system
-    initializeCulturalIntelligence() {
-        console.log("🇵🇭 Initializing cultural intelligence...");
-        this.culturalProfile = {
-            region: 'metro_manila', // Default, will be updated
-            primaryLanguage: 'filipino',
-            familyStructure: 'nuclear',
-            incomeSource: 'employment',
-            financialGoals: ['emergency_fund', 'family_support']
-        };
-    }
-
-    // Initialize learning system
-    initializeLearningSystem() {
-        console.log("🎓 Initializing learning system...");
-        this.learningMetrics = {
-            interactionCount: 0,
-            recommendationAcceptanceRate: 0,
-            goalCompletionRate: 0,
-            userSatisfactionScore: 0
-        };
-    }
-
-    // Update autonomous status indicator
-    updateAutonomousStatus(status, message) {
-        const statusElement = document.getElementById('autonomous-status');
-        const statusText = document.getElementById('status-text');
-        
-        if (statusElement && statusText) {
-            statusText.textContent = message;
-            
-            // Update visual state
-            if (status === 'active') {
-                statusElement.classList.add('active');
-            } else {
-                statusElement.classList.remove('active');
-            }
-            
-            console.log(`🤖 Status: ${status} - ${message}`);
-        }
-    }
-
-    // Start the AI coach
+    // Start the Smart AI coach
     async start() {
         try {
-            console.log("🤖 Starting Enhanced Ipon Coach AI v2.0...");
-            this.updateAutonomousStatus('initializing', 'Starting AI systems...');
+            console.log("🧠 Starting Smart Ipon Coach AI...");
             this.showLoadingState();
             
             // Wait for authentication
-            this.updateAutonomousStatus('initializing', 'Waiting for authentication...');
             await this.waitForAuth();
             
             if (!this.currentUser) {
-                this.updateAutonomousStatus('error', 'Authentication required');
-                this.showEmptyState("Please log in to access AI financial coaching.");
+                this.showEmptyState("Please log in to access your smart financial coach.");
                 return;
             }
 
-            // Initialize BaseAgent with timeout and wait for data loading
-            this.updateAutonomousStatus('initializing', 'Initializing AI systems...');
+            // Initialize BaseAgent and load data
             try {
                 await this.waitForInitialization();
-                
-                // Force data reload if BaseAgent initialization succeeded
                 if (this.initialized) {
-                    console.log("🔄 BaseAgent initialized, loading financial data...");
-                    this.updateAutonomousStatus('initializing', 'Loading financial data...');
                     await this.loadUserFinancialData();
                 }
             } catch (error) {
                 console.warn("BaseAgent initialization failed, loading data manually:", error);
-                this.updateAutonomousStatus('initializing', 'Loading data (fallback mode)...');
                 await this.loadUserFinancialDataFallback();
             }
-            
-            // Wait a bit more for data to be processed
-            await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Ensure arrays are initialized
             if (!this.userTransactions) this.userTransactions = [];
             if (!this.userAccounts) this.userAccounts = [];
             
-            console.log("📊 Data check:", {
+            console.log("📊 Smart AI Data check:", {
                 transactions: this.userTransactions.length,
-                accounts: this.userAccounts.length,
-                initialized: this.initialized
+                accounts: this.userAccounts.length
             });
             
             // Check if we have data
             if (this.userTransactions.length === 0 && this.userAccounts.length === 0) {
                 console.log("⚠️ No financial data found, showing empty state");
-                this.updateAutonomousStatus('waiting', 'Waiting for financial data...');
                 this.showEmptyState();
                 return;
             }
 
-            // Load AI analysis
-            this.updateAutonomousStatus('initializing', 'Generating AI insights...');
-            await this.loadAIAnalysis();
+            // Run Smart AI Analysis
+            await this.runSmartAnalysis();
             
             this.showContentState();
-            this.updateAutonomousStatus('active', 'AI Coach active - monitoring your finances');
-            console.log("✅ Enhanced Ipon Coach AI v2.0 initialized successfully");
+            console.log("✅ Smart Ipon Coach AI initialized successfully");
             
         } catch (error) {
-            console.error("❌ Error starting Enhanced Ipon Coach AI:", error);
-            this.updateAutonomousStatus('error', 'Initialization failed');
-            this.showErrorMessage("Failed to initialize AI coach. Please try again.");
+            console.error("❌ Error starting Smart Ipon Coach AI:", error);
+            this.showErrorMessage("Failed to initialize smart AI coach. Please try again.");
         }
     }
 
@@ -262,8 +141,8 @@ class IponCoachAI extends BaseAgent {
 
     // Wait for BaseAgent initialization
     async waitForInitialization() {
-        const maxWait = 10000; // 10 seconds max
-        const checkInterval = 100; // Check every 100ms
+        const maxWait = 10000;
+        const checkInterval = 100;
         let waited = 0;
 
         while (!this.initialized && waited < maxWait) {
@@ -271,327 +150,381 @@ class IponCoachAI extends BaseAgent {
             waited += checkInterval;
         }
 
-        if (!this.initialized) {
-            console.warn('⚠️ BaseAgent initialization timeout, proceeding with available data');
-        }
-        
         return this.initialized;
     }
 
-    // Load comprehensive AI analysis
-    async loadAIAnalysis() {
+    // Run comprehensive smart analysis
+    async runSmartAnalysis() {
         try {
-            console.log("🧠 Loading AI financial analysis...");
+            console.log("🧠 Running Smart AI Analysis...");
 
-            // Generate multiple AI insights in parallel
+            // Run all smart features in parallel
             const analysisPromises = [
-                this.generateFinancialAnalysis(),
-                this.generatePersonalizedRecommendations(),
-                this.generateSmartGoals(),
-                this.generateHealthScore(),
-                this.generateMarketInsights(),
-                this.generateRiskAssessment()
+                this.categorizeTransactions(),
+                this.detectOverspendingPatterns(),
+                this.generateBudgetRecommendations(),
+                this.setupSmartAlerts()
             ];
 
-            const [
-                financialAnalysis,
-                recommendations,
-                goals,
-                healthScore,
-                marketInsights,
-                riskAssessment
-            ] = await Promise.all(analysisPromises);
+            await Promise.all(analysisPromises);
 
-            // Update UI with AI-generated content
-            this.updateFinancialAnalysis(financialAnalysis);
-            this.updateRecommendations(recommendations);
-            this.updateGoals(goals);
-            this.updateHealthScore(healthScore);
-            this.updateMarketInsights(marketInsights);
-            this.updateRiskAssessment(riskAssessment);
-
-            // Add welcome message to chat
-            this.addChatMessage("ai", "Kumusta! I'm your AI financial coach. I've analyzed your data and I'm here to help you achieve your financial goals. Ask me anything about your finances!");
+            // Log autonomous analysis completion
+            console.log("✅ Autonomous financial analysis completed successfully");
 
         } catch (error) {
-            console.error("Error loading AI analysis:", error);
-            this.showErrorMessage("Failed to generate AI insights.");
+            console.error("❌ Smart analysis failed:", error);
+            this.showErrorMessage("Failed to run smart analysis.");
         }
     }
 
-    // Generate comprehensive financial analysis using Gemini AI
-    async generateFinancialAnalysis() {
+    // 1. Smart Transaction Categorization
+    async categorizeTransactions() {
         try {
-            const financialData = this.prepareFinancialData();
+            console.log("🏷️ Starting smart transaction categorization...");
             
-            const prompt = `As a Filipino financial advisor AI, analyze this user's financial data and provide personalized insights in a conversational, encouraging tone. Be specific about the data you see and give actionable advice.
-
-Financial Data:
-${JSON.stringify(financialData, null, 2)}
-
-Provide analysis covering:
-1. Overall financial health summary
-2. Spending patterns and trends
-3. Savings opportunities
-4. Account optimization suggestions
-5. Filipino-context financial advice
-
-Keep response under 300 words, friendly tone, use some Filipino expressions naturally.`;
-
-            const response = await this.callGeminiAPI(prompt);
-            return response || "I'm analyzing your financial patterns to provide personalized insights...";
-            
-        } catch (error) {
-            console.error("Error generating financial analysis:", error);
-            return "I'm currently learning about your financial patterns. Let me gather more insights for you.";
-        }
-    }
-
-    // Generate personalized recommendations
-    async generatePersonalizedRecommendations() {
-        try {
-            const financialData = this.prepareFinancialData();
-            
-            const prompt = `Based on this Filipino user's financial data, generate 3-5 specific, actionable recommendations. Each should be practical and achievable.
-
-Financial Data:
-${JSON.stringify(financialData, null, 2)}
-
-Format as JSON array with objects containing:
-- title: Brief recommendation title
-- description: Detailed explanation
-- priority: "high", "medium", or "low"
-- actionSteps: Array of specific steps to take
-
-Focus on Filipino financial context (e.g., OFW remittances, peso inflation, local banking options).`;
-
-            const response = await this.callGeminiAPI(prompt);
-            
-            try {
-                return JSON.parse(response);
-            } catch {
-                // Fallback if JSON parsing fails
-                return this.generateFallbackRecommendations();
+            if (!this.userTransactions || this.userTransactions.length === 0) {
+                this.updateCategorizationUI([]);
+                return;
             }
-            
-        } catch (error) {
-            console.error("Error generating recommendations:", error);
-            return this.generateFallbackRecommendations();
-        }
-    }
 
-    // Generate smart savings goals
-    async generateSmartGoals() {
-        try {
-            const financialData = this.prepareFinancialData();
-            
-            const prompt = `Create 2-4 personalized savings goals for this Filipino user based on their financial data. Make goals SMART (Specific, Measurable, Achievable, Relevant, Time-bound).
-
-Financial Data:
-${JSON.stringify(financialData, null, 2)}
-
-Format as JSON array with objects containing:
-- title: Goal name
-- description: What this achieves
-- targetAmount: Numeric amount in PHP
-- timeframe: Realistic timeframe
-- monthlyTarget: Monthly savings needed
-- priority: "high", "medium", or "low"
-- benefits: Array of benefits
-
-Consider Filipino financial priorities: emergency fund, family support, education, business capital.`;
-
-            const response = await this.callGeminiAPI(prompt);
-            
-            try {
-                return JSON.parse(response);
-            } catch {
-                return this.generateFallbackGoals();
-            }
-            
-        } catch (error) {
-            console.error("Error generating smart goals:", error);
-            return this.generateFallbackGoals();
-        }
-    }
-
-    // Generate financial health score
-    async generateHealthScore() {
-        try {
-            const financialData = this.prepareFinancialData();
-            
-            const prompt = `Calculate a financial health score (0-100) for this Filipino user and explain the scoring.
-
-Financial Data:
-${JSON.stringify(financialData, null, 2)}
-
-Format as JSON object:
-{
-  "score": number (0-100),
-  "level": "poor|fair|good|excellent",
-  "factors": {
-    "emergency_fund": {"score": number, "weight": number, "status": "string"},
-    "debt_ratio": {"score": number, "weight": number, "status": "string"},
-    "savings_rate": {"score": number, "weight": number, "status": "string"},
-    "diversification": {"score": number, "weight": number, "status": "string"}
-  },
-  "summary": "Brief explanation",
-  "improvements": ["improvement suggestions"]
-}
-
-Use Filipino financial standards and context.`;
-
-            const response = await this.callGeminiAPI(prompt);
-            
-            try {
-                return JSON.parse(response);
-            } catch {
-                return this.generateFallbackHealthScore();
-            }
-            
-        } catch (error) {
-            console.error("Error generating health score:", error);
-            return this.generateFallbackHealthScore();
-        }
-    }
-
-    // Generate market insights
-    async generateMarketInsights() {
-        try {
-            const prompt = `Provide current financial market insights relevant to Filipino investors and savers. Include 3-4 brief insights about:
-
-1. Philippine peso trends
-2. Local interest rates
-3. Investment opportunities
-4. Economic outlook
-
-Format as JSON array:
-[
-  {
-    "title": "Insight title",
-    "value": "Key metric or trend",
-    "description": "Brief explanation",
-    "impact": "How this affects the user"
-  }
-]
-
-Keep current with 2024 Philippine economic context.`;
-
-            const response = await this.callGeminiAPI(prompt);
-            
-            try {
-                return JSON.parse(response);
-            } catch {
-                return this.generateFallbackMarketInsights();
-            }
-            
-        } catch (error) {
-            console.error("Error generating market insights:", error);
-            return this.generateFallbackMarketInsights();
-        }
-    }
-
-    // Generate risk assessment
-    async generateRiskAssessment() {
-        try {
-            const financialData = this.prepareFinancialData();
-            
-            const prompt = `Assess financial risks for this Filipino user based on their data. Identify 3-5 specific risks.
-
-Financial Data:
-${JSON.stringify(financialData, null, 2)}
-
-Format as JSON array:
-[
-  {
-    "risk": "Risk description",
-    "severity": "high|medium|low",
-    "probability": "high|medium|low",
-    "impact": "Impact description",
-    "mitigation": "How to address this risk"
-  }
-]
-
-Consider Filipino-specific risks: OFW dependency, peso volatility, natural disasters, healthcare costs.`;
-
-            const response = await this.callGeminiAPI(prompt);
-            
-            try {
-                return JSON.parse(response);
-            } catch {
-                return this.generateFallbackRiskAssessment();
-            }
-            
-        } catch (error) {
-            console.error("Error generating risk assessment:", error);
-            return this.generateFallbackRiskAssessment();
-        }
-    }
-
-    // Prepare financial data for AI analysis
-    prepareFinancialData() {
-        // Ensure we have arrays initialized
-        if (!this.userTransactions) this.userTransactions = [];
-        if (!this.userAccounts) this.userAccounts = [];
-        
-        const overview = this.getFinancialOverview();
-        
-        return {
-            summary: {
-                totalBalance: overview.totalBalance || 0,
-                monthlyIncome: overview.monthlyIncome || 0,
-                monthlyExpenses: overview.monthlyExpenses || 0,
-                savingsRate: overview.savingsRate || 0,
-                transactionCount: this.userTransactions.length,
-                accountCount: this.userAccounts.length
-            },
-            accounts: this.userAccounts.map(acc => ({
-                type: acc.category || 'unknown',
-                balance: acc.balance || 0,
-                provider: acc.provider || 'unknown'
-            })),
-            recentTransactions: this.userTransactions
-                .slice(-20)
+            // Prepare transactions for AI analysis
+            const recentTransactions = this.userTransactions
+                .slice(-50) // Last 50 transactions for efficiency
+                .filter(tx => tx.type === 'expense')
                 .map(tx => ({
-                    type: tx.type || 'unknown',
+                    id: tx.id,
+                    description: tx.description || tx.notes || 'Unknown',
                     amount: tx.amount || 0,
-                    category: tx.category || 'unknown',
-                    date: tx.date || new Date().toISOString()
-                })),
-            spendingByCategory: this.getSpendingByCategory() || {},
-            trends: this.getSpendingTrends() || {}
+                    date: tx.date,
+                    currentCategory: tx.category || 'Uncategorized'
+                }));
+
+            if (recentTransactions.length === 0) {
+                this.updateCategorizationUI([]);
+                return;
+            }
+
+            const categorizedData = await this.aiCategorizeTransactions(recentTransactions);
+            
+            // Store categorized transactions
+            categorizedData.forEach(item => {
+                this.categorizedTransactions.set(item.id, item);
+            });
+
+            // Update UI
+            this.updateCategorizationUI(categorizedData);
+            
+            console.log("✅ Transaction categorization completed");
+
+        } catch (error) {
+            console.error("❌ Transaction categorization failed:", error);
+            this.updateCategorizationUI([]);
+        }
+    }
+
+    // AI-powered transaction categorization
+    async aiCategorizeTransactions(transactions) {
+        try {
+            const prompt = `As a Filipino financial advisor AI, categorize these transactions into appropriate categories. Consider Filipino spending patterns and common Filipino terms.
+
+Transactions to categorize:
+${JSON.stringify(transactions, null, 2)}
+
+Available categories: Food, Transport, Utilities, Rent, Entertainment, Health, Education, Shopping, Remittance, Others
+
+For each transaction, provide:
+1. Most appropriate category
+2. Confidence level (0-100)
+3. Reasoning based on description
+4. Suggested Filipino subcategory if applicable
+
+Return as JSON array:
+[
+  {
+    "id": "transaction_id",
+    "originalDescription": "description",
+    "suggestedCategory": "category",
+    "confidence": 85,
+    "reasoning": "explanation",
+    "subcategory": "filipino_term",
+    "amount": amount
+  }
+]
+
+Focus on Filipino context (jeepney = transport, palengke = food, etc.)`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                const categorized = JSON.parse(response);
+                return Array.isArray(categorized) ? categorized : [];
+            } catch (parseError) {
+                console.warn("Failed to parse AI categorization response, using fallback");
+                return this.fallbackCategorization(transactions);
+            }
+
+        } catch (error) {
+            console.error("AI categorization failed:", error);
+            return this.fallbackCategorization(transactions);
+        }
+    }
+
+    // Fallback categorization using keyword matching
+    fallbackCategorization(transactions) {
+        return transactions.map(tx => {
+            const description = (tx.description || '').toLowerCase();
+            let suggestedCategory = 'Others';
+            let confidence = 60;
+            let subcategory = '';
+
+            // Simple keyword matching
+            for (const [category, keywords] of Object.entries(this.filipinoCategories)) {
+                if (keywords.some(keyword => description.includes(keyword.toLowerCase()))) {
+                    suggestedCategory = category.charAt(0).toUpperCase() + category.slice(1);
+                    confidence = 75;
+                    subcategory = keywords.find(k => description.includes(k.toLowerCase())) || '';
+                    break;
+                }
+            }
+
+            return {
+                id: tx.id,
+                originalDescription: tx.description,
+                suggestedCategory,
+                confidence,
+                reasoning: `Keyword-based matching: "${subcategory}"`,
+                subcategory,
+                amount: tx.amount
+            };
+        });
+    }
+
+    // 2. Overspending Pattern Detection
+    async detectOverspendingPatterns() {
+        try {
+            console.log("🔍 Detecting overspending patterns...");
+            
+            if (!this.userTransactions || this.userTransactions.length === 0) {
+                this.updateOverspendingUI([]);
+                return;
+            }
+
+            const patterns = await this.aiDetectSpendingPatterns();
+            this.spendingPatterns = new Map(patterns.map(p => [p.category, p]));
+            this.updateOverspendingUI(patterns);
+            
+            console.log("✅ Overspending detection completed");
+
+        } catch (error) {
+            console.error("❌ Overspending detection failed:", error);
+            this.updateOverspendingUI([]);
+        }
+    }
+
+    // AI-powered spending pattern detection
+    async aiDetectSpendingPatterns() {
+        try {
+            const monthlyData = this.calculateMonthlySpending();
+            
+            const prompt = `As a Filipino financial advisor AI, analyze these spending patterns and detect overspending or concerning trends.
+
+Monthly spending data:
+${JSON.stringify(monthlyData, null, 2)}
+
+Identify:
+1. Categories with increasing spending trends
+2. Unusual spending spikes
+3. Overspending compared to typical Filipino household budgets
+4. Concerning patterns (like increased utang/debt)
+
+Return as JSON array:
+[
+  {
+    "category": "category_name",
+    "pattern": "increasing|spike|concerning",
+    "severity": "low|medium|high",
+    "description": "Clear explanation in Filipino context",
+    "recommendation": "Specific actionable advice",
+    "currentMonthly": amount,
+    "previousMonthly": amount,
+    "percentageChange": percentage
+  }
+]
+
+Consider Filipino financial habits and cultural context.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                const patterns = JSON.parse(response);
+                return Array.isArray(patterns) ? patterns : [];
+            } catch (parseError) {
+                return this.fallbackPatternDetection(monthlyData);
+            }
+
+        } catch (error) {
+            console.error("AI pattern detection failed:", error);
+            return this.fallbackPatternDetection(this.calculateMonthlySpending());
+        }
+    }
+
+    // Calculate monthly spending by category
+    calculateMonthlySpending() {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const previousMonth = currentMonth - 1;
+        
+        const categorizeSpending = (month) => {
+            const spending = {};
+            
+            this.userTransactions
+                .filter(tx => {
+                    const txDate = new Date(tx.date);
+                    return tx.type === 'expense' && txDate.getMonth() === month;
+                })
+                .forEach(tx => {
+                    const category = tx.category || 'Others';
+                    spending[category] = (spending[category] || 0) + parseFloat(tx.amount || 0);
+                });
+                
+            return spending;
+        };
+
+        return {
+            current: categorizeSpending(currentMonth),
+            previous: categorizeSpending(previousMonth)
         };
     }
 
-    // Fallback method for getFinancialOverview if BaseAgent doesn't provide it
-    getFinancialOverview() {
-        if (super.getFinancialOverview) {
-            return super.getFinancialOverview();
-        }
+    // Fallback pattern detection
+    fallbackPatternDetection(monthlyData) {
+        const patterns = [];
         
-        // Fallback implementation
+        Object.keys(monthlyData.current).forEach(category => {
+            const current = monthlyData.current[category];
+            const previous = monthlyData.previous[category] || 0;
+            
+            if (previous > 0) {
+                const change = ((current - previous) / previous) * 100;
+                
+                if (change > 50) {
+                    patterns.push({
+                        category,
+                        pattern: 'spike',
+                        severity: change > 100 ? 'high' : 'medium',
+                        description: `${category} spending increased by ${change.toFixed(1)}%`,
+                        recommendation: `Consider reviewing your ${category} expenses`,
+                        currentMonthly: current,
+                        previousMonthly: previous,
+                        percentageChange: change
+                    });
+                }
+            }
+        });
+
+        return patterns;
+    }
+
+    // 3. Smart Budget Recommendations
+    async generateBudgetRecommendations() {
+        try {
+            console.log("💡 Generating smart budget recommendations...");
+            
+            const budgetData = await this.aiGenerateBudgetRecommendations();
+            this.budgetRecommendations = budgetData;
+            this.updateBudgetUI(budgetData);
+            
+            console.log("✅ Budget recommendations generated");
+
+        } catch (error) {
+            console.error("❌ Budget generation failed:", error);
+            this.updateBudgetUI([]);
+        }
+    }
+
+    // AI-powered budget recommendations
+    async aiGenerateBudgetRecommendations() {
+        try {
+            const financialSummary = this.getFinancialSummary();
+            
+            const prompt = `As a Filipino financial advisor AI, create a personalized budget recommendation based on this financial data.
+
+Financial Summary:
+${JSON.stringify(financialSummary, null, 2)}
+
+Create budget recommendations considering:
+1. Filipino 50/30/20 rule adaptation (50% needs, 30% wants, 20% savings)
+2. Family obligations and remittances
+3. Current spending patterns
+4. Emergency fund priority
+
+Return as JSON object:
+{
+  "monthlyIncome": estimated_income,
+  "recommendedBudget": {
+    "needs": {"amount": number, "percentage": number, "categories": ["Food", "Utilities", "Rent"]},
+    "wants": {"amount": number, "percentage": number, "categories": ["Entertainment", "Shopping"]},
+    "savings": {"amount": number, "percentage": number, "purpose": "Emergency fund and goals"}
+  },
+  "categoryBudgets": {
+    "Food": {"recommended": amount, "current": amount, "status": "over|under|good"},
+    "Transport": {"recommended": amount, "current": amount, "status": "over|under|good"}
+  },
+  "recommendations": [
+    {
+      "priority": "high|medium|low",
+      "action": "specific_action",
+      "reason": "explanation",
+      "expectedSavings": amount
+    }
+  ],
+  "emergencyFundGoal": amount,
+  "timeToGoal": "months"
+}`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                return JSON.parse(response);
+            } catch (parseError) {
+                return this.fallbackBudgetRecommendations(financialSummary);
+            }
+
+        } catch (error) {
+            console.error("AI budget generation failed:", error);
+            return this.fallbackBudgetRecommendations(this.getFinancialSummary());
+        }
+    }
+
+    // Get financial summary
+    getFinancialSummary() {
         const totalBalance = this.userAccounts ? 
             this.userAccounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0) : 0;
-        
-        const monthlyIncome = this.userTransactions ?
-            this.userTransactions
-                .filter(tx => tx.type === 'income' && this.isWithinLastMonth(tx.date))
-                .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) : 0;
         
         const monthlyExpenses = this.userTransactions ?
             this.userTransactions
                 .filter(tx => tx.type === 'expense' && this.isWithinLastMonth(tx.date))
                 .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) : 0;
-        
-        const savingsRate = monthlyIncome > 0 ? 
-            ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
-        
+
+        const monthlyIncome = this.userTransactions ?
+            this.userTransactions
+                .filter(tx => tx.type === 'income' && this.isWithinLastMonth(tx.date))
+                .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) : 0;
+
+        const categorySpending = {};
+        this.userTransactions
+            .filter(tx => tx.type === 'expense' && this.isWithinLastMonth(tx.date))
+            .forEach(tx => {
+                const category = tx.category || 'Others';
+                categorySpending[category] = (categorySpending[category] || 0) + parseFloat(tx.amount || 0);
+            });
+
         return {
             totalBalance,
             monthlyIncome,
             monthlyExpenses,
-            savingsRate,
-            netMonthlyCashFlow: monthlyIncome - monthlyExpenses
+            categorySpending,
+            savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0
         };
     }
 
@@ -604,766 +537,645 @@ Consider Filipino-specific risks: OFW dependency, peso volatility, natural disas
         return date >= lastMonth;
     }
 
-    // Fallback method for getSpendingByCategory
-    getSpendingByCategory() {
-        if (super.getSpendingByCategory) {
-            return super.getSpendingByCategory();
-        }
-        
-        if (!this.userTransactions) return {};
-        
-        return this.userTransactions
-            .filter(tx => tx.type === 'expense')
-            .reduce((acc, tx) => {
-                const category = tx.category || 'Other';
-                acc[category] = (acc[category] || 0) + parseFloat(tx.amount || 0);
-                return acc;
-            }, {});
-    }
+    // Fallback budget recommendations
+    fallbackBudgetRecommendations(summary) {
+        const { monthlyIncome, categorySpending } = summary;
+        const estimatedIncome = monthlyIncome || Object.values(categorySpending).reduce((sum, amount) => sum + amount, 0) * 1.2;
 
-    // Fallback method for getSpendingTrends
-    getSpendingTrends() {
-        if (super.getSpendingTrends) {
-            return super.getSpendingTrends();
-        }
-        
-        if (!this.userTransactions) return {};
-        
-        // Simple trend calculation
-        const thisMonth = this.userTransactions
-            .filter(tx => tx.type === 'expense' && this.isWithinLastMonth(tx.date))
-            .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-        
         return {
-            currentMonth: thisMonth,
-            trend: 'stable' // Simplified for fallback
+            monthlyIncome: estimatedIncome,
+            recommendedBudget: {
+                needs: { amount: estimatedIncome * 0.5, percentage: 50, categories: ["Food", "Utilities", "Rent"] },
+                wants: { amount: estimatedIncome * 0.3, percentage: 30, categories: ["Entertainment", "Shopping"] },
+                savings: { amount: estimatedIncome * 0.2, percentage: 20, purpose: "Emergency fund and goals" }
+            },
+            categoryBudgets: {},
+            recommendations: [
+                {
+                    priority: "high",
+                    action: "Create an emergency fund",
+                    reason: "Financial security is crucial",
+                    expectedSavings: estimatedIncome * 0.1
+                }
+            ],
+            emergencyFundGoal: estimatedIncome * 3,
+            timeToGoal: "6-12 months"
         };
     }
 
-    // Enhanced Gemini AI API with fallback
-    async callGeminiAPI(prompt, options = {}) {
-        const startTime = Date.now();
-        
+    // 4. Smart Alerts Setup
+    async setupSmartAlerts() {
         try {
-            const requestBody = {
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 2048,
-                    ...options
-                }
-            };
+            console.log("⚡ Setting up smart alerts...");
+            
+            const alerts = await this.generateSmartAlerts();
+            this.activeAlerts = alerts;
+            this.updateAlertsUI(alerts);
+            
+            // Set up real-time monitoring
+            this.startAlertMonitoring();
+            
+            console.log("✅ Smart alerts configured");
 
-            let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
+        } catch (error) {
+            console.error("❌ Smart alerts setup failed:", error);
+            this.updateAlertsUI([]);
+        }
+    }
 
-            // Fallback to flash model if pro fails
-            if (!response.ok && this.geminiModel === 'gemini-1.5-pro') {
-                console.warn('Pro model failed, falling back to Flash model');
-                response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.fallbackModel}:generateContent?key=${this.geminiApiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
+    // Generate smart alerts based on spending patterns
+    async generateSmartAlerts() {
+        const alerts = [];
+        
+        // Check for overspending
+        const monthlyData = this.calculateMonthlySpending();
+        Object.entries(monthlyData.current).forEach(([category, amount]) => {
+            const budget = this.userBudgets.get(category) || amount * 0.8; // 80% of current as default budget
+            
+            if (amount > budget) {
+                alerts.push({
+                    type: 'overspending',
+                    category,
+                    severity: amount > budget * 1.5 ? 'high' : 'medium',
+                    message: `You're overspending on ${category}. Current: ₱${amount.toLocaleString()}, Budget: ₱${budget.toLocaleString()}`,
+                    suggestion: `Consider reducing ${category} expenses by ₱${(amount - budget).toLocaleString()}`,
+                    timestamp: new Date()
                 });
             }
+        });
+
+        // Check for unusual patterns
+        this.spendingPatterns.forEach(pattern => {
+            if (pattern.severity === 'high') {
+                alerts.push({
+                    type: 'pattern',
+                    category: pattern.category,
+                    severity: 'high',
+                    message: pattern.description,
+                    suggestion: pattern.recommendation,
+                    timestamp: new Date()
+                });
+            }
+        });
+
+        return alerts;
+    }
+
+    // Start real-time autonomous monitoring
+    startAlertMonitoring() {
+        // Enhanced autonomous monitoring with intervention generation
+        setInterval(async () => {
+            await this.checkForNewAlerts();
+            await this.generateProactiveInterventions();
+        }, 300000); // Check every 5 minutes
+        
+        // More frequent pattern analysis for immediate interventions
+        setInterval(async () => {
+            await this.runContinuousAnalysis();
+        }, 60000); // Every minute for critical patterns
+        
+        console.log("🔄 Autonomous monitoring system activated");
+    }
+
+    // Check for new alerts
+    async checkForNewAlerts() {
+        const newAlerts = await this.generateSmartAlerts();
+        
+        // Find new alerts
+        const existingAlertKeys = new Set(this.activeAlerts.map(a => `${a.type}_${a.category}`));
+        const newAlertsList = newAlerts.filter(alert => 
+            !existingAlertKeys.has(`${alert.type}_${alert.category}`)
+        );
+
+        if (newAlertsList.length > 0) {
+            this.activeAlerts = [...this.activeAlerts, ...newAlertsList];
+            this.updateAlertsUI(this.activeAlerts);
+            
+            // Show notification for new alerts
+            newAlertsList.forEach(alert => {
+                this.showNotification(alert);
+            });
+        }
+    }
+
+    // Continuous autonomous analysis for immediate interventions
+    async runContinuousAnalysis() {
+        try {
+            // Check for critical spending patterns that need immediate intervention
+            const recentTransactions = this.userTransactions
+                .filter(tx => {
+                    const txDate = new Date(tx.date);
+                    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                    return txDate > oneHourAgo && tx.type === 'expense';
+                });
+
+            if (recentTransactions.length > 0) {
+                // Analyze recent spending for immediate intervention needs
+                const urgentPatterns = await this.detectUrgentSpendingPatterns(recentTransactions);
+                
+                for (const pattern of urgentPatterns) {
+                    if (pattern.severity === 'critical') {
+                        await this.executeImmediateIntervention(pattern);
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error("❌ Continuous analysis failed:", error);
+        }
+    }
+
+    // Detect urgent spending patterns requiring immediate intervention
+    async detectUrgentSpendingPatterns(recentTransactions) {
+        const patterns = [];
+        
+        // Check for rapid consecutive spending
+        if (recentTransactions.length >= 3) {
+            const totalAmount = recentTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+            
+            if (totalAmount > 5000) { // Threshold for rapid spending alert
+                patterns.push({
+                    type: 'rapid_spending',
+                    severity: 'critical',
+                    description: `Rapid spending detected: ₱${totalAmount.toLocaleString()} in the last hour`,
+                    transactions: recentTransactions.length,
+                    amount: totalAmount,
+                    intervention: 'immediate_spending_freeze_recommendation'
+                });
+            }
+        }
+
+        return patterns;
+    }
+
+    // Execute immediate intervention for critical patterns
+    async executeImmediateIntervention(pattern) {
+        const intervention = {
+            type: 'critical_intervention',
+            pattern: pattern.type,
+            severity: 'critical',
+            action: `URGENT: ${pattern.description}. Consider pausing non-essential spending.`,
+            reasoning: `Detected ${pattern.intervention} based on ${pattern.transactions} transactions totaling ₱${pattern.amount.toLocaleString()}`,
+            impact: `Potential savings of ₱${(pattern.amount * 0.3).toLocaleString()} if spending is controlled`,
+            timestamp: new Date()
+        };
+
+        // Trigger immediate alert
+        this.triggerFinancialAlert(intervention);
+        
+        // Log the critical decision
+        this.logAutonomousDecision(intervention);
+        
+        console.log(`🚨 CRITICAL INTERVENTION EXECUTED: ${pattern.type}`);
+    }
+
+    // Enhanced Gemini AI API
+    async callGeminiAPI(prompt, options = {}) {
+        if (!this.geminiApiKey || this.geminiApiKey === 'null') {
+            console.warn('No Gemini API key configured, using fallback responses');
+            throw new Error('No API key');
+        }
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 2048,
+                        ...options
+                    }
+                })
+            });
 
             if (!response.ok) {
                 throw new Error(`Gemini API error: ${response.status}`);
             }
 
             const data = await response.json();
-            const result = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            
-            // Track performance
-            const responseTime = Date.now() - startTime;
-            this.trackPerformance('responseTime', responseTime);
-            
-            return result;
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             
         } catch (error) {
             console.error('Gemini API call failed:', error);
-            this.trackPerformance('responseTime', Date.now() - startTime);
             throw error;
         }
     }
 
-    // Performance tracking
-    trackPerformance(metric, value) {
-        if (this.performanceMetrics[metric]) {
-            this.performanceMetrics[metric].push({
-                value,
-                timestamp: Date.now()
-            });
-            
-            // Keep only last 100 measurements
-            if (this.performanceMetrics[metric].length > 100) {
-                this.performanceMetrics[metric].shift();
-            }
-        }
-    }
-
-    // Autonomous analysis methods
-    async performAutonomousAnalysis() {
-        if (!this.userTransactions || this.userTransactions.length === 0) {
-            console.log("⚠️ No transaction data for autonomous analysis");
-            return;
-        }
-
-        try {
-            // Analyze spending patterns
-            const spendingAnalysis = await this.analyzeSpendingPatterns();
-            
-            // Check for anomalies
-            const anomalies = await this.detectSpendingAnomalies();
-            
-            // Update user model
-            await this.updateUserModel(spendingAnalysis);
-            
-            // Generate insights
-            if (anomalies.length > 0) {
-                await this.handleSpendingAnomalies(anomalies);
-            }
-            
-            console.log("✅ Autonomous analysis completed");
-            
-        } catch (error) {
-            console.error("❌ Autonomous analysis failed:", error);
-        }
-    }
-
-    async analyzeSpendingPatterns() {
-        const recentTransactions = this.userTransactions
-            .filter(tx => this.isWithinLastMonth(tx.date))
-            .filter(tx => tx.type === 'expense');
-
-        const patterns = {
-            averageDaily: 0,
-            topCategories: {},
-            weekdayVsWeekend: { weekday: 0, weekend: 0 },
-            trend: 'stable'
-        };
-
-        if (recentTransactions.length === 0) return patterns;
-
-        // Calculate average daily spending
-        const totalSpent = recentTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-        patterns.averageDaily = totalSpent / 30;
-
-        // Top spending categories
-        recentTransactions.forEach(tx => {
-            const category = tx.category || 'Other';
-            patterns.topCategories[category] = (patterns.topCategories[category] || 0) + parseFloat(tx.amount || 0);
-        });
-
-        return patterns;
-    }
-
-    async detectSpendingAnomalies() {
-        const anomalies = [];
-        const patterns = await this.analyzeSpendingPatterns();
-        
-        // Check for unusual spending spikes
-        if (patterns.averageDaily > 2000) { // Configurable threshold
-            anomalies.push({
-                type: 'high_daily_spending',
-                severity: 'medium',
-                value: patterns.averageDaily,
-                message: 'Your daily spending has increased significantly'
-            });
-        }
-
-        // Check for category concentration
-        const totalSpent = Object.values(patterns.topCategories).reduce((sum, amount) => sum + amount, 0);
-        Object.entries(patterns.topCategories).forEach(([category, amount]) => {
-            const percentage = (amount / totalSpent) * 100;
-            if (percentage > 50) {
-                anomalies.push({
-                    type: 'category_concentration',
-                    severity: 'low',
-                    category,
-                    percentage,
-                    message: `${percentage.toFixed(1)}% of spending is in ${category}`
-                });
-            }
-        });
-
-        return anomalies;
-    }
-
-    async detectFinancialOpportunities() {
-        try {
-            const opportunities = [];
-            const overview = this.getFinancialOverview();
-
-            // Emergency fund opportunity
-            if (overview.totalBalance < overview.monthlyExpenses * 3) {
-                opportunities.push({
-                    type: 'emergency_fund',
-                    priority: 'high',
-                    description: 'Build emergency fund to cover 3-6 months of expenses',
-                    potentialSavings: overview.monthlyExpenses * 3 - overview.totalBalance
-                });
-            }
-
-            // Savings rate improvement
-            if (overview.savingsRate < 20) {
-                opportunities.push({
-                    type: 'savings_rate',
-                    priority: 'medium',
-                    description: 'Increase savings rate to at least 20%',
-                    currentRate: overview.savingsRate,
-                    targetRate: 20
-                });
-            }
-
-            if (opportunities.length > 0) {
-                console.log("💡 Detected financial opportunities:", opportunities);
-                this.showOpportunityNotifications(opportunities);
-            }
-
-        } catch (error) {
-            console.error("❌ Opportunity detection failed:", error);
-        }
-    }
-
-    async assessRiskFactors() {
-        try {
-            const risks = [];
-            const overview = this.getFinancialOverview();
-
-            // Income concentration risk
-            if (this.userAccounts && this.userAccounts.length < 2) {
-                risks.push({
-                    type: 'income_concentration',
-                    severity: 'medium',
-                    description: 'Single source of income increases financial risk'
-                });
-            }
-
-            // High debt-to-income ratio
-            if (overview.savingsRate < 0) {
-                risks.push({
-                    type: 'negative_savings',
-                    severity: 'high',
-                    description: 'Expenses exceed income - immediate action needed'
-                });
-            }
-
-            // Emergency fund risk
-            if (overview.totalBalance < overview.monthlyExpenses) {
-                risks.push({
-                    type: 'insufficient_emergency_fund',
-                    severity: 'high',
-                    description: 'Less than 1 month of expenses in savings'
-                });
-            }
-
-            if (risks.length > 0) {
-                console.log("⚠️ Risk factors detected:", risks);
-                this.showRiskAlerts(risks);
-            }
-
-        } catch (error) {
-            console.error("❌ Risk assessment failed:", error);
-        }
-    }
-
+    // Enhanced autonomous intervention system
     async generateProactiveInterventions() {
-        if (this.interventionQueue.length > 10) {
-            console.log("⚠️ Too many pending interventions, skipping new ones");
+        try {
+            const insights = await this.analyzeFinancialBehavior();
+            const interventions = await this.planFinancialActions(insights);
+            
+            // Execute autonomous interventions
+            for (const intervention of interventions) {
+                await this.executeAutonomousAction(intervention);
+            }
+            
+            console.log(`🎯 Generated ${interventions.length} autonomous interventions`);
+            
+        } catch (error) {
+            console.error("❌ Autonomous intervention generation failed:", error);
+        }
+    }
+
+    // Analyze financial behavior patterns for autonomous decision making
+    async analyzeFinancialBehavior() {
+        const financialData = this.getFinancialSummary();
+        const patterns = Array.from(this.spendingPatterns.values());
+        
+        const prompt = `As an autonomous Filipino financial AI agent, analyze this financial behavior and identify actionable insights:
+
+Financial Data: ${JSON.stringify(financialData, null, 2)}
+Spending Patterns: ${JSON.stringify(patterns, null, 2)}
+
+Provide autonomous action recommendations in JSON format:
+{
+  "criticalActions": [
+    {
+      "priority": "high|medium|low",
+      "action": "specific_autonomous_action",
+      "reasoning": "data_driven_explanation",
+      "expectedImpact": "quantified_benefit",
+      "triggerConditions": "when_to_execute"
+    }
+  ],
+  "opportunities": [
+    {
+      "category": "savings|investment|optimization",
+      "description": "opportunity_description",
+      "potentialValue": "estimated_value",
+      "confidence": "0-100"
+    }
+  ]
+}
+
+Focus on autonomous actions the agent can take without user input.`;
+
+        try {
+            const response = await this.callGeminiAPI(prompt);
+            return JSON.parse(response);
+        } catch (error) {
+            console.error("Behavior analysis failed:", error);
+            return { criticalActions: [], opportunities: [] };
+        }
+    }
+
+    // Plan autonomous financial actions based on insights
+    async planFinancialActions(insights) {
+        const actions = [];
+        
+        // Convert insights to executable actions
+        insights.criticalActions?.forEach(action => {
+            if (action.priority === 'high') {
+                actions.push({
+                    type: 'immediate_intervention',
+                    action: action.action,
+                    reasoning: action.reasoning,
+                    impact: action.expectedImpact,
+                    timestamp: new Date()
+                });
+            }
+        });
+
+        insights.opportunities?.forEach(opportunity => {
+            if (opportunity.confidence > 70) {
+                actions.push({
+                    type: 'optimization_opportunity',
+                    description: opportunity.description,
+                    value: opportunity.potentialValue,
+                    category: opportunity.category,
+                    timestamp: new Date()
+                });
+            }
+        });
+
+        return actions;
+    }
+
+    // Execute autonomous actions
+    async executeAutonomousAction(action) {
+        switch (action.type) {
+            case 'immediate_intervention':
+                this.triggerFinancialAlert(action);
+                this.logAutonomousDecision(action);
+                break;
+            case 'optimization_opportunity':
+                this.presentOptimizationSuggestion(action);
+                this.updateUserBudgets(action);
+                break;
+            default:
+                console.log(`🤖 Autonomous action executed: ${action.type}`);
+        }
+    }
+
+    // UI Update Methods
+    updateCategorizationUI(categorizedData) {
+        if (!this.elements.categorizationContent) return;
+
+        if (categorizedData.length === 0) {
+            this.elements.categorizationContent.innerHTML = `
+                <div class="empty-message">
+                    <p>No recent transactions to categorize. Add some expenses to see smart categorization in action!</p>
+                </div>
+            `;
             return;
         }
 
-        try {
-            const overview = this.getFinancialOverview();
-            const culturalContext = this.buildCulturalContext();
-            
-            // Generate culturally-aware recommendations
-            const prompt = `As a Filipino financial advisor AI, analyze this situation and suggest ONE specific action:
-
-Financial Overview:
-- Monthly Income: ₱${overview.monthlyIncome?.toLocaleString() || 'Unknown'}
-- Monthly Expenses: ₱${overview.monthlyExpenses?.toLocaleString() || 'Unknown'}
-- Savings Rate: ${overview.savingsRate?.toFixed(1) || 0}%
-- Total Balance: ₱${overview.totalBalance?.toLocaleString() || 'Unknown'}
-
-Cultural Context:
-- Family obligations: ${culturalContext.familySupport ? 'High' : 'Low'}
-- Risk tolerance: ${culturalContext.riskTolerance || 'Medium'}
-
-Provide ONE specific, actionable recommendation in Filipino context. Keep it under 100 words.`;
-
-            const intervention = await this.callGeminiAPI(prompt);
-            
-            if (intervention) {
-                this.interventionQueue.push({
-                    id: Date.now(),
-                    type: 'proactive_recommendation',
-                    content: intervention,
-                    timestamp: new Date(),
-                    priority: 'medium'
-                });
-
-                this.showProactiveRecommendation(intervention);
+        const categoryStats = {};
+        categorizedData.forEach(item => {
+            const cat = item.suggestedCategory;
+            if (!categoryStats[cat]) {
+                categoryStats[cat] = { count: 0, total: 0 };
             }
-
-        } catch (error) {
-            console.error("❌ Intervention generation failed:", error);
-        }
-    }
-
-    buildCulturalContext() {
-        return {
-            familySupport: this.culturalProfile?.familyStructure === 'extended',
-            riskTolerance: this.culturalProfile?.riskTolerance || 'medium',
-            region: this.culturalProfile?.region || 'metro_manila',
-            primaryLanguage: this.culturalProfile?.primaryLanguage || 'filipino'
-        };
-    }
-
-    async updateUserModel(analysisData) {
-        // Update behavioral patterns
-        this.userModel.set('lastAnalysis', analysisData);
-        this.userModel.set('lastUpdate', new Date());
-        
-        // Track learning metrics
-        this.learningMetrics.interactionCount++;
-        
-        // Store patterns for future use
-        if (analysisData) {
-            this.behaviorPatterns.set('spending', analysisData);
-        }
-    }
-
-    // Handle chat messages
-    async sendChatMessage() {
-        const input = this.elements.chatInput;
-        const message = input.value.trim();
-        
-        if (!message) return;
-        
-        // Clear input
-        input.value = '';
-        
-        // Add user message
-        this.addChatMessage('user', message);
-        
-        // Show typing indicator
-        this.addChatMessage('ai', 'Thinking...', true);
-        
-        try {
-            const financialData = this.prepareFinancialData();
-            const conversationContext = this.conversationHistory.slice(-10);
-            
-            const prompt = `You are a helpful Filipino financial advisor AI. The user asked: "${message}"
-
-User's financial context:
-${JSON.stringify(financialData, null, 2)}
-
-Recent conversation:
-${conversationContext.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
-
-Provide a helpful, personalized response. Use Filipino expressions naturally when appropriate. Be encouraging and specific. Keep under 200 words.`;
-
-            const response = await this.callGeminiAPI(prompt);
-            
-            // Remove typing indicator
-            this.removeChatMessage();
-            
-            // Add AI response
-            this.addChatMessage('ai', response);
-            
-            // Store in conversation history
-            this.conversationHistory.push(
-                { role: 'user', content: message },
-                { role: 'assistant', content: response }
-            );
-            
-        } catch (error) {
-            console.error('Chat error:', error);
-            this.removeChatMessage();
-            this.addChatMessage('ai', 'Sorry, I encountered an error. Please try asking again.');
-        }
-    }
-
-    // Add chat message to UI
-    addChatMessage(sender, content, isTemporary = false) {
-        const messagesContainer = this.elements.chatMessages;
-        if (!messagesContainer) return;
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}`;
-        if (isTemporary) messageDiv.classList.add('temporary');
-        
-        const bubble = document.createElement('div');
-        bubble.className = 'message-bubble';
-        bubble.textContent = content;
-        
-        const time = document.createElement('div');
-        time.className = 'message-time';
-        time.textContent = new Date().toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+            categoryStats[cat].count++;
+            categoryStats[cat].total += parseFloat(item.amount || 0);
         });
-        
-        messageDiv.appendChild(bubble);
-        messageDiv.appendChild(time);
-        messagesContainer.appendChild(messageDiv);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        this.elements.categorizationContent.innerHTML = `
+            <div class="categorization-summary">
+                <h4>Smart Categorization Results</h4>
+                <p>Analyzed ${categorizedData.length} recent transactions</p>
+                
+                <div class="category-breakdown">
+                    ${Object.entries(categoryStats).map(([category, stats]) => `
+                        <div class="category-item">
+                            <div class="category-info">
+                                <span class="category-name">${category}</span>
+                                <span class="category-count">${stats.count} transactions</span>
+                            </div>
+                            <span class="category-amount">₱${stats.total.toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="recent-categorizations">
+                    <h5>Recent Auto-Categorizations:</h5>
+                    ${categorizedData.slice(0, 5).map(item => `
+                        <div class="categorization-item">
+                            <div class="item-description">${item.originalDescription}</div>
+                            <div class="item-category">
+                                <span class="suggested-category">${item.suggestedCategory}</span>
+                                <span class="confidence">${item.confidence}% confident</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
     }
 
-    // Remove last message (for typing indicator)
-    removeChatMessage() {
-        const messagesContainer = this.elements.chatMessages;
-        if (!messagesContainer) return;
-        
-        const lastMessage = messagesContainer.querySelector('.message.temporary');
-        if (lastMessage) {
-            lastMessage.remove();
-        }
-    }
+    updateOverspendingUI(patterns) {
+        if (!this.elements.overspendingContent) return;
 
-    // Update UI methods
-    updateFinancialAnalysis(analysis) {
-        if (this.elements.aiAnalysisContent) {
-            this.elements.aiAnalysisContent.innerHTML = `
-                <div class="coach-message">
-                    <div class="coach-avatar">🤖</div>
-                    <div class="coach-text">${analysis}</div>
+        if (patterns.length === 0) {
+            this.elements.overspendingContent.innerHTML = `
+                <div class="good-news">
+                    <i class="fas fa-check-circle"></i>
+                    <p>Great job! No concerning spending patterns detected.</p>
                 </div>
             `;
+            return;
         }
+
+        this.elements.overspendingContent.innerHTML = `
+            <div class="patterns-detected">
+                <h4>Spending Patterns Detected</h4>
+                ${patterns.map(pattern => `
+                    <div class="pattern-item severity-${pattern.severity}">
+                        <div class="pattern-header">
+                            <h5>${pattern.category}</h5>
+                            <span class="severity-badge ${pattern.severity}">${pattern.severity.toUpperCase()}</span>
+                        </div>
+                        <p class="pattern-description">${pattern.description}</p>
+                        <p class="pattern-recommendation">💡 ${pattern.recommendation}</p>
+                        ${pattern.percentageChange ? `
+                            <div class="pattern-stats">
+                                <span>Change: ${pattern.percentageChange > 0 ? '+' : ''}${pattern.percentageChange.toFixed(1)}%</span>
+                                <span>Current: ₱${pattern.currentMonthly?.toLocaleString()}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 
-    updateRecommendations(recommendations) {
-        if (this.elements.aiRecommendationsContent && Array.isArray(recommendations)) {
-            this.elements.aiRecommendationsContent.innerHTML = recommendations.map(rec => `
-                <div class="recommendation-item">
-                    <div class="recommendation-priority priority-${rec.priority}">${rec.priority.toUpperCase()}</div>
-                    <div class="recommendation-title">${rec.title}</div>
-                    <div class="recommendation-desc">${rec.description}</div>
-                </div>
-            `).join('');
-        }
-    }
+    updateBudgetUI(budgetData) {
+        if (!this.elements.budgetContent) return;
 
-    updateGoals(goals) {
-        if (this.elements.savingsGoalsList && Array.isArray(goals)) {
-            this.elements.savingsGoalsList.innerHTML = goals.map(goal => `
-                <div class="goal-item">
-                    <div class="goal-header">
-                        <h4>${goal.title}</h4>
-                        <span class="goal-priority priority-${goal.priority}">${goal.priority}</span>
-                    </div>
-                    <p>${goal.description}</p>
-                    <div class="goal-amounts">
-                        <span>Target: ₱${goal.targetAmount?.toLocaleString() || 'TBD'}</span>
-                        <span>Monthly: ₱${goal.monthlyTarget?.toLocaleString() || 'TBD'}</span>
-                    </div>
-                    <div class="goal-timeframe">Timeline: ${goal.timeframe}</div>
-                </div>
-            `).join('');
-        }
-    }
-
-    updateHealthScore(scoreData) {
-        if (this.elements.financialHealthContent && scoreData.score) {
-            this.elements.financialHealthContent.innerHTML = `
-                <div class="health-score-display">
-                    <div class="score-circle" style="background: conic-gradient(var(--primary-green) ${scoreData.score * 3.6}deg, #333 0deg)">
-                        <div class="score-number">${scoreData.score}</div>
-                    </div>
-                    <div class="score-label">${scoreData.level} Financial Health</div>
-                    <p>${scoreData.summary}</p>
-                    ${scoreData.improvements ? scoreData.improvements.map(imp => `<div class="recommendation-item"><div class="recommendation-desc">${imp}</div></div>`).join('') : ''}
+        if (!budgetData || !budgetData.recommendedBudget) {
+            this.elements.budgetContent.innerHTML = `
+                <div class="loading-goals">
+                    <i class="fas fa-chart-pie"></i> Analyzing your spending to create a personalized budget...
                 </div>
             `;
+            return;
         }
-    }
 
-    updateMarketInsights(insights) {
-        if (this.elements.marketInsightsContent && Array.isArray(insights)) {
-            this.elements.marketInsightsContent.innerHTML = insights.map(insight => `
-                <div class="market-insight-item">
-                    <div class="insight-header">
-                        <div class="insight-title">${insight.title}</div>
-                        <div class="insight-value">${insight.value}</div>
+        this.elements.budgetContent.innerHTML = `
+            <div class="budget-recommendations">
+                <div class="budget-overview">
+                    <h4>Your Personalized Budget Plan</h4>
+                    <div class="income-display">
+                        <span>Monthly Income: ₱${budgetData.monthlyIncome?.toLocaleString()}</span>
                     </div>
-                    <div class="insight-description">${insight.description}</div>
                 </div>
-            `).join('');
-        }
-    }
 
-    updateRiskAssessment(risks) {
-        if (this.elements.riskAssessmentContent && Array.isArray(risks)) {
-            this.elements.riskAssessmentContent.innerHTML = risks.map(risk => `
-                <div class="risk-item severity-${risk.severity}">
-                    <div class="risk-desc">${risk.risk}</div>
-                    <div class="risk-recommendation">${risk.mitigation}</div>
+                <div class="budget-allocation">
+                    <div class="allocation-item needs">
+                        <div class="allocation-header">
+                            <h5>Needs (${budgetData.recommendedBudget.needs.percentage}%)</h5>
+                            <span>₱${budgetData.recommendedBudget.needs.amount?.toLocaleString()}</span>
+                        </div>
+                        <div class="allocation-categories">
+                            ${budgetData.recommendedBudget.needs.categories.join(', ')}
+                        </div>
+                    </div>
+
+                    <div class="allocation-item wants">
+                        <div class="allocation-header">
+                            <h5>Wants (${budgetData.recommendedBudget.wants.percentage}%)</h5>
+                            <span>₱${budgetData.recommendedBudget.wants.amount?.toLocaleString()}</span>
+                        </div>
+                        <div class="allocation-categories">
+                            ${budgetData.recommendedBudget.wants.categories.join(', ')}
+                        </div>
+                    </div>
+
+                    <div class="allocation-item savings">
+                        <div class="allocation-header">
+                            <h5>Savings (${budgetData.recommendedBudget.savings.percentage}%)</h5>
+                            <span>₱${budgetData.recommendedBudget.savings.amount?.toLocaleString()}</span>
+                        </div>
+                        <div class="allocation-categories">
+                            ${budgetData.recommendedBudget.savings.purpose}
+                        </div>
+                    </div>
                 </div>
-            `).join('');
-        }
+
+                ${budgetData.recommendations && budgetData.recommendations.length > 0 ? `
+                    <div class="action-recommendations">
+                        <h5>Priority Actions:</h5>
+                        ${budgetData.recommendations.map(rec => `
+                            <div class="recommendation-item priority-${rec.priority}">
+                                <div class="rec-action">${rec.action}</div>
+                                <div class="rec-reason">${rec.reason}</div>
+                                ${rec.expectedSavings ? `<div class="rec-savings">Potential savings: ₱${rec.expectedSavings.toLocaleString()}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+
+                ${budgetData.emergencyFundGoal ? `
+                    <div class="emergency-fund-goal">
+                        <h5>Emergency Fund Goal</h5>
+                        <p>Target: ₱${budgetData.emergencyFundGoal.toLocaleString()} (${budgetData.timeToGoal})</p>
+                    </div>
+                ` : ''}
+            </div>
+        `;
     }
 
-    // Fallback methods for when AI calls fail
-    generateFallbackRecommendations() {
-        const overview = this.getFinancialOverview();
-        const recommendations = [];
-        
-        if (overview.savingsRate < 10) {
-            recommendations.push({
-                title: "Increase Your Savings Rate",
-                description: "Try to save at least 10-20% of your income monthly for better financial security.",
-                priority: "high"
-            });
+    updateAlertsUI(alerts) {
+        if (!this.elements.alertsContent) return;
+
+        if (alerts.length === 0) {
+            this.elements.alertsContent.innerHTML = `
+                <div class="no-alerts">
+                    <i class="fas fa-shield-check"></i>
+                    <p>All good! No spending alerts at the moment.</p>
+                    <small>I'm monitoring your spending patterns and will alert you to any concerns.</small>
+                </div>
+            `;
+            return;
         }
-        
-        if (this.userAccounts.length < 2) {
-            recommendations.push({
-                title: "Diversify Your Accounts",
-                description: "Consider opening different types of accounts to optimize your money management.",
-                priority: "medium"
-            });
-        }
-        
-        return recommendations;
+
+        this.elements.alertsContent.innerHTML = `
+            <div class="active-alerts">
+                <h4>Active Alerts (${alerts.length})</h4>
+                ${alerts.map(alert => `
+                    <div class="alert-item severity-${alert.severity}">
+                        <div class="alert-header">
+                            <i class="fas fa-${alert.type === 'overspending' ? 'exclamation-triangle' : 'chart-line'}"></i>
+                            <span class="alert-type">${alert.category}</span>
+                            <span class="alert-time">${this.formatTime(alert.timestamp)}</span>
+                        </div>
+                        <div class="alert-message">${alert.message}</div>
+                        <div class="alert-suggestion">💡 ${alert.suggestion}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 
-    generateFallbackGoals() {
-        const overview = this.getFinancialOverview();
-        return [{
-            title: "Emergency Fund",
-            description: "Build an emergency fund covering 3-6 months of expenses",
-            targetAmount: overview.monthlyExpenses * 3,
-            timeframe: "6 months",
-            monthlyTarget: overview.monthlyExpenses * 0.5,
-            priority: "high"
-        }];
-    }
-
-    generateFallbackHealthScore() {
-        const overview = this.getFinancialOverview();
-        let score = 50;
-        
-        if (overview.savingsRate > 15) score += 20;
-        if (overview.totalBalance > overview.monthlyExpenses * 3) score += 15;
-        if (this.userAccounts.length > 2) score += 10;
-        
-        return {
-            score: Math.min(100, score),
-            level: score >= 80 ? 'excellent' : score >= 60 ? 'good' : 'fair',
-            summary: "Your financial health is being calculated based on your savings rate, emergency fund, and account diversification."
+    // Autonomous Action Methods
+    triggerFinancialAlert(action) {
+        const alert = {
+            type: 'autonomous_intervention',
+            severity: 'high',
+            message: action.action,
+            reasoning: action.reasoning,
+            impact: action.impact,
+            timestamp: action.timestamp
         };
-    }
-
-    generateFallbackMarketInsights() {
-        return [
-            {
-                title: "Peso Strength",
-                value: "Monitoring",
-                description: "Keep track of peso performance against major currencies for better financial planning."
-            },
-            {
-                title: "Interest Rates",
-                value: "Stable",
-                description: "Current interest rates remain favorable for savers and investors."
-            }
-        ];
-    }
-
-    generateFallbackRiskAssessment() {
-        return [
-            {
-                risk: "Inflation Impact",
-                severity: "medium",
-                mitigation: "Maintain investments that can outpace inflation over time."
-            },
-            {
-                risk: "Emergency Preparedness",
-                severity: "high",
-                mitigation: "Build and maintain an adequate emergency fund."
-            }
-        ];
-    }
-
-    // Enhanced notification methods
-    showOpportunityNotifications(opportunities) {
-        opportunities.forEach(opportunity => {
-            this.showNotification({
-                type: 'opportunity',
-                icon: '💡',
-                title: 'Financial Opportunity',
-                message: opportunity.description,
-                priority: opportunity.priority,
-                action: () => this.handleOpportunityClick(opportunity)
-            });
-        });
-    }
-
-    showRiskAlerts(risks) {
-        risks.forEach(risk => {
-            this.showNotification({
-                type: 'risk',
-                icon: '⚠️',
-                title: 'Risk Alert',
-                message: risk.description,
-                priority: risk.severity,
-                action: () => this.handleRiskClick(risk)
-            });
-        });
-    }
-
-    showProactiveRecommendation(content) {
-        this.addChatMessage('ai', content);
         
-        this.showNotification({
-            type: 'recommendation',
-            icon: '🤖',
-            title: 'AI Recommendation',
-            message: content.substring(0, 100) + '...',
-            priority: 'medium'
-        });
+        this.activeAlerts.unshift(alert);
+        this.updateAlertsUI(this.activeAlerts);
+        this.showNotification(alert);
+        
+        console.log(`🚨 Autonomous alert triggered: ${action.action}`);
     }
 
-    showNotification(notification) {
-        const notificationDiv = document.createElement('div');
-        notificationDiv.className = `notification notification-${notification.type} priority-${notification.priority}`;
-        notificationDiv.innerHTML = `
-            <div class="notification-icon">${notification.icon}</div>
+    presentOptimizationSuggestion(action) {
+        // Update budget recommendations with new optimization
+        this.budgetRecommendations.recommendations = this.budgetRecommendations.recommendations || [];
+        this.budgetRecommendations.recommendations.unshift({
+            priority: 'high',
+            action: action.description,
+            reason: `Autonomous optimization: ${action.category}`,
+            expectedSavings: action.value,
+            source: 'autonomous_agent'
+        });
+        
+        this.updateBudgetUI(this.budgetRecommendations);
+        console.log(`💡 Optimization suggestion: ${action.description}`);
+    }
+
+    updateUserBudgets(action) {
+        // Autonomously adjust budget allocations based on insights
+        if (action.category === 'savings' && action.value) {
+            const currentBudget = this.budgetRecommendations.recommendedBudget;
+            if (currentBudget) {
+                // Increase savings allocation
+                const additionalSavings = parseFloat(action.value) || 0;
+                currentBudget.savings.amount += additionalSavings;
+                currentBudget.wants.amount -= additionalSavings; // Reduce wants to accommodate
+                
+                console.log(`📊 Budget autonomously updated: +₱${additionalSavings} to savings`);
+            }
+        }
+    }
+
+    logAutonomousDecision(action) {
+        const decision = {
+            timestamp: new Date(),
+            type: action.type,
+            action: action.action,
+            reasoning: action.reasoning,
+            impact: action.impact,
+            executionStatus: 'completed'
+        };
+        
+        // Store decision for learning and audit trail
+        if (!this.autonomousDecisions) {
+            this.autonomousDecisions = [];
+        }
+        this.autonomousDecisions.push(decision);
+        
+        console.log(`📝 Autonomous decision logged:`, decision);
+    }
+
+    showNotification(alert) {
+        const notification = document.createElement('div');
+        notification.className = `smart-notification severity-${alert.severity}`;
+        notification.innerHTML = `
+            <div class="notification-icon">
+                <i class="fas fa-${alert.type === 'overspending' ? 'exclamation-triangle' : 'chart-line'}"></i>
+            </div>
             <div class="notification-content">
-                <h4>${notification.title}</h4>
-                <p>${notification.message}</p>
+                <h4>Smart Alert: ${alert.category}</h4>
+                <p>${alert.message}</p>
             </div>
             <button class="notification-close" onclick="this.parentElement.remove()">×</button>
         `;
         
-        if (notification.action) {
-            notificationDiv.addEventListener('click', notification.action);
-        }
-        
-        document.body.appendChild(notificationDiv);
-        
-        // Auto-remove after delay based on priority
-        const delay = notification.priority === 'high' ? 10000 : 
-                     notification.priority === 'medium' ? 7000 : 5000;
+        document.body.appendChild(notification);
         
         setTimeout(() => {
-            if (notificationDiv.parentElement) {
-                notificationDiv.remove();
+            if (notification.parentElement) {
+                notification.remove();
             }
-        }, delay);
+        }, 8000);
     }
 
-    async handleSpendingAnomalies(anomalies) {
-        for (const anomaly of anomalies) {
-            const culturalPrompt = `As a Filipino financial advisor, address this spending issue with cultural sensitivity:
-            
-Issue: ${anomaly.message}
-Type: ${anomaly.type}
-Severity: ${anomaly.severity}
-
-Provide culturally-aware advice considering Filipino family values and financial habits. Keep it under 80 words.`;
-
-            try {
-                const advice = await this.callGeminiAPI(culturalPrompt);
-                this.addChatMessage('ai', `🔍 Spending Alert: ${advice}`);
-            } catch (error) {
-                console.error("Failed to generate anomaly advice:", error);
-                this.addChatMessage('ai', `I noticed ${anomaly.message}. Let's review your spending together.`);
-            }
-        }
-    }
-
-    handleOpportunityClick(opportunity) {
-        this.addChatMessage('ai', `Let me help you with "${opportunity.description}". What would you like to know more about?`);
-        if (this.elements.chatInput) {
-            this.elements.chatInput.focus();
-        }
-    }
-
-    handleRiskClick(risk) {
-        this.addChatMessage('ai', `I understand you're concerned about "${risk.description}". Let's create an action plan to address this risk.`);
-        if (this.elements.chatInput) {
-            this.elements.chatInput.focus();
-        }
-    }
-
-    // Enhanced learning from interactions
-    async learnFromInteraction(interaction) {
-        try {
-            // Update user model
-            this.userModel.set('lastInteraction', {
-                type: interaction.type,
-                timestamp: new Date(),
-                success: interaction.success || false
-            });
-
-            // Update cultural preferences if applicable
-            if (interaction.culturalFeedback) {
-                this.updateCulturalPreferences(interaction.culturalFeedback);
-            }
-
-            // Update learning metrics
-            if (interaction.recommendationAccepted !== undefined) {
-                const currentRate = this.learningMetrics.recommendationAcceptanceRate;
-                const newRate = (currentRate + (interaction.recommendationAccepted ? 1 : 0)) / 2;
-                this.learningMetrics.recommendationAcceptanceRate = newRate;
-            }
-
-            console.log("📊 Learning metrics updated:", this.learningMetrics);
-
-        } catch (error) {
-            console.error("❌ Learning update failed:", error);
-        }
-    }
-
-    updateCulturalPreferences(feedback) {
-        // Adjust cultural factor weights based on user feedback
-        if (feedback.culturalRelevance) {
-            this.culturalFactors.forEach((factor, key) => {
-                if (feedback.culturalRelevance[key] !== undefined) {
-                    factor.weight = Math.max(0.1, Math.min(1.0, 
-                        factor.weight + (feedback.culturalRelevance[key] - 0.5) * 0.1
-                    ));
-                }
-            });
-        }
-    }
-
-    // Performance monitoring
-    getPerformanceReport() {
-        const report = {};
+    formatTime(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diffMs = now - time;
+        const diffMins = Math.floor(diffMs / 60000);
         
-        Object.entries(this.performanceMetrics).forEach(([metric, values]) => {
-            if (values.length > 0) {
-                const recentValues = values.slice(-10).map(v => v.value);
-                report[metric] = {
-                    average: recentValues.reduce((sum, val) => sum + val, 0) / recentValues.length,
-                    latest: recentValues[recentValues.length - 1],
-                    trend: recentValues.length > 1 ? 
-                        (recentValues[recentValues.length - 1] > recentValues[0] ? 'increasing' : 'decreasing') : 'stable'
-                };
-            }
-        });
-        
-        return report;
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+        return time.toLocaleDateString();
     }
 
-    // State management methods
+    // State management
     showLoadingState() {
         if (this.elements.loadingState) this.elements.loadingState.style.display = 'block';
         if (this.elements.contentLoaded) this.elements.contentLoaded.style.display = 'none';
@@ -1402,40 +1214,14 @@ Provide culturally-aware advice considering Filipino family values and financial
             errorDiv.remove();
         }, 5000);
     }
-
-    // Enhanced cleanup and resource management
-    destroy() {
-        console.log("🧹 Cleaning up Enhanced Ipon Coach AI...");
-        
-        // Clear autonomous monitoring
-        if (this.autonomousTimer) {
-            clearInterval(this.autonomousTimer);
-            this.autonomousTimer = null;
-        }
-        
-        // Clear caches
-        this.analysisCache.clear();
-        this.userModel.clear();
-        this.behaviorPatterns.clear();
-        
-        // Clear intervention queue
-        this.interventionQueue = [];
-        
-        // Remove event listeners
-        if (this.elements.sendButton) {
-            this.elements.sendButton.removeEventListener('click', this.sendChatMessage);
-        }
-        
-        console.log("✅ Enhanced Ipon Coach AI cleaned up successfully");
-    }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("🚀 Starting Dynamic Ipon Coach AI...");
-    const coach = new IponCoachAI();
-    coach.start();
+    console.log("🚀 Starting Smart Ipon Coach AI...");
+    const smartCoach = new SmartIponCoachAI();
+    smartCoach.start();
 });
 
-export default IponCoachAI;
+export default SmartIponCoachAI;
 

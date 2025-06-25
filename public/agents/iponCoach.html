@@ -41,8 +41,8 @@
         <main class="main-content">
             <!-- Enhanced Hero Section -->
             <div class="welcome-banner">
-                <h1><i class="fas fa-robot"></i> Ipon Coach AI</h1>
-                <p class="tagline">Your intelligent Filipino financial assistant powered by AI. Get personalized advice based on your spending patterns and financial goals.</p>
+                <h1><i class="fas fa-robot"></i> Autonomous Ipon Coach AI</h1>
+                <p class="tagline">Your autonomous Filipino financial AI agent that continuously monitors, analyzes, and optimizes your finances without manual intervention. Features real-time pattern detection, automated budget adjustments, and proactive financial interventions.</p>
             </div>
 
             <!-- AI Dashboard Content -->
@@ -64,89 +64,58 @@
 
                 <!-- Main Content -->
                 <div id="content-loaded" style="display: none;">
-                    <!-- AI-Powered Card Grid -->
+                    <!-- Smart AI Features Grid -->
                     <div class="card-grid">
-                        <!-- AI Financial Analysis Card -->
-                        <div class="theme-card wide-card" id="ai-analysis-card">
+                        <!-- Smart Transaction Categorization -->
+                        <div class="theme-card" id="categorization-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-brain"></i> AI Financial Analysis</h2>
-                                <span class="ai-badge">🤖 Live AI</span>
+                                <h2><i class="fas fa-tags"></i> Smart Categorization</h2>
                             </div>
-                            <div class="card-content">
-                                <div id="ai-analysis-content">
-                                    <div class="coach-message">
-                                        <div class="coach-avatar">🤖</div>
-                                        <div class="coach-text">Generating personalized financial insights...</div>
-                                    </div>
+                            <div class="card-content" id="categorization-content">
+                                <div class="loading-goals">
+                                    <i class="fas fa-cog fa-spin"></i> Analyzing your transactions...
                                 </div>
                             </div>
                         </div>
 
-                        <!-- AI Recommendations Card -->
-                        <div class="theme-card" id="ai-recommendations-card">
+                        <!-- Overspending Detection -->
+                        <div class="theme-card" id="overspending-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-lightbulb"></i> Smart Recommendations</h2>
-                                <span class="ai-badge">🎯 Personalized</span>
+                                <h2><i class="fas fa-exclamation-triangle"></i> Spending Patterns</h2>
                             </div>
-                            <div class="card-content" id="ai-recommendations-content">
+                            <div class="card-content" id="overspending-content">
                                 <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Generating recommendations...
+                                    <i class="fas fa-cog fa-spin"></i> Detecting spending patterns...
                                 </div>
                             </div>
                         </div>
 
-                        <!-- AI-Generated Savings Goals -->
-                        <div class="theme-card" id="savings-goals-card">
+                        <!-- Smart Budget Suggestions -->
+                        <div class="theme-card wide-card" id="budget-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-bullseye"></i> AI-Generated Goals</h2>
-                                <span class="ai-badge">🎯 Smart Goals</span>
+                                <h2><i class="fas fa-chart-pie"></i> Budget Recommendations</h2>
                             </div>
-                            <div class="card-content" id="savings-goals-list">
+                            <div class="card-content" id="budget-content">
                                 <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Creating personalized goals...
+                                    <i class="fas fa-cog fa-spin"></i> Creating personalized budget...
                                 </div>
                             </div>
                         </div>
 
-                        <!-- AI Financial Health Score -->
-                        <div class="theme-card" id="financial-health-card">
+                        <!-- Spending Alerts -->
+                        <div class="theme-card" id="alerts-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-heartbeat"></i> Financial Health Score</h2>
-                                <span class="ai-badge">📊 AI Scored</span>
+                                <h2><i class="fas fa-bell"></i> Smart Alerts</h2>
                             </div>
-                            <div class="card-content" id="financial-health-content">
+                            <div class="card-content" id="alerts-content">
                                 <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Calculating health score...
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- AI Market Insights -->
-                        <div class="theme-card" id="market-insights-card">
-                            <div class="card-header">
-                                <h2><i class="fas fa-chart-line"></i> Market Insights</h2>
-                                <span class="ai-badge">📈 Real-time</span>
-                            </div>
-                            <div class="card-content" id="market-insights-content">
-                                <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Fetching market insights...
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- AI Risk Assessment -->
-                        <div class="theme-card" id="risk-assessment-card">
-                            <div class="card-header">
-                                <h2><i class="fas fa-shield-alt"></i> Risk Assessment</h2>
-                                <span class="ai-badge">⚡ Dynamic</span>
-                            </div>
-                            <div class="card-content" id="risk-assessment-content">
-                                <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Analyzing financial risks...
+                                    <i class="fas fa-cog fa-spin"></i> Setting up smart alerts...
                                 </div>
                             </div>
                         </div>
                     </div>
+
+
 
 
                 </div>
@@ -154,11 +123,7 @@
         </main>
     </div>
 
-    <!-- Autonomous Status Indicator -->
-    <div class="autonomous-status" id="autonomous-status">
-        <div class="status-dot"></div>
-        <span>AI Coach Status: <span id="status-text">Initializing...</span></span>
-    </div>
+
 
     <!-- Enhanced JavaScript Module -->
     <script type="module" src="iponCoach.js"></script>

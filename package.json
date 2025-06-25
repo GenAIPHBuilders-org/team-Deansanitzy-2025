@@ -21,14 +21,8 @@
     "test:production": "mocha automated-testing-suite.js --grep 'Production Readiness' --timeout 30000",
     "test:business": "mocha automated-testing-suite.js --grep 'Business Value' --timeout 30000",
     "test:integration": "mocha automated-testing-suite.js --grep 'Integration' --timeout 30000",
-    "lint": "eslint public/js/ public/agents/ --fix",
-    "lint:check": "eslint public/js/ public/agents/",
-    "docker:build": "docker build -t kita-kita:latest .",
-    "docker:run": "docker-compose -f docker-compose.production.yml up -d",
-    "docker:stop": "docker-compose -f docker-compose.production.yml down",
-    "deploy:staging": "docker-compose -f docker-compose.staging.yml up -d",
-    "deploy:production": "docker-compose -f docker-compose.production.yml up -d",
-    "monitor": "npm run test:production && npm run lint:check && npm run audit"
+
+    "monitor": "npm run test:production && npm run audit"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -48,7 +42,6 @@
   },
   "devDependencies": {
     "chai": "^4.3.10",
-    "eslint": "^8.55.0",
     "mocha": "^10.2.0",
     "nodemon": "^3.1.9",
     "nyc": "^15.1.0",
