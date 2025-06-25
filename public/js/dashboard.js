@@ -30,29 +30,55 @@ document.addEventListener('DOMContentLoaded', function () {
   // Check if user is logged in
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      // User is signed in, attempt to get data from Firestore
-      await updateUserInterface(user);
+      try {
+        console.log('User authenticated:', user.uid);
+        
+        // User is signed in, attempt to get data from Firestore
+        await updateUserInterface(user);
 
-      // Initialize the dashboard components
-      await initializeDashboard();
+        // Initialize the dashboard components (only once)
+        await initializeDashboard();
 
-      // Setup logout button
-      const logoutButton = document.getElementById('logout-button');
-      if (logoutButton) {
-        logoutButton.addEventListener('click', (e) => {
-          e.preventDefault();
-          secureLogout();
-        });
-        console.log('✅ Logout button event listener attached');
-      } else {
-        console.error('❌ Logout button not found in DOM');
+        // Setup logout button
+        const logoutButton = document.getElementById('logout-button');
+        if (logoutButton) {
+          logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            secureLogout();
+          });
+          console.log('✅ Logout button event listener attached');
+        } else {
+          console.log('ℹ️ Logout button not found - may not exist on this page');
+        }
+        
+        // Load transactions and update balance summary
+        try {
+          await loadTransactions();
+          await updateBalanceSummary();
+          
+          // Set up auto-refresh every 5 minutes (only once)
+          if (!window.dashboardRefreshInterval) {
+            window.dashboardRefreshInterval = setInterval(async () => {
+              try {
+                await loadTransactions();
+                await updateBalanceSummary();
+              } catch (error) {
+                console.error('Error in auto-refresh:', error);
+              }
+            }, 5 * 60 * 1000);
+            console.log('✅ Auto-refresh interval set up');
+          }
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+        }
+        
+        console.log('✅ Dashboard initialization completed');
+      } catch (error) {
+        console.error('Error during dashboard initialization:', error);
       }
-      await initializeBankSection();
-      
-      // Ensure balance summary is updated on initial load - with proper await
-      await updateBalanceSummary();
     } else {
       // User is signed out, redirect to login
+      console.log('No user authenticated, redirecting to login');
       window.location.href = "login.html";
     }
   });
@@ -226,7 +252,7 @@ async function initializeDashboard() {
   initializeSpendingChart();
   initializeBankSection();
   initializeTransactionHistory();
-  await initializeBankModalToggles();
+  initializeBankModalToggles(); // Not async anymore
   
   // Initialize financial health section
   refreshFinancialHealth();
@@ -518,7 +544,13 @@ async function deleteTransaction(id) {
 
 // Function to toggle between bank and e-wallet fields
 function initializeBankModalToggles() {
+  // Check if modal elements exist (they may not be present on dashboard page)
   const accountTypeSelect = document.getElementById('account-type');
+  if (!accountTypeSelect) {
+    console.log('Bank modal elements not found - skipping modal initialization');
+    return;
+  }
+
   const bankFields = document.getElementById('bank-fields');
   const ewalletFields = document.getElementById('ewallet-fields');
   const cardDetailsRow = document.getElementById('card-details-row');
@@ -527,41 +559,51 @@ function initializeBankModalToggles() {
   const otherProviderField = document.getElementById('other-provider-field');
   const currencySelect = document.getElementById('currency');
   const currencySymbol = document.getElementById('currency-symbol');
+  const closeAddBankBtn = document.getElementById('close-add-bank');
+  const addBankModal = document.getElementById('add-bank-modal');
 
   // Currency symbols mapping
   const currencySymbols = {
     'PHP': '₱'
   };
 
-  // Toggle fields based on account type
-  accountTypeSelect.addEventListener('change', function () {
-    if (this.value === 'bank') {
-      bankFields.style.display = 'block';
-      ewalletFields.style.display = 'none';
-      cardDetailsRow.style.display = 'grid';
-      numberLabel.textContent = 'Card Number';
-    } else {
-      bankFields.style.display = 'none';
-      ewalletFields.style.display = 'block';
-      cardDetailsRow.style.display = 'none';
-      numberLabel.textContent = 'Account Number/ID';
-    }
-  });
+  // Toggle fields based on account type (only if elements exist)
+  if (accountTypeSelect && bankFields && ewalletFields && cardDetailsRow && numberLabel) {
+    accountTypeSelect.addEventListener('change', function () {
+      if (this.value === 'bank') {
+        bankFields.style.display = 'block';
+        ewalletFields.style.display = 'none';
+        cardDetailsRow.style.display = 'grid';
+        numberLabel.textContent = 'Card Number';
+      } else {
+        bankFields.style.display = 'none';
+        ewalletFields.style.display = 'block';
+        cardDetailsRow.style.display = 'none';
+        numberLabel.textContent = 'Account Number/ID';
+      }
+    });
+  }
 
-  // Handle "Other" e-wallet provider selection
-  ewalletProvider.addEventListener('change', function () {
-    otherProviderField.style.display = this.value === 'other' ? 'block' : 'none';
-  });
+  // Handle "Other" e-wallet provider selection (only if elements exist)
+  if (ewalletProvider && otherProviderField) {
+    ewalletProvider.addEventListener('change', function () {
+      otherProviderField.style.display = this.value === 'other' ? 'block' : 'none';
+    });
+  }
 
-  // Update currency symbol when currency changes
-  currencySelect.addEventListener('change', function () {
-    currencySymbol.textContent = currencySymbols[this.value] || '₱';
-  });
+  // Update currency symbol when currency changes (only if elements exist)
+  if (currencySelect && currencySymbol) {
+    currencySelect.addEventListener('change', function () {
+      currencySymbol.textContent = currencySymbols[this.value] || '₱';
+    });
+  }
 
-  // Close button functionality
-  document.getElementById('close-add-bank').addEventListener('click', function () {
-    document.getElementById('add-bank-modal').style.display = 'none';
-  });
+  // Close button functionality (only if elements exist)
+  if (closeAddBankBtn && addBankModal) {
+    closeAddBankBtn.addEventListener('click', function () {
+      addBankModal.style.display = 'none';
+    });
+  }
 }
 
 // Update the initializeBankSection function
@@ -668,9 +710,15 @@ async function renderBankCards() {
     bankCardsGrid.style.display = 'grid';
 
     // Add event listeners
-    document.getElementById('add-card-button').addEventListener('click', () => {
-      document.getElementById('add-bank-modal').style.display = 'block';
-    });
+    const addCardButton = document.getElementById('add-card-button');
+    if (addCardButton) {
+      addCardButton.addEventListener('click', () => {
+        const modal = document.getElementById('add-bank-modal');
+        if (modal) {
+          modal.style.display = 'block';
+        }
+      });
+    }
 
     // Add event listeners for delete buttons
     document.querySelectorAll('.delete-account-btn').forEach(button => {
@@ -838,43 +886,60 @@ document.addEventListener('click', function (e) {
   }
 });
 
-// Add Transaction Modal Handlers
-document.getElementById('add-transaction-button').addEventListener('click', function (e) {
-  e.preventDefault(); // Prevent default button behavior
-  const modal = document.getElementById('add-transaction-modal');
-  modal.style.display = 'flex';
+// Add Transaction Modal Handlers with null checks
+const addTransactionButton = document.getElementById('add-transaction-button');
+if (addTransactionButton) {
+  addTransactionButton.addEventListener('click', function (e) {
+    e.preventDefault(); // Prevent default button behavior
+    const modal = document.getElementById('add-transaction-modal');
+    if (modal) {
+      modal.style.display = 'flex';
 
-  // Set default date to today
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('transaction-date').value = today;
+      // Set default date to today
+      const today = new Date().toISOString().split('T')[0];
+      const dateField = document.getElementById('transaction-date');
+      if (dateField) {
+        dateField.value = today;
+      }
 
-  // Populate the account dropdown
-  populateAccountDropdown();
-});
+      // Populate the account dropdown
+      populateAccountDropdown();
+    }
+  });
+}
 
 // Close transaction modal
-document.getElementById('close-add-transaction').addEventListener('click', function (e) {
-  e.preventDefault();
-  const modal = document.getElementById('add-transaction-modal');
-  modal.style.display = 'none';
-
-  // Reset the form
-  const form = document.getElementById('add-transaction-form');
-  if (form) {
-    form.reset();
-    // Reset submit button if it's in loading state
-    const submitBtn = form.querySelector('button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = 'Add Transaction';
+const closeTransactionButton = document.getElementById('close-add-transaction');
+if (closeTransactionButton) {
+  closeTransactionButton.addEventListener('click', function (e) {
+    e.preventDefault();
+    const modal = document.getElementById('add-transaction-modal');
+    if (modal) {
+      modal.style.display = 'none';
     }
-    // Clear any validation errors
-    clearAllValidationErrors(form);
-  }
-});
+
+    // Reset the form
+    const form = document.getElementById('add-transaction-form');
+    if (form) {
+      form.reset();
+      // Reset submit button if it's in loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Add Transaction';
+      }
+      // Clear any validation errors
+      if (typeof clearAllValidationErrors === 'function') {
+        clearAllValidationErrors(form);
+      }
+    }
+  });
+}
 
 // Prevent form submission from scrolling
-document.getElementById('add-transaction-form').addEventListener('submit', async function (e) {
+const addTransactionForm = document.getElementById('add-transaction-form');
+if (addTransactionForm) {
+  addTransactionForm.addEventListener('submit', async function (e) {
   e.preventDefault();
   e.stopPropagation();
 
@@ -1033,7 +1098,8 @@ document.getElementById('add-transaction-form').addEventListener('submit', async
       submitBtn.innerHTML = 'Add Transaction';
     }
   }
-});
+  });
+}
 
 // Enhanced loadTransactions function with comprehensive refresh of all transaction components
 async function loadTransactions() {
@@ -1041,48 +1107,89 @@ async function loadTransactions() {
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.error('No user logged in');
+      console.log('No user logged in - skipping transaction load');
       return [];
     }
 
-    // Get all transactions
-    const transactions = await getUserTransactions(user.uid);
-    console.log(`Loaded ${transactions.length} transactions`);
+    // Get all transactions with error handling
+    let transactions = [];
+    try {
+      transactions = await getUserTransactions(user.uid);
+      if (!Array.isArray(transactions)) {
+        console.warn('Transactions data is not an array, defaulting to empty array');
+        transactions = [];
+      }
+      console.log(`Loaded ${transactions.length} transactions`);
+    } catch (transactionError) {
+      console.error('Error fetching transactions from Firestore:', transactionError);
+      transactions = [];
+    }
 
-    // Update the main transactions table
-    renderTransactions(transactions);
+    // Update the main transactions table (if exists)
+    try {
+      if (typeof renderTransactions === 'function') {
+        renderTransactions(transactions);
+      }
+    } catch (renderError) {
+      console.error('Error rendering transactions table:', renderError);
+    }
     
     // Update the spending chart if it exists
-    if (document.getElementById('spendingChart')) {
-      updateSpendingChart(transactions);
+    try {
+      if (document.getElementById('spendingChart') && typeof updateSpendingChart === 'function') {
+        updateSpendingChart(transactions);
+      }
+    } catch (chartError) {
+      console.error('Error updating spending chart:', chartError);
     }
 
     // Update the recent transactions widget
-    renderRecentTransactions(transactions);
+    try {
+      if (typeof renderRecentTransactions === 'function') {
+        renderRecentTransactions(transactions);
+      }
+    } catch (recentError) {
+      console.error('Error rendering recent transactions:', recentError);
+    }
     
     // Update the dashboard transactions list widget
-    renderRecentTransactionsList(transactions);
+    try {
+      if (typeof renderRecentTransactionsList === 'function') {
+        renderRecentTransactionsList(transactions);
+      }
+    } catch (listError) {
+      console.error('Error rendering recent transactions list:', listError);
+    }
 
     // Refresh financial health
-    refreshFinancialHealth();
+    try {
+      if (typeof refreshFinancialHealth === 'function') {
+        refreshFinancialHealth();
+      }
+    } catch (healthError) {
+      console.error('Error refreshing financial health:', healthError);
+    }
     
     // Store transactions in sessionStorage for faster access by other components
-    sessionStorage.setItem('userTransactions', JSON.stringify({
-      data: transactions,
-      timestamp: Date.now()
-    }));
+    try {
+      sessionStorage.setItem('userTransactions', JSON.stringify({
+        data: transactions,
+        timestamp: Date.now()
+      }));
+    } catch (storageError) {
+      console.error('Error storing transactions in session storage:', storageError);
+    }
     
     // Update financial summary
-    if (typeof updateBalanceSummary === 'function') {
-      await updateBalanceSummary();
+    try {
+      if (typeof updateBalanceSummary === 'function') {
+        await updateBalanceSummary();
+      }
+    } catch (summaryError) {
+      console.error('Error updating balance summary:', summaryError);
     }
     
-    // Refresh financial health if function exists
-    if (typeof refreshFinancialHealth === 'function') {
-      refreshFinancialHealth();
-    }
-    
-    console.log('All transaction-dependent components updated successfully');
+    console.log('Transaction loading completed');
     
     return transactions;
   } catch (error) {
@@ -1236,23 +1343,7 @@ function renderTransactions(transactions) {
     });
   } // End of renderTransactions function
 
-// Initialize transactions when the page loads and set up refresh mechanisms
-document.addEventListener('DOMContentLoaded', () => {
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // Load transactions and update balance summary
-      await loadTransactions();
-      // Explicitly update balance summary after transactions are loaded
-      await updateBalanceSummary();
-      
-      // Set up auto-refresh every 5 minutes
-      setInterval(async () => {
-        await loadTransactions();
-        await updateBalanceSummary();
-      }, 5 * 60 * 1000);
-    }
-  });
-});
+// Note: Transaction loading is now handled in the main DOMContentLoaded listener to avoid conflicts
 
 // Function to populate the account dropdown in the transaction form
 async function populateAccountDropdown() {
@@ -1309,7 +1400,9 @@ async function populateAccountDropdown() {
 }
 
 // Update the add bank form submission handler
-document.getElementById('add-bank-form').addEventListener('submit', async function (e) {
+const addBankForm = document.getElementById('add-bank-form');
+if (addBankForm) {
+  addBankForm.addEventListener('submit', async function (e) {
   e.preventDefault();
 
   try {
@@ -1405,21 +1498,10 @@ document.getElementById('add-bank-form').addEventListener('submit', async functi
       submitBtn.innerHTML = 'Add Account';
     }
   }
-});
+  });
+}
 
-// Add a direct event listener to the close button to make sure it works
-document.addEventListener('DOMContentLoaded', function () {
-  const closeAddBankButton = document.getElementById('close-add-bank');
-  if (closeAddBankButton) {
-    closeAddBankButton.addEventListener('click', function () {
-      const addBankModal = document.getElementById('add-bank-modal');
-      if (addBankModal) {
-        addBankModal.style.cssText = 'display: none !important';
-        console.log('Modal closed via close button');
-      }
-    });
-  }
-});
+// Note: Close button handlers are now in the main DOMContentLoaded listener to avoid conflicts
 
 // Update the delete account function
 async function deleteAccount(accountId) {
@@ -1459,6 +1541,11 @@ async function deleteAccount(accountId) {
 function renderRecentTransactions(transactions) {
   const recentTransactionsContainer = document.getElementById('recent-transactions');
 
+  if (!recentTransactionsContainer) {
+    console.log('Recent transactions container not found - may not be on this page');
+    return;
+  }
+
   // Clear existing content
   recentTransactionsContainer.innerHTML = '';
 
@@ -1468,38 +1555,71 @@ function renderRecentTransactions(transactions) {
     return;
   }
 
-  // Get only the 3 most recent transactions
-  const recentTransactions = [...transactions]
+  // Filter out invalid transactions and get only the 3 most recent
+  const validTransactions = transactions.filter(transaction => 
+    transaction && 
+    transaction.date && 
+    transaction.name && 
+    typeof transaction.amount !== 'undefined'
+  );
+
+  if (validTransactions.length === 0) {
+    recentTransactionsContainer.innerHTML = '<p class="empty-state">No valid transactions to display</p>';
+    return;
+  }
+
+  const recentTransactions = [...validTransactions]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 3);
 
   // Create and append transaction items
   recentTransactions.forEach(transaction => {
-    const transactionEl = document.createElement('div');
-    transactionEl.className = `transaction-item ${transaction.type}`;
+    try {
+      const transactionEl = document.createElement('div');
+      const transactionType = transaction.type || 'expense';
+      transactionEl.className = `transaction-item ${transactionType}`;
 
-    // Format amount with proper currency symbol
-    const amountText = transaction.amount >= 0
-      ? `+₱${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-      : `-₱${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      // Safely parse amount
+      const amount = parseFloat(transaction.amount) || 0;
+      
+      // Format amount with proper currency symbol
+      const amountText = amount >= 0
+        ? `+₱${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+        : `-₱${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
-    // Get appropriate icon based on category
-    const categoryIcon = getCategoryIcon(transaction.category);
+      // Get appropriate icon based on category
+      const category = transaction.category || 'other';
+      const categoryIcon = getCategoryIcon(category);
+      const name = transaction.name || 'Unknown Transaction';
 
-    transactionEl.innerHTML = `
-      <div class="transaction-icon ${transaction.category}">
-        <i class="${categoryIcon}"></i>
-      </div>
-      <div class="transaction-details">
-        <span class="transaction-name">${transaction.name}</span>
-        <span class="transaction-date">${formatDate(new Date(transaction.date))}</span>
-      </div>
-      <div class="transaction-amount ${transaction.amount >= 0 ? 'positive' : 'negative'}">
-        ${amountText}
-      </div>
-    `;
+      // Safely parse date
+      let formattedDate = 'Unknown Date';
+      try {
+        const transactionDate = new Date(transaction.date);
+        if (!isNaN(transactionDate.getTime())) {
+          formattedDate = formatDate(transactionDate);
+        }
+      } catch (dateError) {
+        console.warn('Error parsing transaction date:', transaction.date);
+      }
 
-    recentTransactionsContainer.appendChild(transactionEl);
+      transactionEl.innerHTML = `
+        <div class="transaction-icon ${category}">
+          <i class="${categoryIcon}"></i>
+        </div>
+        <div class="transaction-details">
+          <span class="transaction-name">${name}</span>
+          <span class="transaction-date">${formattedDate}</span>
+        </div>
+        <div class="transaction-amount ${amount >= 0 ? 'positive' : 'negative'}">
+          ${amountText}
+        </div>
+      `;
+
+      recentTransactionsContainer.appendChild(transactionEl);
+    } catch (error) {
+      console.error('Error rendering transaction:', transaction, error);
+    }
   });
 }
 
@@ -1683,10 +1803,20 @@ async function updateBalanceSummary() {
 
 // Function to refresh financial health data
 function refreshFinancialHealth() {
-  // Dispatch a custom event that the financial health module will listen for
-  const refreshEvent = new CustomEvent('refreshFinancialHealth');
-  document.dispatchEvent(refreshEvent);
-  console.log('Financial health refresh triggered');
+  try {
+    // Check if financial health element exists before dispatching event
+    const financialHealthElement = document.getElementById('financial-health-content');
+    if (financialHealthElement) {
+      // Dispatch a custom event that the financial health module will listen for
+      const refreshEvent = new CustomEvent('refreshFinancialHealth');
+      document.dispatchEvent(refreshEvent);
+      console.log('Financial health refresh triggered');
+    } else {
+      console.log('ℹ️ Financial health widget not found on this page');
+    }
+  } catch (error) {
+    console.error('Error refreshing financial health:', error);
+  }
 }
 
 // Initialize transaction form handling
@@ -1828,39 +1958,7 @@ function initializeTransactionForm() {
   }
 }
 
-// Populate account dropdown for transaction form
-async function populateAccountDropdown() {
-  try {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const accountSelect = document.getElementById('transaction-account');
-    if (!accountSelect) return;
-
-    // Clear existing options except the first one
-    accountSelect.innerHTML = '<option value="">-- Select Account --</option>';
-
-    // Get user's bank accounts
-    const accounts = await getUserBankAccounts(user.uid);
-    
-    if (accounts && accounts.length > 0) {
-      accounts.forEach(account => {
-        const option = document.createElement('option');
-        option.value = account.id;
-        option.textContent = `${account.bankName || account.ewalletProvider || 'Account'} - ${account.cardName || 'Unknown'}`;
-        accountSelect.appendChild(option);
-      });
-    } else {
-      // Add a default option if no accounts
-      const option = document.createElement('option');
-      option.value = 'cash';
-      option.textContent = 'Cash';
-      accountSelect.appendChild(option);
-    }
-  } catch (error) {
-    console.error('Error populating account dropdown:', error);
-  }
-}
+// Removed duplicate function - keeping the one at line 1257
 
 // Initialize bank form handling
 function initializeBankForm() {
@@ -2304,11 +2402,16 @@ function requestAuthentication(onSuccess) {
   document.body.appendChild(modal);
 
   // Add event listeners
-  document.getElementById('auth-cancel').addEventListener('click', () => {
-    document.body.removeChild(modal);
-  });
+  const authCancelBtn = document.getElementById('auth-cancel');
+  if (authCancelBtn) {
+    authCancelBtn.addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+  }
 
-  document.getElementById('auth-confirm').addEventListener('click', async () => {
+  const authConfirmBtn = document.getElementById('auth-confirm');
+  if (authConfirmBtn) {
+    authConfirmBtn.addEventListener('click', async () => {
     const password = document.getElementById('auth-password').value;
     const user = auth.currentUser;
 
@@ -2328,13 +2431,17 @@ function requestAuthentication(onSuccess) {
     } else {
       alert('Please enter your password.');
     }
-  });
+    });
+  }
 }
 
 // Add event listener to re-populate account dropdown when transaction type changes
-document.getElementById('transaction-type').addEventListener('change', function () {
-  populateAccountDropdown();
-});
+const transactionTypeSelect = document.getElementById('transaction-type');
+if (transactionTypeSelect) {
+  transactionTypeSelect.addEventListener('change', function () {
+    populateAccountDropdown();
+  });
+}
 
 // Add sample data for testing (can be removed later)
 async function addSampleTransactions() {
