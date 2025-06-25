@@ -169,20 +169,40 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('🔄 Auth state changed in transactions.js:', user ? user.uid : 'null');
         if (user) {
             console.log('✅ User authenticated, initializing transactions module');
+            console.log('👤 User details:', {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                emailVerified: user.emailVerified
+            });
             currentUser = user;
             
             // Initialize with proper error handling
             initializeTransactionsModule(user);
         } else {
-            console.log('❌ No user authenticated, redirecting to login');
+            console.log('❌ No user authenticated, checking current location...');
+            console.log('📍 Current location:', window.location.href);
             currentUser = null;
-            window.location.href = 'login.html';
+            
+            // Only redirect if not already on login page
+            if (!window.location.href.includes('login.html')) {
+                console.log('🔄 Redirecting to login page...');
+                window.location.href = 'login.html';
+            }
         }
     });
 
     async function initializeTransactionsModule(user) {
         try {
+            if (!user || !user.uid) {
+                console.error('❌ Cannot initialize transactions module: Invalid user');
+                return;
+            }
+            
             console.log('🚀 Initializing transactions module for user:', user.uid);
+            
+            // Ensure currentUser is set
+            currentUser = user;
             
             // Load data with error handling
             await Promise.all([
@@ -208,6 +228,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupTransactionFormHandler(user) {
+        if (!user || !user.uid) {
+            console.error('❌ Cannot setup form handler: No valid user provided');
+            return;
+        }
+        
+        console.log('🔧 Setting up form handler for user:', user.uid);
+        
         // Remove any existing event listeners to prevent duplicates
         const existingHandler = addTransactionForm._submitHandler;
         if (existingHandler) {
@@ -216,15 +243,25 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Create new handler and store reference
         const submitHandler = (e) => {
-            console.log('📝 Form submitted, current user:', user.uid);
-            handleAddTransaction(e, user.uid);
+            console.log('📝 Form submitted, setup user:', user.uid);
+            console.log('📝 Current global user:', currentUser ? currentUser.uid : 'null');
+            console.log('📝 Auth current user:', auth.currentUser ? auth.currentUser.uid : 'null');
+            
+            // Use the most reliable user reference available
+            const userToUse = currentUser || auth.currentUser || user;
+            if (!userToUse || !userToUse.uid) {
+                console.error('❌ No authenticated user found in form handler');
+                alert('Please log in to add transactions');
+                return;
+            }
+            handleAddTransaction(e, userToUse.uid);
         };
         
         // Store reference for potential cleanup
         addTransactionForm._submitHandler = submitHandler;
         addTransactionForm.addEventListener('submit', submitHandler);
         
-        console.log('✅ Transaction form handler setup complete');
+        console.log('✅ Transaction form handler setup complete for user:', user.uid);
     }
 
     async function loadBankAccounts(userId) {
@@ -388,6 +425,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             console.log('📝 Starting transaction submission...');
             console.log('👤 Provided userId:', userId);
+            console.log('👤 Global currentUser:', currentUser ? currentUser.uid : 'null');
+            console.log('👤 Current user from auth:', auth.currentUser ? auth.currentUser.uid : 'null');
+            
+            // Double check authentication state
+            if (!currentUser && !auth.currentUser) {
+                throw new Error('No authenticated user found. Please log in again.');
+            }
             
             if (!userId) {
                 throw new Error('No userId provided for transaction submission');
@@ -404,6 +448,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 amount: document.getElementById('transaction-amount').value,
                 date: document.getElementById('transaction-date').value
             });
+            
+            // Validate userId early - use current user as fallback
+            if (!userId) {
+                if (auth.currentUser) {
+                    userId = auth.currentUser.uid;
+                    console.log('🔄 Using current authenticated user as fallback:', userId);
+                } else {
+                    throw new Error('User not authenticated. Please log in and try again.');
+                }
+            }
             
             // Handle special account selections
             if (selectedAccountId === 'add-account') {
@@ -429,18 +483,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 accountProvider = selectedOption.dataset.provider || '';
             }
             
+            // Get and process form data
+            const rawAmount = parseFloat(document.getElementById('transaction-amount').value);
+            const transactionType = document.getElementById('transaction-type').value;
+            
+            // For expenses, make amount negative; for income, keep positive
+            const processedAmount = transactionType === 'expense' ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+            
             const transactionData = {
                 id: `txn_${Date.now()}`,
-                name: document.getElementById('transaction-name').value,
-                amount: parseFloat(document.getElementById('transaction-amount').value),
-                type: document.getElementById('transaction-type').value,
+                name: document.getElementById('transaction-name').value.trim(),
+                amount: processedAmount,
+                type: transactionType,
                 accountId: selectedAccountId,
                 accountName: accountName,
                 accountProvider: accountProvider,
                 date: document.getElementById('transaction-date').value,
                 category: document.getElementById('transaction-category').value,
                 channel: document.getElementById('transaction-channel').value,
-                notes: document.getElementById('transaction-notes').value,
+                notes: document.getElementById('transaction-notes').value.trim(),
                 createdAt: new Date().toISOString(),
                 source: 'web_app'
             };
@@ -453,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("Missing required fields: name or date");
             }
             
-            if (isNaN(transactionData.amount) || transactionData.amount === 0) {
+            if (isNaN(rawAmount) || rawAmount <= 0) {
                 alert("Please enter a valid amount greater than 0.");
                 throw new Error("Invalid amount: must be a valid number greater than 0");
             }
@@ -465,13 +526,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             console.log('✅ Validation passed, calling storeTransaction...');
-            const result = await storeTransaction(user.uid, transactionData);
+            console.log('UserId being used:', userId);
+            console.log('Current user object:', currentUser);
+            console.log('Auth current user:', auth.currentUser);
+            console.log('Transaction data to store:', transactionData);
+            const result = await storeTransaction(userId, transactionData);
             console.log('📊 storeTransaction result:', result);
             
             if (result && result.success) {
                 console.log('✅ Transaction stored successfully:', result);
                 hideModal();
-                await loadTransactions(user.uid); // Refresh list
+                await loadTransactions(userId); // Refresh list
                 
                 // Show success message
                 if (typeof showToast === 'function') {
@@ -486,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     type: transactionData.type,
                     accountId: transactionData.accountId,
                     timestamp: result.timestamp,
-                    userId: user.uid
+                    userId: userId
                 });
             } else {
                 throw new Error("Invalid response from storeTransaction");
@@ -497,10 +562,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error message:", error.message);
             console.error("Error name:", error.name);
             
-            // Simple error message handling
+            // Enhanced error message handling
             let errorMessage = "Failed to add transaction. Please try again.";
             
-            if (error.message.includes('Missing required fields') ||
+            if (error.message.includes('User not authenticated')) {
+                errorMessage = "Please log in to add transactions.";
+            } else if (error.message.includes('Authorization failed')) {
+                errorMessage = "Authentication error. Please log out and log back in.";
+            } else if (error.message.includes('Missing required fields') ||
                 error.message.includes('Invalid amount') ||
                 error.message.includes('No account selected')) {
                 errorMessage = error.message;
@@ -508,10 +577,11 @@ document.addEventListener('DOMContentLoaded', () => {
                        error.message.includes('Failed to save to Firestore')) {
                 errorMessage = "Database error: " + error.message;
             } else if (error.code === 'permission-denied') {
-                // This should not happen anymore with open rules
-                errorMessage = "🚨 Firebase Rules Error! Check Firebase Console rules.";
+                errorMessage = "Permission denied. Please check your login status.";
             } else if (error.name === 'FirebaseError') {
                 errorMessage = `Firebase error: ${error.message}`;
+            } else if (error.message) {
+                errorMessage = error.message; // Show the specific error message
             }
             
             alert(errorMessage);

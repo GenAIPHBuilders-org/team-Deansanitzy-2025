@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#060e21">
     <title>Login - Kita-kita Banking</title>
-    <link rel="stylesheet" href="../../src/index.css">
+    <link rel="stylesheet" href="../src/index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="../js/login.js" defer></script>
 
@@ -503,12 +503,13 @@
         window.onload = function() {
             console.log("Login page loaded successfully");
             
-            // Check if user is already logged in
+            // Check if user is already logged in and wants to stay logged in
             if (typeof firebase !== 'undefined') {
                 firebase.auth().onAuthStateChanged(function(user) {
                     if (user) {
-                        console.log("User already authenticated, redirecting to dashboard");
-                        window.location.href = "dashboard.html";
+                        console.log("User already authenticated");
+                        // Show a message instead of auto-redirecting
+                        showAuthenticatedMessage(user);
                     }
                 });
             }
@@ -541,6 +542,100 @@
                 console.error("Firebase-related error detected");
             }
         });
+
+        // Function to show authenticated user message
+        function showAuthenticatedMessage(user) {
+            const authCard = document.querySelector('.auth-card');
+            const existingMessage = document.querySelector('.authenticated-message');
+            
+            // Remove existing message if any
+            if (existingMessage) existingMessage.remove();
+            
+            // Create authenticated message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'authenticated-message';
+            messageDiv.style.cssText = `
+                background: rgba(16, 223, 111, 0.1);
+                border: 1px solid rgba(16, 223, 111, 0.3);
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+                text-align: center;
+                color: #10df6f;
+            `;
+            
+            const email = user.email || 'Unknown user';
+            const displayName = user.displayName || email.split('@')[0];
+            
+            messageDiv.innerHTML = `
+                <i class="fas fa-check-circle" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #10df6f;"></i>
+                <h3 style="margin: 0.5rem 0; color: white;">You're already signed in!</h3>
+                <p style="margin: 0.5rem 0; color: rgba(255, 255, 255, 0.8);">Signed in as: <strong>${displayName}</strong></p>
+                <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+                    <button onclick="window.location.href='dashboard.html'" 
+                            style="background: linear-gradient(135deg, #10df6f, #0ea5e9); 
+                                   color: white; border: none; padding: 0.75rem 1.5rem; 
+                                   border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Go to Dashboard
+                    </button>
+                    <button onclick="signOutAndStay()" 
+                            style="background: rgba(233, 109, 31, 0.2); color: #e96d1f; 
+                                   border: 1px solid #e96d1f; padding: 0.75rem 1.5rem; 
+                                   border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Sign Out & Login as Different User
+                    </button>
+                </div>
+            `;
+            
+            // Insert message at the top of the auth card
+            authCard.insertBefore(messageDiv, authCard.firstChild);
+        }
+
+        // Function to sign out and stay on login page
+        async function signOutAndStay() {
+            try {
+                if (typeof firebase !== 'undefined' && firebase.auth()) {
+                    await firebase.auth().signOut();
+                } else {
+                    // Clear storage as fallback
+                    localStorage.clear();
+                    sessionStorage.clear();
+                }
+                
+                // Remove the authenticated message
+                const existingMessage = document.querySelector('.authenticated-message');
+                if (existingMessage) existingMessage.remove();
+                
+                console.log("User signed out successfully");
+                
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.style.cssText = `
+                    background: rgba(16, 223, 111, 0.1);
+                    border: 1px solid rgba(16, 223, 111, 0.3);
+                    color: #10df6f;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    margin-bottom: 1rem;
+                    text-align: center;
+                `;
+                successDiv.innerHTML = '<i class="fas fa-check"></i> Successfully signed out. You can now sign in with a different account.';
+                
+                const authCard = document.querySelector('.auth-card');
+                authCard.insertBefore(successDiv, authCard.firstChild);
+                
+                // Remove success message after 3 seconds
+                setTimeout(() => {
+                    if (successDiv.parentNode) {
+                        successDiv.remove();
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                console.error("Error signing out:", error);
+                alert("Error signing out. Please try again.");
+            }
+        }
     </script>
 
     <footer class="footer">

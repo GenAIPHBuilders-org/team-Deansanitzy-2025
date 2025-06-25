@@ -453,7 +453,7 @@ function initializeTransactionHistory() {
   loadTransactions();
 }
 
-function renderTransactions(transactions) {
+function renderRecentTransactionsList(transactions) {
   const transactionsList = document.getElementById('transactions-list');
   if (!transactionsList) return;
 
@@ -1059,6 +1059,9 @@ async function loadTransactions() {
 
     // Update the recent transactions widget
     renderRecentTransactions(transactions);
+    
+    // Update the dashboard transactions list widget
+    renderRecentTransactionsList(transactions);
 
     // Refresh financial health
     refreshFinancialHealth();

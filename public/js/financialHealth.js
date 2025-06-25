@@ -1,5 +1,13 @@
 // Financial Health Module using Gemini API
-import { GEMINI_API_KEY, GEMINI_MODEL } from "./config.js";
+let GEMINI_API_KEY = null;
+let GEMINI_MODEL = 'gemini-1.5-flash';
+
+// Try to import config, fallback to defaults if not available
+try {
+    // This will be loaded dynamically in the init function
+} catch (configError) {
+    console.warn('Config file import will be handled dynamically');
+}
 
 // Import necessary Firebase functions
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
@@ -73,6 +81,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function initializeFinancialHealth() {
         try {
+            // Load config dynamically
+            try {
+                const configModule = await import("./config.js");
+                GEMINI_API_KEY = configModule.GEMINI_API_KEY;
+                GEMINI_MODEL = configModule.GEMINI_MODEL || 'gemini-1.5-flash';
+                console.log('Config loaded successfully, Gemini API available:', !!GEMINI_API_KEY);
+            } catch (configError) {
+                console.warn('Could not load config.js, using fallbacks:', configError.message);
+                GEMINI_API_KEY = null;
+                GEMINI_MODEL = 'gemini-1.5-flash';
+            }
+            
+            showLoading(financialHealthContent);
+            
             // Check if user is logged in
             const user = auth.currentUser;
             if (!user) {
@@ -80,16 +102,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const unsubscribe = auth.onAuthStateChanged(async (user) => {
                     if (user) {
                         unsubscribe(); // Stop listening once we have a user
-                        const userData = await getUserFinancialData(user);
-                        processFinancialData(userData);
+                        try {
+                            const userData = await getUserFinancialData(user);
+                            processFinancialData(userData);
+                        } catch (dataError) {
+                            console.error('Error loading user data after auth:', dataError);
+                            showError("Failed to load financial data. Please try again.");
+                        }
+                    } else {
+                        showError("Please log in to view your financial health analysis.");
                     }
                 });
                 return;
             }
             
             // Get financial data from user's account
-            const userData = await getUserFinancialData(user);
-            processFinancialData(userData);
+            try {
+                const userData = await getUserFinancialData(user);
+                processFinancialData(userData);
+            } catch (dataError) {
+                console.error('Error loading user financial data:', dataError);
+                showError("Failed to load financial data. Please try again.");
+            }
         } catch (error) {
             console.error('Error initializing financial health widget:', error);
             showError("Something went wrong. Please try again later.");
@@ -131,19 +165,48 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function processFinancialData(userData) {
         if (!userData) {
+            console.log('No user data available, showing placeholder');
             showPlaceholderData();
             return;
         }
         
         try {
-            // Analyze financial data with Gemini
-            const analysis = await analyzeFinancialHealth(userData);
+            console.log('Processing financial data:', {
+                hasAccounts: userData.accounts > 0,
+                hasTransactions: userData.recentTransactions?.length > 0,
+                monthlyIncome: userData.monthlyIncome,
+                monthlyExpenses: userData.monthlyExpenses
+            });
+            
+            showLoading(financialHealthContent);
+            
+            // Analyze financial data with timeout
+            const analysisPromise = analyzeFinancialHealth(userData);
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Analysis timeout')), 15000)
+            );
+            
+            const analysis = await Promise.race([analysisPromise, timeoutPromise]);
             
             // Render the widget with analysis results
             renderFinancialHealthWidget(analysis, userData);
+            console.log('Financial health widget rendered successfully');
+            
         } catch (error) {
             console.error('Error processing financial data:', error);
-            showPlaceholderData();
+            if (error.message === 'Analysis timeout') {
+                showError("Analysis is taking too long. Using offline analysis instead.");
+                // Fallback to enhanced offline analysis
+                try {
+                    const fallbackAnalysis = enhancedOfflineAnalysis(userData);
+                    renderFinancialHealthWidget(fallbackAnalysis, userData);
+                } catch (fallbackError) {
+                    console.error('Even fallback analysis failed:', fallbackError);
+                    showPlaceholderData();
+                }
+            } else {
+                showError("Failed to analyze financial data. Please try refreshing.");
+            }
         }
     }
     
@@ -165,7 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function getUserFinancialData(user) {
         try {
-            if (!user) return null;
+            if (!user) {
+                console.log('No user provided to getUserFinancialData');
+                return null;
+            }
             
             console.log('Fetching fresh financial data for user:', user.uid);
             
@@ -264,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     totalBalance: totalIncome - totalExpenses, // Net balance from transactions
                     accounts: 0,
+                    accountDetails: [], // No account details available
                     monthlyIncome: totalIncome,
                     monthlyExpenses: totalExpenses,
                     expenseCategories: formattedCategories,
@@ -278,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return {
                     totalBalance,
                     accounts: accounts.length,
+                    accountDetails: accounts, // Include account details for analysis
                     monthlyIncome: 0,
                     monthlyExpenses: 0,
                     hasOnlyAccounts: true,
@@ -328,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 totalBalance,
                 accounts: accounts.length,
+                accountDetails: accounts, // Include account details for analysis
                 monthlyIncome: totalIncome,
                 monthlyExpenses: totalExpenses,
                 expenseCategories: formattedCategories,
@@ -341,7 +410,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function analyzeFinancialHealth(userData) {
-        console.log('Analyzing financial health with userData:', userData);
+        console.log('Analyzing financial health with userData:', {
+            totalBalance: userData.totalBalance,
+            accounts: userData.accounts,
+            hasAccountDetails: userData.accountDetails?.length > 0,
+            monthlyIncome: userData.monthlyIncome,
+            monthlyExpenses: userData.monthlyExpenses,
+            transactionCount: userData.recentTransactions?.length || 0
+        });
         
         // Skip cache and always recalculate to ensure we have the latest transaction data
         console.log('Forcing fresh analysis to include latest transactions');
@@ -466,10 +542,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             };
 
-            // If no API key or no transactions, use minimal fallback
+            // If no API key or no transactions, use enhanced offline analysis
             if (!GEMINI_API_KEY || detailedTransactions.length === 0) {
-                console.warn('Using minimal fallback due to missing API key or no transactions');
-                return minimalFallback();
+                console.warn('Using enhanced offline analysis due to missing API key or no transactions');
+                return enhancedOfflineAnalysis(userData);
+            }
+
+            // Check if we've recently hit rate limits
+            const rateLimitKey = 'gemini_rate_limit_hit';
+            const lastRateLimit = sessionStorage.getItem(rateLimitKey);
+            if (lastRateLimit && Date.now() - parseInt(lastRateLimit) < 300000) { // 5 minutes cooldown
+                console.warn('⚠️ Rate limit cooldown active. Using enhanced offline analysis...');
+                return enhancedOfflineAnalysis(userData);
             }
 
             // Call Gemini API for detailed analysis
@@ -501,6 +585,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!response.ok) {
                 console.error('Gemini API error:', response.status);
+                
+                // Handle specific error codes with user-friendly messages
+                if (response.status === 429) {
+                    console.warn('⚠️ Gemini API rate limit exceeded. Using offline analysis...');
+                    // Track rate limit hit for cooldown
+                    sessionStorage.setItem('gemini_rate_limit_hit', Date.now().toString());
+                    return enhancedOfflineAnalysis(userData);
+                } else if (response.status === 403) {
+                    console.warn('⚠️ Gemini API access denied. Using offline analysis...');
+                    return enhancedOfflineAnalysis(userData);
+                } else if (response.status >= 500) {
+                    console.warn('⚠️ Gemini API server error. Using offline analysis...');
+                    return enhancedOfflineAnalysis(userData);
+                }
+                
                 return minimalFallback();
             }
             
@@ -536,24 +635,269 @@ document.addEventListener('DOMContentLoaded', () => {
                 
         } catch (error) {
             console.error('Error in financial health analysis:', error);
-            // Return minimal fallback on any error
-            const netFlow = userData.monthlyIncome - userData.monthlyExpenses;
-            return {
-                score: 50,
-                status: "Analysis temporarily unavailable - basic metrics shown",
-                insights: [
-                    {type: "neutral", text: `Net cash flow: ₱${netFlow.toFixed(2)}`},
-                    {type: "neutral", text: `Total transactions analyzed: ${userData.recentTransactions?.length || 0}`}
-                ],
-                suggestions: [
-                    "Ensure stable internet connection for detailed AI analysis.",
-                    "Continue tracking transactions for better insights."
-                ]
-            };
+            
+            // Handle different types of errors
+            if (error.message?.includes('rate limit') || error.message?.includes('429')) {
+                console.warn('⚠️ API rate limit detected in catch block. Using enhanced offline analysis...');
+                // Track rate limit hit for cooldown
+                sessionStorage.setItem('gemini_rate_limit_hit', Date.now().toString());
+                return enhancedOfflineAnalysis(userData);
+            } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+                console.warn('⚠️ Network error detected. Using enhanced offline analysis...');
+                return enhancedOfflineAnalysis(userData);
+            } else if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+                console.warn('⚠️ Fetch blocked (likely by ad blocker). Using enhanced offline analysis...');
+                return enhancedOfflineAnalysis(userData);
+            }
+            
+            // Return enhanced offline analysis for any other error
+            return enhancedOfflineAnalysis(userData);
         }
     }
 
     
+    // Enhanced offline analysis function
+    function enhancedOfflineAnalysis(userData) {
+        console.log('🔄 Performing enhanced offline financial analysis...');
+        
+        if (!userData) {
+            console.warn('No userData provided to enhancedOfflineAnalysis');
+            return {
+                score: 0,
+                status: "No financial data available",
+                insights: [{type: "warning", text: "No financial data found for analysis"}],
+                suggestions: ["Add bank accounts and transactions to get started"]
+            };
+        }
+        
+        const transactions = userData.recentTransactions || [];
+        const accounts = userData.accountDetails || [];
+        const totalIncome = userData.monthlyIncome || 0;
+        const totalExpenses = userData.monthlyExpenses || 0;
+        const netFlow = totalIncome - totalExpenses;
+        const savingsRate = totalIncome > 0 ? (netFlow / totalIncome) * 100 : 0;
+        
+        // Calculate score based on multiple factors
+        let score = 50;
+        const factors = [];
+        
+        // Savings rate factor (40% weight)
+        if (savingsRate >= 30) {
+            score += 20;
+            factors.push('Excellent savings rate');
+        } else if (savingsRate >= 20) {
+            score += 15;
+            factors.push('Good savings rate');
+        } else if (savingsRate >= 10) {
+            score += 10;
+            factors.push('Moderate savings rate');
+        } else if (savingsRate >= 0) {
+            score += 5;
+            factors.push('Low savings rate');
+        } else {
+            score -= 10;
+            factors.push('Negative cash flow');
+        }
+        
+        // Account diversification analysis (20% weight)
+        if (accounts.length > 0) {
+            const accountTypes = [...new Set(accounts.map(acc => acc.category || acc.accountType))];
+            const digitalWallets = accounts.filter(acc => acc.category === 'digital-wallet').length;
+            const traditionalBanks = accounts.filter(acc => acc.category === 'traditional-bank').length;
+            
+            if (accountTypes.length >= 3) {
+                score += 15;
+                factors.push('Well-diversified account portfolio');
+            } else if (accountTypes.length >= 2) {
+                score += 10;
+                factors.push('Good account diversification');
+            } else {
+                score -= 5;
+                factors.push('Limited account diversification');
+            }
+            
+            if (digitalWallets > 0 && traditionalBanks > 0) {
+                score += 5;
+                factors.push('Good mix of digital and traditional banking');
+            }
+        }
+        
+        // Transaction patterns analysis (10% weight)
+        if (transactions.length > 0) {
+            const expenseTransactions = transactions.filter(t => t.type === 'expense');
+            const avgExpense = expenseTransactions.length > 0 ? 
+                expenseTransactions.reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0) / expenseTransactions.length : 0;
+            
+            const largeExpenses = expenseTransactions.filter(t => Math.abs(parseFloat(t.amount) || 0) > avgExpense * 2).length;
+            const smallFrequentExpenses = expenseTransactions.filter(t => Math.abs(parseFloat(t.amount) || 0) < 100).length;
+            
+            if (largeExpenses < expenseTransactions.length * 0.1) {
+                score += 5;
+                factors.push('Controlled spending patterns');
+            } else if (largeExpenses > expenseTransactions.length * 0.3) {
+                score -= 5;
+                factors.push('Several large expenses detected');
+            }
+            
+            if (smallFrequentExpenses > expenseTransactions.length * 0.7) {
+                score -= 3;
+                factors.push('Many small frequent expenses');
+            }
+        }
+        
+        // Income stability factor (20% weight)
+        if (totalIncome > 0) {
+            if (totalIncome >= 50000) {
+                score += 10;
+                factors.push('Good income level');
+            } else if (totalIncome >= 25000) {
+                score += 5;
+                factors.push('Moderate income level');
+            }
+        }
+        
+        // Expense ratio factor (10% weight)
+        const expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 100;
+        if (expenseRatio < 50) {
+            score += 10;
+            factors.push('Low expense ratio');
+        } else if (expenseRatio > 90) {
+            score -= 10;
+            factors.push('High expense ratio');
+        }
+        
+        // Clamp score between 0 and 100
+        score = Math.max(0, Math.min(100, score));
+        
+        // Generate insights based on analysis
+        const insights = [];
+        
+        // Net flow insight
+        if (netFlow > 0) {
+            insights.push({
+                type: "positive", 
+                text: `Positive monthly cash flow: ₱${netFlow.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+            });
+        } else if (netFlow < 0) {
+            insights.push({
+                type: "negative", 
+                text: `Monthly overspending: ₱${Math.abs(netFlow).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+            });
+        } else {
+            insights.push({
+                type: "neutral", 
+                text: "Breaking even - income equals expenses"
+            });
+        }
+        
+        // Savings rate insight
+        if (savingsRate >= 20) {
+            insights.push({
+                type: "positive", 
+                text: `Strong savings rate: ${savingsRate.toFixed(1)}% of income`
+            });
+        } else if (savingsRate >= 10) {
+            insights.push({
+                type: "neutral", 
+                text: `Moderate savings rate: ${savingsRate.toFixed(1)}% of income`
+            });
+        } else if (savingsRate >= 0) {
+            insights.push({
+                type: "warning", 
+                text: `Low savings rate: ${savingsRate.toFixed(1)}% of income`
+            });
+        } else {
+            insights.push({
+                type: "negative", 
+                text: `Negative savings rate: ${savingsRate.toFixed(1)}%`
+            });
+        }
+        
+        // Account diversity insight
+        if (accounts.length > 0) {
+            const accountTypes = [...new Set(accounts.map(acc => acc.category || acc.accountType))];
+            const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0);
+            
+            if (accountTypes.length >= 3) {
+                insights.push({
+                    type: "positive", 
+                    text: `Excellent account diversification with ${accountTypes.length} different account types`
+                });
+            } else if (accountTypes.length >= 2) {
+                insights.push({
+                    type: "neutral", 
+                    text: `Good account setup with ${accountTypes.length} account types`
+                });
+            } else {
+                insights.push({
+                    type: "opportunity", 
+                    text: "Consider diversifying with additional account types for better financial management"
+                });
+            }
+            
+            insights.push({
+                type: "neutral", 
+                text: `Managing ${accounts.length} accounts with total balance of ₱${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+            });
+        }
+        
+        // Transaction volume insight
+        if (transactions.length > 0) {
+            insights.push({
+                type: "neutral", 
+                text: `${transactions.length} transactions analyzed this period`
+            });
+            
+            const expenseTransactions = transactions.filter(t => t.type === 'expense');
+            if (expenseTransactions.length > 20) {
+                insights.push({
+                    type: "warning", 
+                    text: "High transaction frequency - consider consolidating purchases"
+                });
+            }
+        }
+        
+        // Generate suggestions based on analysis
+        const suggestions = [];
+        
+        if (savingsRate < 10) {
+            suggestions.push("Aim to save at least 10-20% of your income for financial security");
+        }
+        
+        if (netFlow < 0) {
+            suggestions.push("Review your expenses to identify areas where you can reduce spending");
+        }
+        
+        if (transactions.length > 0) {
+            const categories = [...new Set(transactions.map(t => t.category).filter(Boolean))];
+            if (categories.length > 0) {
+                suggestions.push(`Track spending by category: ${categories.slice(0, 3).join(', ')}${categories.length > 3 ? '...' : ''}`);
+            }
+        }
+        
+        if (totalIncome > 0 && totalExpenses / totalIncome > 0.8) {
+            suggestions.push("Consider creating a stricter budget to increase your savings");
+        }
+        
+        suggestions.push("Continue tracking transactions for better financial insights");
+        
+        // Determine status based on score
+        let status;
+        if (score >= 80) status = "Strong Financial Health";
+        else if (score >= 60) status = "Good Financial Health";
+        else if (score >= 40) status = "Fair Financial Health";
+        else status = "Needs Improvement";
+        
+        console.log('✅ Enhanced offline analysis completed:', { score, status, insights: insights.length, suggestions: suggestions.length });
+        
+        return {
+            score: Math.round(score),
+            status: status,
+            insights: insights.slice(0, 6), // Limit to 6 insights
+            suggestions: suggestions.slice(0, 4) // Limit to 4 suggestions
+        };
+    }
+
     // Function to analyze transaction patterns
     function analyzeTransactionPatterns(transactions) {
         if (!transactions || transactions.length === 0) {
@@ -848,6 +1192,121 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Update the widget content
         financialHealthContent.innerHTML = html;
+        
+        // Add inline styles for account overview section
+        const accountOverviewStyles = `
+            <style>
+                .account-overview-section {
+                    margin: 1.5rem 0;
+                    padding: 1rem;
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: 12px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .account-overview-section h4 {
+                    color: rgba(255, 255, 255, 0.9);
+                    margin: 0 0 1rem 0;
+                    font-size: 1rem;
+                    font-weight: 600;
+                }
+                .account-overview-section h4 i {
+                    margin-right: 0.5rem;
+                    color: var(--primary-green);
+                }
+                .account-types-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 1rem;
+                }
+                .account-type-summary {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.75rem;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .account-type-icon {
+                    color: var(--primary-green);
+                    font-size: 1.2rem;
+                }
+                .account-type-info {
+                    flex: 1;
+                }
+                .account-type-name {
+                    color: rgba(255, 255, 255, 0.9);
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                    margin-bottom: 0.25rem;
+                }
+                .account-type-stats {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25rem;
+                }
+                .account-count {
+                    color: rgba(255, 255, 255, 0.6);
+                    font-size: 0.8rem;
+                }
+                .account-balance {
+                    color: var(--primary-green);
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                }
+                .quick-stats {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                    gap: 1rem;
+                    margin: 1.5rem 0;
+                }
+                .stat-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 1rem;
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: 12px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+                .stat-icon {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.2rem;
+                }
+                .stat-icon.income { background: rgba(16, 223, 111, 0.2); color: var(--primary-green); }
+                .stat-icon.expense { background: rgba(233, 109, 31, 0.2); color: #e96d1f; }
+                .stat-icon.balance { background: rgba(26, 115, 232, 0.2); color: #1a73e8; }
+                .stat-icon.accounts { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+                .stat-content {
+                    flex: 1;
+                }
+                .stat-label {
+                    color: rgba(255, 255, 255, 0.6);
+                    font-size: 0.8rem;
+                    margin-bottom: 0.25rem;
+                }
+                .stat-value {
+                    color: rgba(255, 255, 255, 0.9);
+                    font-weight: 600;
+                    font-size: 1rem;
+                }
+                .stat-value.positive { color: var(--primary-green); }
+                .stat-value.negative { color: #e96d1f; }
+            </style>
+        `;
+        
+        // Inject styles if not already present
+        if (!document.querySelector('#financial-health-styles')) {
+            const styleElement = document.createElement('div');
+            styleElement.id = 'financial-health-styles';
+            styleElement.innerHTML = accountOverviewStyles;
+            document.head.appendChild(styleElement);
+        }
         
         // Add event listener to refresh button
         const refreshButton = document.getElementById('refresh-financial-health');

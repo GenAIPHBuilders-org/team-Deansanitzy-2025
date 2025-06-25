@@ -178,10 +178,17 @@ export async function storeTransaction(userId, transactionData) {
 
         // Validate user is authorized to modify this data
         try {
+            console.log('🔐 Validating user access for userId:', userId);
+            console.log('🔐 Current auth user:', auth.currentUser ? auth.currentUser.uid : 'null');
             validateUserAccess(userId);
             console.log('✅ User access validation passed for transaction');
         } catch (authError) {
             console.error('❌ Authorization error for transaction:', authError);
+            console.error('❌ Auth error details:', {
+                providedUserId: userId,
+                currentUserId: auth.currentUser ? auth.currentUser.uid : 'null',
+                errorMessage: authError.message
+            });
             throw new Error('Authorization failed: ' + authError.message);
         }
 
@@ -192,7 +199,7 @@ export async function storeTransaction(userId, transactionData) {
         if (!transactionData.name || transactionData.name.trim() === '') {
             throw new Error('Transaction name is required');
         }
-        if (!transactionData.amount && transactionData.amount !== 0) {
+        if (transactionData.amount === undefined || transactionData.amount === null) {
             throw new Error('Transaction amount is required');
         }
         if (isNaN(parseFloat(transactionData.amount))) {

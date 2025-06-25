@@ -124,11 +124,12 @@ import { signInWithPopup } from "https://www.gstatic.com/firebasejs/11.5.0/fireb
   
   //submit button
 document.addEventListener('DOMContentLoaded', async function() {
-  // Check for existing authentication
+  // Check for existing authentication (but don't auto-redirect)
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log("User already signed in:", user.uid);
-      window.location.href = "dashboard.html";
+      // Don't auto-redirect - let the user decide what to do
+      // The showAuthenticatedMessage function will handle this
     }
   });
 

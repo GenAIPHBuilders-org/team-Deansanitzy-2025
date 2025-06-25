@@ -35,11 +35,12 @@ provider.setCustomParameters({
 
 //submit button  
 document.addEventListener('DOMContentLoaded', async function() {
-  // Check for existing authentication
+  // Check for existing authentication (but don't auto-redirect)
   onAuthStateChanged(auth, (user) => {
     if (user) {
       console.log("User already signed in:", user.uid);
-      window.location.href = "dashboard.html";
+      // Don't auto-redirect - let the user decide what to do
+      // The showAuthenticatedMessage function will handle this
     }
   });
   // Initialize Google login button

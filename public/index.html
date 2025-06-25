@@ -12,6 +12,31 @@
     <!-- Add Font Awesome for better icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Firebase initialization script -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBZhlE1-VXv5KfNB6eP2lSEGMEFE8tJvqk",
+            authDomain: "team-deansanitzy-2025.firebaseapp.com",
+            projectId: "team-deansanitzy-2025",
+            storageBucket: "team-deansanitzy-2025.firebasestorage.app",
+            messagingSenderId: "373424194950",
+            appId: "1:373424194950:web:1c6a55c5b5e0c9b06e1a37",
+            measurementId: "G-5C3MNF1GNC"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        
+        // Make Firebase available globally for the auth state listener
+        window.firebase = { auth: () => auth };
+    </script>
+
     <style>
         /* Enhanced color scheme and glassmorphism */
         :root {
@@ -654,6 +679,7 @@
                 <a href="#features">Features</a>
                 <a href="pages/login.html" class="auth-button login-btn">Login</a>
                 <a href="pages/sign-up.html" class="auth-button signup-btn">Sign Up</a>
+                <a href="#" id="logout-nav-btn" class="auth-button logout-btn" style="display: none;">Logout</a>
             </div>
         </div>
     </nav>
@@ -915,6 +941,83 @@
                     link.classList.add('active');
                 }
             });
+        });
+
+        // Handle authentication state changes
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if Firebase is available and listen for auth state changes
+            if (typeof firebase !== 'undefined') {
+                try {
+                    firebase.auth().onAuthStateChanged(function(user) {
+                        const loginBtn = document.querySelector('.login-btn');
+                        const signupBtn = document.querySelector('.signup-btn');
+                        const logoutBtn = document.getElementById('logout-nav-btn');
+                        
+                        if (user) {
+                            // User is signed in - show logout button, hide login/signup
+                            if (loginBtn) loginBtn.style.display = 'none';
+                            if (signupBtn) signupBtn.style.display = 'none';
+                            if (logoutBtn) logoutBtn.style.display = 'inline-block';
+                            
+                            console.log('User is signed in:', user.uid);
+                        } else {
+                            // User is signed out - show login/signup buttons, hide logout
+                            if (loginBtn) loginBtn.style.display = 'inline-block';
+                            if (signupBtn) signupBtn.style.display = 'inline-block';
+                            if (logoutBtn) logoutBtn.style.display = 'none';
+                            
+                            console.log('User is signed out');
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error setting up auth state listener:', error);
+                }
+            }
+            
+            // Handle logout button click
+            const logoutBtn = document.getElementById('logout-nav-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    try {
+                        if (typeof firebase !== 'undefined' && firebase.auth()) {
+                            await firebase.auth().signOut();
+                        } else {
+                            // Clear storage as fallback
+                            localStorage.clear();
+                            sessionStorage.clear();
+                        }
+                        console.log('User signed out successfully');
+                        
+                        // Show a temporary success message
+                        const successMsg = document.createElement('div');
+                        successMsg.style.cssText = `
+                            position: fixed;
+                            top: 100px;
+                            right: 20px;
+                            background: rgba(16, 223, 111, 0.9);
+                            color: white;
+                            padding: 1rem 1.5rem;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            z-index: 10000;
+                            animation: slideInRight 0.3s ease;
+                        `;
+                        successMsg.innerHTML = '<i class="fas fa-check"></i> Successfully signed out!';
+                        document.body.appendChild(successMsg);
+                        
+                        setTimeout(() => {
+                            if (successMsg.parentNode) {
+                                successMsg.remove();
+                            }
+                        }, 3000);
+                        
+                    } catch (error) {
+                        console.error('Error signing out:', error);
+                        alert('Error signing out. Please try again.');
+                    }
+                });
+            }
         });
 
         // Toggle chatbot window
