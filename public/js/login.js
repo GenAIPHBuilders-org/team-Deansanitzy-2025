@@ -19,15 +19,11 @@ import { signInWithPopup } from "https://www.gstatic.com/firebasejs/11.5.0/fireb
   
   // Configure Google Auth provider to improve sign-in reliability and prevent duplicates
   provider.setCustomParameters({
-    prompt: 'select_account'
+    prompt: 'select_account',
+    hd: undefined // Allow any domain
   });
-  
-  // Add scopes explicitly to prevent additional permission requests
-  provider.addScope('email');
-  provider.addScope('profile');
 
-  // Global flag to prevent multiple simultaneous authentication attempts
-  let isAuthInProgress = false;
+
 
   // Helper function to handle successful authentication
   async function handleSuccessfulAuth(result) {
@@ -153,12 +149,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Google login button clicked");
         
         // Prevent multiple simultaneous login attempts
-        if (googleLogin.disabled || isAuthInProgress) {
+        if (googleLogin.disabled) {
             console.log("Google login already in progress, ignoring click");
             return;
         }
-        
-        isAuthInProgress = true;
         
         // Show loading state
         googleLogin.disabled = true;
@@ -180,7 +174,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             googleLogin.disabled = false;
             googleLogin.innerHTML = originalGoogleText;
             googleLogin.style.opacity = '1';
-            isAuthInProgress = false;
             
             // Handle different error types gracefully
             if (error.code === 'auth/popup-closed-by-user') {

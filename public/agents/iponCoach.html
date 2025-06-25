@@ -7,10 +7,14 @@
     <title>Ipon Coach AI - Your Intelligent Filipino Savings Assistant</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for beautiful visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
     <!-- Main theme stylesheet -->
     <link rel="stylesheet" href="../css/theme.css">
     <!-- Page-specific stylesheet -->
     <link rel="stylesheet" href="iponCoach.css">
+    <!-- Enhanced autonomous features stylesheet -->
+    <link rel="stylesheet" href="iponCoach-enhanced-styles.css">
 </head>
 
 <body>
@@ -144,27 +148,16 @@
                         </div>
                     </div>
 
-                    <!-- AI Chat Interface -->
-                    <div class="ai-chat-section">
-                        <div class="theme-card wide-card">
-                            <div class="card-header">
-                                <h2><i class="fas fa-comments"></i> Chat with Your AI Coach</h2>
-                                <span class="ai-badge">💬 Interactive</span>
-                            </div>
-                            <div class="card-content">
-                                <div id="chat-messages" class="chat-messages"></div>
-                                <div class="chat-input-container">
-                                    <input type="text" id="chat-input" placeholder="Ask your AI coach anything about finances..." maxlength="500">
-                                    <button id="send-message" class="btn-primary">
-                                        <i class="fas fa-paper-plane"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Autonomous Status Indicator -->
+    <div class="autonomous-status" id="autonomous-status">
+        <div class="status-dot"></div>
+        <span>AI Coach Status: <span id="status-text">Initializing...</span></span>
     </div>
 
     <!-- Enhanced JavaScript Module -->

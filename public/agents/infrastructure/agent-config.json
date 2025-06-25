@@ -1,0 +1,161 @@
+{
+  "agent": {
+    "name": "IponCoachAI",
+    "version": "2.0.0",
+    "mode": "${NODE_ENV:-development}",
+    "autonomy_level": "high",
+    "cultural_context": "filipino"
+  },
+  "ai_engines": {
+    "primary": {
+      "provider": "google_gemini",
+      "model": "gemini-1.5-pro",
+      "fallback": "gemini-1.5-flash",
+      "rate_limit": {
+        "requests_per_minute": 60,
+        "tokens_per_minute": 100000
+      },
+      "retry_config": {
+        "max_retries": 3,
+        "backoff_factor": 2,
+        "timeout": 30000
+      }
+    },
+    "secondary": {
+      "provider": "openai",
+      "model": "gpt-4-turbo",
+      "use_case": "complex_reasoning"
+    }
+  },
+  "databases": {
+    "primary": {
+      "type": "firestore",
+      "project_id": "${FIREBASE_PROJECT_ID}",
+      "collections": {
+        "users": "ipon_users",
+        "transactions": "financial_transactions",
+        "goals": "savings_goals",
+        "insights": "ai_insights",
+        "community": "community_data"
+      }
+    },
+    "cache": {
+      "type": "redis",
+      "ttl": 3600,
+      "max_memory": "256mb"
+    }
+  },
+  "external_apis": {
+    "bangko_sentral": {
+      "base_url": "https://api.bsp.gov.ph",
+      "endpoints": {
+        "exchange_rates": "/statistics/spei/api/data",
+        "interest_rates": "/statistics/rates"
+      },
+      "cache_duration": 3600
+    },
+    "philippine_stock_exchange": {
+      "base_url": "https://api.investagrams.com",
+      "endpoints": {
+        "market_data": "/MarketData/PSE",
+        "stock_prices": "/PSEMarket/History"
+      }
+    },
+    "government_apis": {
+      "bir": {
+        "base_url": "https://www.bir.gov.ph/api",
+        "endpoints": {
+          "tax_tables": "/tax-tables",
+          "tax_calculator": "/calculate-tax"
+        }
+      },
+      "sss": {
+        "base_url": "https://api.sss.gov.ph",
+        "endpoints": {
+          "contributions": "/contributions",
+          "benefits": "/benefits"
+        }
+      }
+    }
+  },
+  "features": {
+    "autonomous_monitoring": {
+      "enabled": true,
+      "interval_minutes": 5,
+      "max_interventions_per_hour": 10
+    },
+    "proactive_notifications": {
+      "enabled": true,
+      "channels": ["in_app", "email", "sms"],
+      "frequency_limits": {
+        "high_priority": "immediate",
+        "medium_priority": "hourly",
+        "low_priority": "daily"
+      }
+    },
+    "community_learning": {
+      "enabled": true,
+      "anonymous_data_sharing": true,
+      "min_community_size": 100
+    },
+    "cultural_adaptation": {
+      "enabled": true,
+      "regions": ["luzon", "visayas", "mindanao"],
+      "languages": ["filipino", "english", "cebuano", "ilocano"]
+    },
+    "advanced_planning": {
+      "enabled": true,
+      "planning_horizon_months": 60,
+      "scenario_modeling": true
+    }
+  },
+  "security": {
+    "encryption": {
+      "algorithm": "AES-256-GCM",
+      "key_rotation_days": 90
+    },
+    "privacy": {
+      "data_anonymization": true,
+      "consent_required": true,
+      "data_retention_days": 2555
+    },
+    "compliance": {
+      "gdpr": true,
+      "data_privacy_act": true,
+      "bsp_regulations": true
+    }
+  },
+  "performance": {
+    "response_time_target_ms": 500,
+    "memory_limit_mb": 512,
+    "concurrent_users": 1000,
+    "auto_scaling": {
+      "enabled": true,
+      "min_instances": 2,
+      "max_instances": 20,
+      "scale_trigger_cpu": 70
+    }
+  },
+  "monitoring": {
+    "metrics": {
+      "business": ["goal_completion_rate", "savings_growth", "user_engagement"],
+      "technical": ["response_time", "error_rate", "ai_accuracy"],
+      "cultural": ["cultural_adaptation_success", "local_relevance_score"]
+    },
+    "alerts": {
+      "error_rate_threshold": 0.05,
+      "response_time_threshold": 1000,
+      "ai_confidence_threshold": 0.7
+    }
+  },
+  "deployment": {
+    "environment": "${ENVIRONMENT}",
+    "regions": ["asia-southeast1", "asia-southeast2"],
+    "cdn": true,
+    "edge_computing": true,
+    "progressive_rollout": {
+      "enabled": true,
+      "stages": [10, 25, 50, 100]
+    }
+  }
+} 

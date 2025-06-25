@@ -1284,7 +1284,7 @@ class PeraPlannerAI extends BaseAgent {
                 devLog('📊 Real data fetched:', { userData, transactions: transactions.length, bankAccounts: bankAccounts.length });
             } catch (firestoreError) {
                 prodError('❌ Error fetching Firestore data:', firestoreError);
-                devLog('⚠️ Falling back to demo profile due to Firestore error');
+                devLog('⚠️ Falling back to empty profile due to Firestore error');
                 return this.generateFallbackProfile();
             }
 
@@ -1342,33 +1342,33 @@ class PeraPlannerAI extends BaseAgent {
 
         } catch (error) {
             prodError('❌ Error generating user profile:', error);
-            devLog('⚠️ Falling back to demo profile due to error');
+            devLog('⚠️ Falling back to empty profile due to error');
             return this.generateFallbackProfile();
         }
     }
 
-    // Generate fallback profile for test/debug modes
+    // Generate minimal fallback profile when no data is available
     generateFallbackProfile() {
         return {
             age: this.currentAge,
-            name: 'Demo User',
-            monthlyIncome: 50000,
-            monthlyExpenses: 35000,
-            currentSavings: 100000,
-            savingsRate: 0.30,
-            employmentType: 'employed',
+            name: 'User',
+            monthlyIncome: 0,
+            monthlyExpenses: 0,
+            currentSavings: 0,
+            savingsRate: 0,
+            employmentType: 'unknown',
             industry: 'General',
             dependents: 0,
-            lifeStage: 'late20s',
-            riskTolerance: 'moderate',
-            primaryGoals: ['emergency_fund', 'retirement'],
+            lifeStage: this.determineLifeStage(this.currentAge),
+            riskTolerance: 'conservative',
+            primaryGoals: [],
             hasInsurance: false,
             hasInvestments: false,
             location: 'Philippines',
             financialKnowledge: 'beginner',
             transactionCount: 0,
             accountCount: 0,
-            dataQuality: { score: 50, level: 'demo', factors: ['Demo data'] },
+            dataQuality: { score: 0, level: 'no_data', factors: ['No financial data available'] },
             isUsingFallback: true
         };
     }
@@ -2072,7 +2072,7 @@ Maging creative at comprehensive sa analysis, pero realistic sa recommendations!
                 </div>
                 <p class="data-note">
                     ${profile.isUsingFallback ? 
-                        '⚠️ Using demo data. Add transactions for personalized recommendations.' : 
+                        '⚠️ No financial data available. Add transactions and accounts for personalized recommendations.' : 
                         '✅ Recommendations based on your real financial data.'
                     }
                 </p>
@@ -2132,10 +2132,10 @@ Maging creative at comprehensive sa analysis, pero realistic sa recommendations!
                 return;
             }
 
-            // Debug mode - fallback data
+            // Debug mode - empty profile
             if (this.config.debugMode) {
-                devLog('🔧 DEBUG MODE: Using fallback data...');
-                await this.updateLoadingMessage('Debug mode: Using sample data...');
+                devLog('🔧 DEBUG MODE: Using empty profile...');
+                await this.updateLoadingMessage('Debug mode: Using empty profile...');
                 await this.delay(1000);
                 this.userProfile = this.generateFallbackProfile();
                 this.financialPlan = await this.createFinancialPlan(this.userProfile);

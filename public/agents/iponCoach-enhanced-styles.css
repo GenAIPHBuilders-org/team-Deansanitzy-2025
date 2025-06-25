@@ -1,0 +1,794 @@
+/* Enhanced Ipon Coach AI - Additional Styles for Autonomous Features */
+
+/* --- Enhanced Notification System --- */
+.notification {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    max-width: 400px;
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    animation: slideInFromRight 0.5s ease-out;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.notification:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+}
+
+.notification-opportunity {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(139, 195, 74, 0.1));
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: var(--text-primary);
+}
+
+.notification-risk {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.15), rgba(255, 152, 0, 0.1));
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: var(--text-primary);
+}
+
+.notification-recommendation {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.1));
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    color: var(--text-primary);
+}
+
+.notification-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-content h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.notification-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    opacity: 0.9;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.notification-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* Stack multiple notifications */
+.notification:nth-child(n+2) {
+    top: calc(2rem + 120px);
+}
+
+.notification:nth-child(n+3) {
+    top: calc(2rem + 240px);
+}
+
+.notification:nth-child(n+4) {
+    opacity: 0.8;
+    transform: scale(0.95);
+}
+
+/* --- Autonomous Status Indicators --- */
+.autonomous-status {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    padding: 0.5rem 1rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 25px;
+    backdrop-filter: blur(10px);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.autonomous-status.active {
+    color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+.autonomous-status .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    animation: pulse 2s infinite;
+}
+
+.autonomous-status.active .status-dot {
+    background: var(--primary-green);
+}
+
+/* --- Cultural Intelligence Indicators --- */
+.cultural-context-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.1));
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 15px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #ff9800;
+    margin-left: 0.5rem;
+}
+
+.cultural-context-badge.philippines {
+    background: linear-gradient(135deg, rgba(0, 123, 191, 0.2), rgba(255, 193, 7, 0.1));
+    border-color: rgba(0, 123, 191, 0.3);
+    color: #007bff;
+}
+
+/* --- Enhanced Performance Indicators --- */
+.performance-metrics {
+    position: fixed;
+    top: 2rem;
+    left: 2rem;
+    padding: 1rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    z-index: 998;
+    min-width: 200px;
+    display: none; /* Hidden by default, shown in dev mode */
+}
+
+.performance-metrics.show {
+    display: block;
+}
+
+.performance-metrics h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.performance-metric {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+}
+
+.performance-metric .metric-value {
+    font-weight: 600;
+    color: var(--primary-green);
+}
+
+/* --- Enhanced Loading States --- */
+.autonomous-loading {
+    display: inline-block;
+    margin-left: 0.5rem;
+    color: var(--primary-green);
+    animation: spin 1s linear infinite;
+}
+
+.autonomous-thinking::after {
+    content: '🧠';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 1rem;
+    animation: pulse 2s infinite;
+}
+
+/* --- Responsive Design for Enhanced Features --- */
+@media (max-width: 768px) {
+    .notification {
+        top: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+    
+    .notification:nth-child(n+2) {
+        top: calc(1rem + 100px);
+    }
+    
+    .notification:nth-child(n+3) {
+        top: calc(1rem + 200px);
+    }
+    
+    .autonomous-status {
+        bottom: 1rem;
+        left: 1rem;
+        right: 1rem;
+        justify-content: center;
+    }
+    
+    .performance-metrics {
+        top: 1rem;
+        left: 1rem;
+        right: 1rem;
+    }
+    
+    .cultural-context-badge {
+        display: block;
+        margin: 0.5rem 0;
+        text-align: center;
+    }
+}
+
+/* --- Accessibility Enhancements --- */
+@media (prefers-reduced-motion: reduce) {
+    .notification {
+        animation: none;
+    }
+    
+    .autonomous-status .status-dot,
+    .autonomous-thinking::after {
+        animation: none;
+    }
+}
+
+/* --- Focus States for Enhanced Elements --- */
+.notification:focus {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+}
+
+.notification-close:focus {
+    outline: 2px solid var(--primary-green);
+    outline-offset: 2px;
+}
+
+/* --- Animation Keyframes --- */
+@keyframes slideInFromRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Enhanced Predictive Modeling UI Styles */
+
+/* Financial Forecast Enhancements */
+.forecast-container {
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 15px;
+    border: 1px solid rgba(64, 224, 208, 0.2);
+}
+
+.forecast-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(64, 224, 208, 0.1);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-green);
+}
+
+.forecast-summary h3 {
+    margin: 0;
+    color: var(--primary-green);
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.confidence-score {
+    background: linear-gradient(45deg, #00d4aa, #00f5d4);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #1a1a2e;
+}
+
+.trend-indicator {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: capitalize;
+}
+
+.trend-stable {
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    color: #1a1a2e;
+}
+
+.trend-improving {
+    background: linear-gradient(45deg, #00d4aa, #00f5d4);
+    color: #1a1a2e;
+}
+
+.trend-declining {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+    color: white;
+}
+
+/* Chart Container Styling */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(64, 224, 208, 0.1);
+}
+
+.chart-title {
+    text-align: center;
+    color: var(--primary-green);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Forecast Timeline (if using simple display) */
+.forecast-timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.forecast-month {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid rgba(64, 224, 208, 0.2);
+    transition: all 0.3s ease;
+}
+
+.forecast-month:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-green);
+    box-shadow: 0 4px 20px rgba(64, 224, 208, 0.2);
+}
+
+.month-label {
+    font-weight: 600;
+    color: var(--primary-green);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.predicted-values {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.predicted-values span {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+.predicted-values .income {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.predicted-values .expenses {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+.predicted-values .savings {
+    background: rgba(64, 224, 208, 0.2);
+    color: var(--primary-green);
+}
+
+.confidence-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-green), #00f5d4);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* ML Insights */
+.ml-insights {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(64, 224, 208, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(64, 224, 208, 0.2);
+}
+
+.ml-insights h4 {
+    color: var(--primary-green);
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.insight-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.insight-metrics span {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+    border: 1px solid rgba(64, 224, 208, 0.1);
+}
+
+/* Scenario Planning Styles */
+.scenario-container {
+    padding: 20px;
+}
+
+.scenario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+    border-radius: 12px;
+    border-left: 4px solid #ffc107;
+}
+
+.scenario-header h3 {
+    margin: 0;
+    color: #ffc107;
+    font-size: 1.4rem;
+}
+
+.resilience-score {
+    background: linear-gradient(45deg, #ffc107, #ffeb3b);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    color: #1a1a2e;
+    font-size: 0.9rem;
+}
+
+.scenarios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.scenario-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    transition: all 0.3s ease;
+}
+
+.scenario-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(255, 193, 7, 0.2);
+}
+
+.scenario-card.severity-low {
+    border-left: 4px solid #4caf50;
+}
+
+.scenario-card.severity-medium {
+    border-left: 4px solid #ffc107;
+}
+
+.scenario-card.severity-high {
+    border-left: 4px solid #ff9800;
+}
+
+.scenario-card.severity-critical {
+    border-left: 4px solid #f44336;
+}
+
+.scenario-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-green);
+    margin-bottom: 10px;
+    text-transform: capitalize;
+}
+
+.scenario-impact {
+    font-size: 1rem;
+    color: #ffc107;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.scenario-timeline {
+    font-size: 0.9rem;
+    color: #cccccc;
+    margin-bottom: 15px;
+}
+
+.scenario-actions {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.scenario-actions strong {
+    color: var(--primary-green);
+    display: block;
+    margin-bottom: 8px;
+}
+
+.scenario-actions ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.scenario-actions li {
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #cccccc;
+}
+
+/* Behavior Insights Styles */
+.behavior-container {
+    padding: 20px;
+}
+
+.behavior-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(103, 58, 183, 0.1));
+    border-radius: 12px;
+    border-left: 4px solid #9c27b0;
+}
+
+.behavior-header h3 {
+    margin: 0;
+    color: #9c27b0;
+    font-size: 1.4rem;
+}
+
+.ai-learning-indicator {
+    background: linear-gradient(45deg, #9c27b0, #673ab7);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    color: white;
+    font-size: 0.9rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.spending-triggers {
+    margin-bottom: 25px;
+}
+
+.spending-triggers h4 {
+    color: #9c27b0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.trigger-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(156, 39, 176, 0.2);
+    transition: all 0.3s ease;
+}
+
+.trigger-item:hover {
+    border-color: #9c27b0;
+    transform: translateX(5px);
+}
+
+.trigger-name {
+    font-weight: 600;
+    color: var(--primary-green);
+    margin-bottom: 8px;
+    text-transform: capitalize;
+}
+
+.trigger-frequency {
+    font-size: 0.9rem;
+    color: #ffc107;
+    margin-bottom: 8px;
+}
+
+.trigger-prevention {
+    font-size: 0.9rem;
+    color: #cccccc;
+    font-style: italic;
+}
+
+.behavior-metrics {
+    margin-bottom: 25px;
+}
+
+.behavior-metrics h4 {
+    color: #9c27b0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.metric {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid rgba(156, 39, 176, 0.2);
+}
+
+.metric span {
+    display: block;
+    color: var(--primary-green);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #9c27b0, #673ab7);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.behavior-predictions {
+    background: rgba(156, 39, 176, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(156, 39, 176, 0.2);
+}
+
+.behavior-predictions h4 {
+    color: #9c27b0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.behavior-predictions p {
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    color: #cccccc;
+}
+
+.behavior-predictions strong {
+    color: var(--primary-green);
+}
+
+/* Enhanced AI Badges */
+.ai-badge {
+    background: linear-gradient(45deg, var(--primary-green), #00f5d4);
+    color: #1a1a2e;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 10px rgba(64, 224, 208, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .forecast-summary,
+    .scenario-header,
+    .behavior-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .forecast-timeline,
+    .scenarios-grid,
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .insight-metrics {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+}
+
+/* Loading animations for chart containers */
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(64, 224, 208, 0.1);
+}
+
+.chart-loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(64, 224, 208, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-green);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+} 

@@ -73,8 +73,8 @@ class GastosGuardianAI extends BaseAgent {
     async loadUserFinancialData() {
         try {
             if (!this.currentUser) {
-                console.log('⚠️ User not authenticated, using demo data');
-                return this.generateMockExpenseData();
+                console.log('⚠️ User not authenticated, showing empty state');
+                return this.generateEmptyExpenseData();
             }
 
             console.log('📊 Loading comprehensive expense analysis with account data...');
@@ -84,14 +84,14 @@ class GastosGuardianAI extends BaseAgent {
             
             // Use BaseAgent's loaded data and insights
             if (this.userTransactions.length === 0) {
-                console.log('⚠️ No transactions found, using demo data');
-                return this.generateMockExpenseData();
+                console.log('⚠️ No transactions found, showing empty state');
+                return this.generateEmptyExpenseData();
             }
 
             return this.processComprehensiveExpenseData();
         } catch (error) {
             console.error('❌ Error loading expense data:', error);
-            return this.generateMockExpenseData();
+            return this.generateEmptyExpenseData();
         }
     }
 
@@ -926,29 +926,15 @@ class GastosGuardianAI extends BaseAgent {
         return colors[category] || '#95A5A6';
     }
 
-    // Generate realistic mock expense data (fallback)
-    generateMockExpenseData() {
-        const categories = [
-            { name: 'Food & Dining', amount: 15000, color: '#FF6B6B' },
-            { name: 'Transportation', amount: 8000, color: '#4ECDC4' },
-            { name: 'Shopping', amount: 12000, color: '#45B7D1' },
-            { name: 'Bills & Utilities', amount: 6000, color: '#96CEB4' },
-            { name: 'Entertainment', amount: 5000, color: '#FFEAA7' },
-            { name: 'Healthcare', amount: 3000, color: '#DDA0DD' },
-            { name: 'Family Support', amount: 8000, color: '#98D8C8' },
-            { name: 'Others', amount: 2000, color: '#F7DC6F' }
-        ];
-
-        const totalExpenses = categories.reduce((sum, cat) => sum + cat.amount, 0);
-        const monthlyIncome = 65000;
-
+    // Generate empty data structure when no real data is available
+    generateEmptyExpenseData() {
         return {
-            categories,
-            totalExpenses,
-            monthlyIncome,
-            transactionCount: 89,
-            averageDaily: Math.round(totalExpenses / 30),
-            topCategory: categories.reduce((prev, current) => (prev.amount > current.amount) ? prev : current),
+            categories: [],
+            totalExpenses: 0,
+            monthlyIncome: 0,
+            transactionCount: 0,
+            averageDaily: 0,
+            topCategory: null,
             userData: null
         };
     }

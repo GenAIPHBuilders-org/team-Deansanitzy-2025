@@ -1,6 +1,7 @@
 /**
- * Ipon Coach AI - Dynamic Gemini-Powered Financial Assistant
- * Provides real-time AI analysis and personalized Filipino financial guidance
+ * Enhanced Ipon Coach AI - Autonomous Filipino Financial Assistant v2.0
+ * Production-ready agent with advanced cultural intelligence and autonomous behaviors
+ * Combines real-time AI analysis with proactive financial monitoring
  */
 
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
@@ -10,18 +11,47 @@ class IponCoachAI extends BaseAgent {
     constructor() {
         super('iponCoach', {
             autonomyLevel: 'high',
-            planningHorizon: 'medium_term',
-            learningRate: 0.2
+            planningHorizon: 'long_term',
+            learningRate: 0.3,
+            riskTolerance: 'adaptive'
         });
         
-        this.geminiApiKey = 'AIzaSyCdyWLIr2dJmtPJ8eBXdj7nYNNz3cjMfFo'; // Your Gemini API key
-        this.geminiModel = 'gemini-1.5-flash';
+        // Enhanced AI Configuration
+        this.geminiApiKey = 'AIzaSyCdyWLIr2dJmtPJ8eBXdj7nYNNz3cjMfFo';
+        this.geminiModel = 'gemini-1.5-pro'; // Upgraded to Pro for better reasoning
+        this.fallbackModel = 'gemini-1.5-flash';
+        
+        // Core Systems
         this.conversationHistory = [];
         this.analysisCache = new Map();
         this.lastAnalysisTime = null;
         
+        // Autonomous Systems
+        this.autonomousTimer = null;
+        this.interventionQueue = [];
+        this.userModel = new Map();
+        this.behaviorPatterns = new Map();
+        
+        // Cultural Intelligence
+        this.culturalFactors = new Map([
+            ['family_support', { weight: 0.8, importance: 'high' }],
+            ['remittances', { weight: 0.7, importance: 'high' }],
+            ['utang_culture', { weight: 0.6, importance: 'medium' }],
+            ['bayanihan_spirit', { weight: 0.5, importance: 'medium' }],
+            ['pakikipagkapwa', { weight: 0.4, importance: 'medium' }]
+        ]);
+        
+        // Performance Monitoring
+        this.performanceMetrics = {
+            responseTime: [],
+            aiAccuracy: [],
+            userSatisfaction: [],
+            goalCompletionRate: []
+        };
+        
         this.initializeElements();
         this.initializeEventListeners();
+        this.initializeAutonomousBehavior();
     }
 
     // Initialize DOM elements
@@ -64,31 +94,116 @@ class IponCoachAI extends BaseAgent {
         }
     }
 
+    // Initialize autonomous behaviors and monitoring
+    initializeAutonomousBehavior() {
+        console.log("🤖 Initializing autonomous behaviors...");
+        
+        // Start proactive monitoring after initialization
+        setTimeout(() => {
+            this.startProactiveMonitoring();
+        }, 5000); // Wait 5 seconds for initial data loading
+        
+        // Set up cultural adaptation
+        this.initializeCulturalIntelligence();
+        
+        // Initialize learning system
+        this.initializeLearningSystem();
+    }
+
+    // Start proactive monitoring system
+    startProactiveMonitoring() {
+        if (this.autonomousTimer) {
+            clearInterval(this.autonomousTimer);
+        }
+        
+        this.autonomousTimer = setInterval(async () => {
+            try {
+                console.log("🔄 Running autonomous analysis...");
+                await this.performAutonomousAnalysis();
+                await this.detectFinancialOpportunities();
+                await this.assessRiskFactors();
+                await this.generateProactiveInterventions();
+            } catch (error) {
+                console.error("❌ Autonomous monitoring error:", error);
+            }
+        }, 300000); // Every 5 minutes
+        
+        console.log("✅ Proactive monitoring started");
+    }
+
+    // Initialize cultural intelligence system
+    initializeCulturalIntelligence() {
+        console.log("🇵🇭 Initializing cultural intelligence...");
+        this.culturalProfile = {
+            region: 'metro_manila', // Default, will be updated
+            primaryLanguage: 'filipino',
+            familyStructure: 'nuclear',
+            incomeSource: 'employment',
+            financialGoals: ['emergency_fund', 'family_support']
+        };
+    }
+
+    // Initialize learning system
+    initializeLearningSystem() {
+        console.log("🎓 Initializing learning system...");
+        this.learningMetrics = {
+            interactionCount: 0,
+            recommendationAcceptanceRate: 0,
+            goalCompletionRate: 0,
+            userSatisfactionScore: 0
+        };
+    }
+
+    // Update autonomous status indicator
+    updateAutonomousStatus(status, message) {
+        const statusElement = document.getElementById('autonomous-status');
+        const statusText = document.getElementById('status-text');
+        
+        if (statusElement && statusText) {
+            statusText.textContent = message;
+            
+            // Update visual state
+            if (status === 'active') {
+                statusElement.classList.add('active');
+            } else {
+                statusElement.classList.remove('active');
+            }
+            
+            console.log(`🤖 Status: ${status} - ${message}`);
+        }
+    }
+
     // Start the AI coach
     async start() {
         try {
-            console.log("🤖 Starting Ipon Coach AI...");
+            console.log("🤖 Starting Enhanced Ipon Coach AI v2.0...");
+            this.updateAutonomousStatus('initializing', 'Starting AI systems...');
             this.showLoadingState();
             
             // Wait for authentication
+            this.updateAutonomousStatus('initializing', 'Waiting for authentication...');
             await this.waitForAuth();
             
             if (!this.currentUser) {
+                this.updateAutonomousStatus('error', 'Authentication required');
                 this.showEmptyState("Please log in to access AI financial coaching.");
                 return;
             }
 
             // Initialize BaseAgent with timeout and wait for data loading
+            this.updateAutonomousStatus('initializing', 'Initializing AI systems...');
             try {
                 await this.waitForInitialization();
                 
                 // Force data reload if BaseAgent initialization succeeded
                 if (this.initialized) {
                     console.log("🔄 BaseAgent initialized, loading financial data...");
+                    this.updateAutonomousStatus('initializing', 'Loading financial data...');
                     await this.loadUserFinancialData();
                 }
             } catch (error) {
                 console.warn("BaseAgent initialization failed, loading data manually:", error);
+                this.updateAutonomousStatus('initializing', 'Loading data (fallback mode)...');
                 await this.loadUserFinancialDataFallback();
             }
             
@@ -108,18 +223,22 @@ class IponCoachAI extends BaseAgent {
             // Check if we have data
             if (this.userTransactions.length === 0 && this.userAccounts.length === 0) {
                 console.log("⚠️ No financial data found, showing empty state");
+                this.updateAutonomousStatus('waiting', 'Waiting for financial data...');
                 this.showEmptyState();
                 return;
             }
 
             // Load AI analysis
+            this.updateAutonomousStatus('initializing', 'Generating AI insights...');
             await this.loadAIAnalysis();
             
             this.showContentState();
-            console.log("✅ Ipon Coach AI initialized successfully");
+            this.updateAutonomousStatus('active', 'AI Coach active - monitoring your finances');
+            console.log("✅ Enhanced Ipon Coach AI v2.0 initialized successfully");
             
         } catch (error) {
-            console.error("❌ Error starting Ipon Coach AI:", error);
+            console.error("❌ Error starting Enhanced Ipon Coach AI:", error);
+            this.updateAutonomousStatus('error', 'Initialization failed');
             this.showErrorMessage("Failed to initialize AI coach. Please try again.");
         }
     }
@@ -521,8 +640,10 @@ Consider Filipino-specific risks: OFW dependency, peso volatility, natural disas
         };
     }
 
-    // Call Gemini AI API
+    // Enhanced Gemini AI API with fallback
     async callGeminiAPI(prompt, options = {}) {
+        const startTime = Date.now();
+        
         try {
             const requestBody = {
                 contents: [{
@@ -539,7 +660,7 @@ Consider Filipino-specific risks: OFW dependency, peso volatility, natural disas
                 }
             };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
+            let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -547,16 +668,283 @@ Consider Filipino-specific risks: OFW dependency, peso volatility, natural disas
                 body: JSON.stringify(requestBody)
             });
 
+            // Fallback to flash model if pro fails
+            if (!response.ok && this.geminiModel === 'gemini-1.5-pro') {
+                console.warn('Pro model failed, falling back to Flash model');
+                response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.fallbackModel}:generateContent?key=${this.geminiApiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+            }
+
             if (!response.ok) {
                 throw new Error(`Gemini API error: ${response.status}`);
             }
 
             const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const result = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            
+            // Track performance
+            const responseTime = Date.now() - startTime;
+            this.trackPerformance('responseTime', responseTime);
+            
+            return result;
             
         } catch (error) {
             console.error('Gemini API call failed:', error);
+            this.trackPerformance('responseTime', Date.now() - startTime);
             throw error;
+        }
+    }
+
+    // Performance tracking
+    trackPerformance(metric, value) {
+        if (this.performanceMetrics[metric]) {
+            this.performanceMetrics[metric].push({
+                value,
+                timestamp: Date.now()
+            });
+            
+            // Keep only last 100 measurements
+            if (this.performanceMetrics[metric].length > 100) {
+                this.performanceMetrics[metric].shift();
+            }
+        }
+    }
+
+    // Autonomous analysis methods
+    async performAutonomousAnalysis() {
+        if (!this.userTransactions || this.userTransactions.length === 0) {
+            console.log("⚠️ No transaction data for autonomous analysis");
+            return;
+        }
+
+        try {
+            // Analyze spending patterns
+            const spendingAnalysis = await this.analyzeSpendingPatterns();
+            
+            // Check for anomalies
+            const anomalies = await this.detectSpendingAnomalies();
+            
+            // Update user model
+            await this.updateUserModel(spendingAnalysis);
+            
+            // Generate insights
+            if (anomalies.length > 0) {
+                await this.handleSpendingAnomalies(anomalies);
+            }
+            
+            console.log("✅ Autonomous analysis completed");
+            
+        } catch (error) {
+            console.error("❌ Autonomous analysis failed:", error);
+        }
+    }
+
+    async analyzeSpendingPatterns() {
+        const recentTransactions = this.userTransactions
+            .filter(tx => this.isWithinLastMonth(tx.date))
+            .filter(tx => tx.type === 'expense');
+
+        const patterns = {
+            averageDaily: 0,
+            topCategories: {},
+            weekdayVsWeekend: { weekday: 0, weekend: 0 },
+            trend: 'stable'
+        };
+
+        if (recentTransactions.length === 0) return patterns;
+
+        // Calculate average daily spending
+        const totalSpent = recentTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+        patterns.averageDaily = totalSpent / 30;
+
+        // Top spending categories
+        recentTransactions.forEach(tx => {
+            const category = tx.category || 'Other';
+            patterns.topCategories[category] = (patterns.topCategories[category] || 0) + parseFloat(tx.amount || 0);
+        });
+
+        return patterns;
+    }
+
+    async detectSpendingAnomalies() {
+        const anomalies = [];
+        const patterns = await this.analyzeSpendingPatterns();
+        
+        // Check for unusual spending spikes
+        if (patterns.averageDaily > 2000) { // Configurable threshold
+            anomalies.push({
+                type: 'high_daily_spending',
+                severity: 'medium',
+                value: patterns.averageDaily,
+                message: 'Your daily spending has increased significantly'
+            });
+        }
+
+        // Check for category concentration
+        const totalSpent = Object.values(patterns.topCategories).reduce((sum, amount) => sum + amount, 0);
+        Object.entries(patterns.topCategories).forEach(([category, amount]) => {
+            const percentage = (amount / totalSpent) * 100;
+            if (percentage > 50) {
+                anomalies.push({
+                    type: 'category_concentration',
+                    severity: 'low',
+                    category,
+                    percentage,
+                    message: `${percentage.toFixed(1)}% of spending is in ${category}`
+                });
+            }
+        });
+
+        return anomalies;
+    }
+
+    async detectFinancialOpportunities() {
+        try {
+            const opportunities = [];
+            const overview = this.getFinancialOverview();
+
+            // Emergency fund opportunity
+            if (overview.totalBalance < overview.monthlyExpenses * 3) {
+                opportunities.push({
+                    type: 'emergency_fund',
+                    priority: 'high',
+                    description: 'Build emergency fund to cover 3-6 months of expenses',
+                    potentialSavings: overview.monthlyExpenses * 3 - overview.totalBalance
+                });
+            }
+
+            // Savings rate improvement
+            if (overview.savingsRate < 20) {
+                opportunities.push({
+                    type: 'savings_rate',
+                    priority: 'medium',
+                    description: 'Increase savings rate to at least 20%',
+                    currentRate: overview.savingsRate,
+                    targetRate: 20
+                });
+            }
+
+            if (opportunities.length > 0) {
+                console.log("💡 Detected financial opportunities:", opportunities);
+                this.showOpportunityNotifications(opportunities);
+            }
+
+        } catch (error) {
+            console.error("❌ Opportunity detection failed:", error);
+        }
+    }
+
+    async assessRiskFactors() {
+        try {
+            const risks = [];
+            const overview = this.getFinancialOverview();
+
+            // Income concentration risk
+            if (this.userAccounts && this.userAccounts.length < 2) {
+                risks.push({
+                    type: 'income_concentration',
+                    severity: 'medium',
+                    description: 'Single source of income increases financial risk'
+                });
+            }
+
+            // High debt-to-income ratio
+            if (overview.savingsRate < 0) {
+                risks.push({
+                    type: 'negative_savings',
+                    severity: 'high',
+                    description: 'Expenses exceed income - immediate action needed'
+                });
+            }
+
+            // Emergency fund risk
+            if (overview.totalBalance < overview.monthlyExpenses) {
+                risks.push({
+                    type: 'insufficient_emergency_fund',
+                    severity: 'high',
+                    description: 'Less than 1 month of expenses in savings'
+                });
+            }
+
+            if (risks.length > 0) {
+                console.log("⚠️ Risk factors detected:", risks);
+                this.showRiskAlerts(risks);
+            }
+
+        } catch (error) {
+            console.error("❌ Risk assessment failed:", error);
+        }
+    }
+
+    async generateProactiveInterventions() {
+        if (this.interventionQueue.length > 10) {
+            console.log("⚠️ Too many pending interventions, skipping new ones");
+            return;
+        }
+
+        try {
+            const overview = this.getFinancialOverview();
+            const culturalContext = this.buildCulturalContext();
+            
+            // Generate culturally-aware recommendations
+            const prompt = `As a Filipino financial advisor AI, analyze this situation and suggest ONE specific action:
+
+Financial Overview:
+- Monthly Income: ₱${overview.monthlyIncome?.toLocaleString() || 'Unknown'}
+- Monthly Expenses: ₱${overview.monthlyExpenses?.toLocaleString() || 'Unknown'}
+- Savings Rate: ${overview.savingsRate?.toFixed(1) || 0}%
+- Total Balance: ₱${overview.totalBalance?.toLocaleString() || 'Unknown'}
+
+Cultural Context:
+- Family obligations: ${culturalContext.familySupport ? 'High' : 'Low'}
+- Risk tolerance: ${culturalContext.riskTolerance || 'Medium'}
+
+Provide ONE specific, actionable recommendation in Filipino context. Keep it under 100 words.`;
+
+            const intervention = await this.callGeminiAPI(prompt);
+            
+            if (intervention) {
+                this.interventionQueue.push({
+                    id: Date.now(),
+                    type: 'proactive_recommendation',
+                    content: intervention,
+                    timestamp: new Date(),
+                    priority: 'medium'
+                });
+
+                this.showProactiveRecommendation(intervention);
+            }
+
+        } catch (error) {
+            console.error("❌ Intervention generation failed:", error);
+        }
+    }
+
+    buildCulturalContext() {
+        return {
+            familySupport: this.culturalProfile?.familyStructure === 'extended',
+            riskTolerance: this.culturalProfile?.riskTolerance || 'medium',
+            region: this.culturalProfile?.region || 'metro_manila',
+            primaryLanguage: this.culturalProfile?.primaryLanguage || 'filipino'
+        };
+    }
+
+    async updateUserModel(analysisData) {
+        // Update behavioral patterns
+        this.userModel.set('lastAnalysis', analysisData);
+        this.userModel.set('lastUpdate', new Date());
+        
+        // Track learning metrics
+        this.learningMetrics.interactionCount++;
+        
+        // Store patterns for future use
+        if (analysisData) {
+            this.behaviorPatterns.set('spending', analysisData);
         }
     }
 
@@ -812,6 +1200,169 @@ Provide a helpful, personalized response. Use Filipino expressions naturally whe
         ];
     }
 
+    // Enhanced notification methods
+    showOpportunityNotifications(opportunities) {
+        opportunities.forEach(opportunity => {
+            this.showNotification({
+                type: 'opportunity',
+                icon: '💡',
+                title: 'Financial Opportunity',
+                message: opportunity.description,
+                priority: opportunity.priority,
+                action: () => this.handleOpportunityClick(opportunity)
+            });
+        });
+    }
+
+    showRiskAlerts(risks) {
+        risks.forEach(risk => {
+            this.showNotification({
+                type: 'risk',
+                icon: '⚠️',
+                title: 'Risk Alert',
+                message: risk.description,
+                priority: risk.severity,
+                action: () => this.handleRiskClick(risk)
+            });
+        });
+    }
+
+    showProactiveRecommendation(content) {
+        this.addChatMessage('ai', content);
+        
+        this.showNotification({
+            type: 'recommendation',
+            icon: '🤖',
+            title: 'AI Recommendation',
+            message: content.substring(0, 100) + '...',
+            priority: 'medium'
+        });
+    }
+
+    showNotification(notification) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = `notification notification-${notification.type} priority-${notification.priority}`;
+        notificationDiv.innerHTML = `
+            <div class="notification-icon">${notification.icon}</div>
+            <div class="notification-content">
+                <h4>${notification.title}</h4>
+                <p>${notification.message}</p>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        if (notification.action) {
+            notificationDiv.addEventListener('click', notification.action);
+        }
+        
+        document.body.appendChild(notificationDiv);
+        
+        // Auto-remove after delay based on priority
+        const delay = notification.priority === 'high' ? 10000 : 
+                     notification.priority === 'medium' ? 7000 : 5000;
+        
+        setTimeout(() => {
+            if (notificationDiv.parentElement) {
+                notificationDiv.remove();
+            }
+        }, delay);
+    }
+
+    async handleSpendingAnomalies(anomalies) {
+        for (const anomaly of anomalies) {
+            const culturalPrompt = `As a Filipino financial advisor, address this spending issue with cultural sensitivity:
+            
+Issue: ${anomaly.message}
+Type: ${anomaly.type}
+Severity: ${anomaly.severity}
+
+Provide culturally-aware advice considering Filipino family values and financial habits. Keep it under 80 words.`;
+
+            try {
+                const advice = await this.callGeminiAPI(culturalPrompt);
+                this.addChatMessage('ai', `🔍 Spending Alert: ${advice}`);
+            } catch (error) {
+                console.error("Failed to generate anomaly advice:", error);
+                this.addChatMessage('ai', `I noticed ${anomaly.message}. Let's review your spending together.`);
+            }
+        }
+    }
+
+    handleOpportunityClick(opportunity) {
+        this.addChatMessage('ai', `Let me help you with "${opportunity.description}". What would you like to know more about?`);
+        if (this.elements.chatInput) {
+            this.elements.chatInput.focus();
+        }
+    }
+
+    handleRiskClick(risk) {
+        this.addChatMessage('ai', `I understand you're concerned about "${risk.description}". Let's create an action plan to address this risk.`);
+        if (this.elements.chatInput) {
+            this.elements.chatInput.focus();
+        }
+    }
+
+    // Enhanced learning from interactions
+    async learnFromInteraction(interaction) {
+        try {
+            // Update user model
+            this.userModel.set('lastInteraction', {
+                type: interaction.type,
+                timestamp: new Date(),
+                success: interaction.success || false
+            });
+
+            // Update cultural preferences if applicable
+            if (interaction.culturalFeedback) {
+                this.updateCulturalPreferences(interaction.culturalFeedback);
+            }
+
+            // Update learning metrics
+            if (interaction.recommendationAccepted !== undefined) {
+                const currentRate = this.learningMetrics.recommendationAcceptanceRate;
+                const newRate = (currentRate + (interaction.recommendationAccepted ? 1 : 0)) / 2;
+                this.learningMetrics.recommendationAcceptanceRate = newRate;
+            }
+
+            console.log("📊 Learning metrics updated:", this.learningMetrics);
+
+        } catch (error) {
+            console.error("❌ Learning update failed:", error);
+        }
+    }
+
+    updateCulturalPreferences(feedback) {
+        // Adjust cultural factor weights based on user feedback
+        if (feedback.culturalRelevance) {
+            this.culturalFactors.forEach((factor, key) => {
+                if (feedback.culturalRelevance[key] !== undefined) {
+                    factor.weight = Math.max(0.1, Math.min(1.0, 
+                        factor.weight + (feedback.culturalRelevance[key] - 0.5) * 0.1
+                    ));
+                }
+            });
+        }
+    }
+
+    // Performance monitoring
+    getPerformanceReport() {
+        const report = {};
+        
+        Object.entries(this.performanceMetrics).forEach(([metric, values]) => {
+            if (values.length > 0) {
+                const recentValues = values.slice(-10).map(v => v.value);
+                report[metric] = {
+                    average: recentValues.reduce((sum, val) => sum + val, 0) / recentValues.length,
+                    latest: recentValues[recentValues.length - 1],
+                    trend: recentValues.length > 1 ? 
+                        (recentValues[recentValues.length - 1] > recentValues[0] ? 'increasing' : 'decreasing') : 'stable'
+                };
+            }
+        });
+        
+        return report;
+    }
+
     // State management methods
     showLoadingState() {
         if (this.elements.loadingState) this.elements.loadingState.style.display = 'block';
@@ -850,6 +1401,32 @@ Provide a helpful, personalized response. Use Filipino expressions naturally whe
         setTimeout(() => {
             errorDiv.remove();
         }, 5000);
+    }
+
+    // Enhanced cleanup and resource management
+    destroy() {
+        console.log("🧹 Cleaning up Enhanced Ipon Coach AI...");
+        
+        // Clear autonomous monitoring
+        if (this.autonomousTimer) {
+            clearInterval(this.autonomousTimer);
+            this.autonomousTimer = null;
+        }
+        
+        // Clear caches
+        this.analysisCache.clear();
+        this.userModel.clear();
+        this.behaviorPatterns.clear();
+        
+        // Clear intervention queue
+        this.interventionQueue = [];
+        
+        // Remove event listeners
+        if (this.elements.sendButton) {
+            this.elements.sendButton.removeEventListener('click', this.sendChatMessage);
+        }
+        
+        console.log("✅ Enhanced Ipon Coach AI cleaned up successfully");
     }
 }
 
