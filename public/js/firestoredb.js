@@ -68,9 +68,22 @@ async function getUserIdToken() {
 }
 
 function validateUserAccess(requestUserId) {
-    // COMPLETELY BYPASS ALL AUTHENTICATION CHECKS
-    console.log('validateUserAccess - BYPASSED for userId:', requestUserId);
-    return true; // Always return true
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        console.error('validateUserAccess - No user authenticated');
+        throw new Error('User not authenticated');
+    }
+    
+    if (currentUser.uid !== requestUserId) {
+        console.error('validateUserAccess - User ID mismatch:', {
+            currentUser: currentUser.uid,
+            requestUserId: requestUserId
+        });
+        throw new Error('Unauthorized access: User ID mismatch');
+    }
+    
+    console.log('validateUserAccess - Access granted for userId:', requestUserId);
+    return true;
 }
 
 // Store user data in Firestore
@@ -160,14 +173,19 @@ export async function updatePasswordStatus(userId, hasPassword) {
 // Store transaction in Firestore
 export async function storeTransaction(userId, transactionData) {
     try {
-        console.log('Starting storeTransaction with userId:', userId);
-        console.log('Transaction data to store:', transactionData);
+        console.log('🔄 Starting storeTransaction with userId:', userId);
+        console.log('📝 Transaction data to store:', transactionData);
 
-        // Use a default userId if none provided
-        const finalUserId = userId || 'default-user';
-        console.log('Final userId being used:', finalUserId);
+        // Validate user is authorized to modify this data
+        try {
+            validateUserAccess(userId);
+            console.log('✅ User access validation passed for transaction');
+        } catch (authError) {
+            console.error('❌ Authorization error for transaction:', authError);
+            throw new Error('Authorization failed: ' + authError.message);
+        }
 
-        // Simple validation - just check required fields
+        // Enhanced validation - check all required fields
         if (!transactionData.id) {
             throw new Error('Transaction ID is required');
         }
@@ -177,37 +195,118 @@ export async function storeTransaction(userId, transactionData) {
         if (!transactionData.amount && transactionData.amount !== 0) {
             throw new Error('Transaction amount is required');
         }
-        if (!transactionData.type) {
-            throw new Error('Transaction type is required');
+        if (isNaN(parseFloat(transactionData.amount))) {
+            throw new Error('Transaction amount must be a valid number');
+        }
+        if (!transactionData.type || !['income', 'expense'].includes(transactionData.type)) {
+            throw new Error('Transaction type must be either "income" or "expense"');
         }
         if (!transactionData.date) {
             throw new Error('Transaction date is required');
         }
+        if (!transactionData.accountId) {
+            throw new Error('Transaction must be associated with an account');
+        }
 
         // Create Firestore document reference
-        const docRef = doc(db, "users", finalUserId, "transactions", transactionData.id);
-        console.log('Document reference created for path:', docRef.path);
+        const docRef = doc(db, "users", userId, "transactions", transactionData.id);
+        console.log('📄 Document reference created for path:', docRef.path);
 
-        // Add userId to transaction data and timestamp
+        // Get current user info for audit trail
+        const currentUser = auth.currentUser;
+        const userInfo = {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName || 'Unknown'
+        };
+
+        // Add comprehensive audit trail and security data
         const finalTransactionData = {
             ...transactionData,
-            userId: finalUserId,
+            // Core identifiers
+            userId,
+            transactionId: transactionData.id,
+            
+            // Financial data (validated)
+            amount: parseFloat(transactionData.amount),
+            
+            // Audit trail
+            createdBy: userInfo,
+            createdAt: new Date().toISOString(),
+            lastModifiedBy: userInfo,
+            lastModifiedAt: new Date().toISOString(),
+            
+            // System metadata
+            source: 'web_app_transactions_page',
+            version: '1.0',
+            
+            // Security metadata
+            clientTimestamp: new Date().toISOString(),
+            serverTimestamp: new Date().toISOString(),
+            ipAddress: 'client-side', // Would be filled server-side in production
+            userAgent: navigator.userAgent,
+            
+            // Data integrity
+            dataHash: await generateTransactionHash(transactionData),
+            
+            // Additional tracking
+            sessionId: generateSessionId(),
+            requestId: generateRequestId(),
+            
+            // Legacy timestamp for backward compatibility
             timestamp: new Date().toISOString()
         };
 
-        console.log('Storing transaction data to Firestore:', finalTransactionData);
+        console.log('🔒 Attempting to store secured transaction data with audit trail');
 
-        // Store to Firestore - this should work with open rules
-        await setDoc(docRef, finalTransactionData);
-        console.log('✅ Transaction successfully stored in Firestore at path:', docRef.path);
-        return true;
+        // Store to Firestore
+        try {
+            await setDoc(docRef, finalTransactionData);
+            console.log('✅ Transaction successfully stored in Firestore at path:', docRef.path);
+            
+            // Log successful creation for audit
+            console.log('📊 AUDIT LOG - Transaction Created:', {
+                userId: userId,
+                transactionId: transactionData.id,
+                transactionName: transactionData.name,
+                amount: transactionData.amount,
+                type: transactionData.type,
+                accountId: transactionData.accountId,
+                timestamp: new Date().toISOString(),
+                action: 'CREATE_TRANSACTION'
+            });
+            
+            return { success: true, transactionId: transactionData.id, timestamp: finalTransactionData.createdAt };
+        } catch (firestoreError) {
+            console.error('❌ Firestore setDoc error for transaction:', firestoreError);
+            
+            // Log failed creation for audit
+            console.error('📊 AUDIT LOG - Transaction Creation Failed:', {
+                userId: userId,
+                transactionId: transactionData.id,
+                error: firestoreError.message,
+                timestamp: new Date().toISOString(),
+                action: 'CREATE_TRANSACTION_FAILED'
+            });
+            
+            throw new Error('Failed to save transaction to Firestore: ' + firestoreError.message);
+        }
         
     } catch (error) {
         console.error('❌ Error in storeTransaction:', error);
-        console.error('Full error details:', {
-            code: error.code,
-            message: error.message,
-            name: error.name
+        
+        // Log comprehensive error for audit
+        console.error('📊 AUDIT LOG - Transaction Storage Error:', {
+            userId: userId,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            action: 'STORAGE_ERROR',
+            transactionData: { 
+                id: transactionData?.id, 
+                name: transactionData?.name,
+                amount: transactionData?.amount,
+                type: transactionData?.type
+            }
         });
         
         // If it's still a permission error, the Firebase rules weren't updated
@@ -216,6 +315,27 @@ export async function storeTransaction(userId, transactionData) {
         }
         
         throw error;
+    }
+}
+
+// Helper function to generate transaction hash for integrity checking
+async function generateTransactionHash(data) {
+    try {
+        const encoder = new TextEncoder();
+        const dataString = JSON.stringify({
+            name: data.name,
+            amount: data.amount,
+            type: data.type,
+            date: data.date,
+            accountId: data.accountId
+        });
+        const dataBuffer = encoder.encode(dataString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (error) {
+        console.warn('Could not generate transaction hash:', error);
+        return 'hash_generation_failed';
     }
 }
 
@@ -322,15 +442,33 @@ export async function deleteTransaction(userId, transactionId) {
 // Store bank account in Firestore
 export async function storeBankAccount(userId, accountData) {
     try {
-        console.log('Starting storeBankAccount with userId:', userId);
-        console.log('Account data to store:', accountData);
+        console.log('🔄 Starting storeBankAccount with userId:', userId);
+        console.log('📝 Account data to store:', accountData);
 
         // Validate user is authorized to modify this data
         try {
             validateUserAccess(userId);
+            console.log('✅ User access validation passed');
         } catch (authError) {
-            console.error('Authorization error:', authError);
+            console.error('❌ Authorization error:', authError);
             throw new Error('Authorization failed: ' + authError.message);
+        }
+
+        // Validate required fields
+        if (!accountData.id) {
+            throw new Error('Account ID is required');
+        }
+        if (!accountData.name || accountData.name.trim() === '') {
+            throw new Error('Account name is required');
+        }
+        if (!accountData.provider) {
+            throw new Error('Account provider is required');
+        }
+        if (!accountData.accountType) {
+            throw new Error('Account type is required');
+        }
+        if (!accountData.category) {
+            throw new Error('Account category is required');
         }
 
         // Ensure balance is a number
@@ -338,37 +476,141 @@ export async function storeBankAccount(userId, accountData) {
         if (isNaN(balance)) {
             throw new Error('Invalid balance amount: must be a valid number');
         }
+        if (balance < 0) {
+            throw new Error('Balance cannot be negative');
+        }
 
         // Create a reference to the bank account document
         const docRef = doc(db, "users", userId, "bankAccounts", accountData.id);
-        console.log('Document reference created for path:', docRef.path);
+        console.log('📄 Document reference created for path:', docRef.path);
 
-        // Add userId and ensure balance is a number
-        const securedAccountData = {
-            ...accountData,
-            userId,
-            balance: balance,
-            timestamp: new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            isActive: true,
-            source: 'web_app'
+        // Get current user info for audit trail
+        const currentUser = auth.currentUser;
+        const userInfo = {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName || 'Unknown'
         };
 
-        console.log('Attempting to store secured account data:', securedAccountData);
+        // Add comprehensive audit trail and security data
+        const securedAccountData = {
+            ...accountData,
+            // Core identifiers
+            userId,
+            accountId: accountData.id,
+            
+            // Financial data (validated)
+            balance: balance,
+            
+            // Audit trail
+            createdBy: userInfo,
+            createdAt: new Date().toISOString(),
+            lastModifiedBy: userInfo,
+            lastModifiedAt: new Date().toISOString(),
+            
+            // System metadata
+            source: 'web_app_accounts_page',
+            version: '1.0',
+            isActive: true,
+            
+            // Security metadata
+            clientTimestamp: new Date().toISOString(),
+            serverTimestamp: new Date().toISOString(),
+            ipAddress: 'client-side', // Would be filled server-side in production
+            userAgent: navigator.userAgent,
+            
+            // Data integrity
+            dataHash: await generateDataHash(accountData),
+            
+            // Additional tracking
+            sessionId: generateSessionId(),
+            requestId: generateRequestId(),
+            
+            // Legacy timestamp for backward compatibility with queries
+            timestamp: new Date().toISOString()
+        };
+
+        console.log('🔒 Attempting to store secured account data with audit trail');
 
         // Use setDoc to create/update the document
         try {
             await setDoc(docRef, securedAccountData);
-            console.log('Account successfully stored in Firestore at path:', docRef.path);
-            return true;
+            console.log('✅ Account successfully stored in Firestore at path:', docRef.path);
+            
+            // Log successful creation for audit
+            console.log('📊 AUDIT LOG - Account Created:', {
+                userId: userId,
+                accountId: accountData.id,
+                accountName: accountData.name,
+                provider: accountData.provider,
+                balance: balance,
+                timestamp: new Date().toISOString(),
+                action: 'CREATE_ACCOUNT'
+            });
+            
+            return { success: true, accountId: accountData.id, timestamp: securedAccountData.createdAt };
         } catch (firestoreError) {
-            console.error('Firestore setDoc error:', firestoreError);
+            console.error('❌ Firestore setDoc error:', firestoreError);
+            
+            // Log failed creation for audit
+            console.error('📊 AUDIT LOG - Account Creation Failed:', {
+                userId: userId,
+                accountId: accountData.id,
+                error: firestoreError.message,
+                timestamp: new Date().toISOString(),
+                action: 'CREATE_ACCOUNT_FAILED'
+            });
+            
             throw new Error('Failed to save to Firestore: ' + firestoreError.message);
         }
     } catch (error) {
-        console.error('Error in storeBankAccount:', error);
+        console.error('❌ Error in storeBankAccount:', error);
+        
+        // Log comprehensive error for audit
+        console.error('📊 AUDIT LOG - Account Storage Error:', {
+            userId: userId,
+            error: error.message,
+            timestamp: new Date().toISOString(),
+            action: 'STORAGE_ERROR',
+            accountData: { 
+                id: accountData?.id, 
+                name: accountData?.name,
+                provider: accountData?.provider 
+            }
+        });
+        
         throw error; // Re-throw to handle in the calling function
     }
+}
+
+// Helper function to generate data hash for integrity checking
+async function generateDataHash(data) {
+    try {
+        const encoder = new TextEncoder();
+        const dataString = JSON.stringify({
+            name: data.name,
+            provider: data.provider,
+            accountType: data.accountType,
+            balance: data.balance
+        });
+        const dataBuffer = encoder.encode(dataString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (error) {
+        console.warn('Could not generate data hash:', error);
+        return 'hash_generation_failed';
+    }
+}
+
+// Helper function to generate session ID
+function generateSessionId() {
+    return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Helper function to generate request ID
+function generateRequestId() {
+    return 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
 // Get all bank accounts for a user
@@ -419,7 +661,7 @@ export async function getUserBankAccounts(userId) {
                 
                 // Add timestamp if missing (for older accounts)
                 if (!data.timestamp) {
-                    data.timestamp = new Date().toISOString();
+                    data.timestamp = data.createdAt || new Date().toISOString();
                 }
                 
                 accounts.push({ id: doc.id, ...data });
@@ -858,96 +1100,7 @@ export async function resetFailedLoginAttempts(email) {
     }
 }
 
-// TELEGRAM CONNECTION FUNCTIONS
 
-// Validate telegram connection key (for bot use) - using server-side collections
-export async function validateTelegramKey(key) {
-    try {
-        // Use the server-side collection name 'telegram_keys'
-        const keyLookupRef = doc(db, 'telegram_keys', key);
-        const keyDoc = await getDoc(keyLookupRef);
-        
-        if (!keyDoc.exists()) {
-            return { valid: false, reason: 'Key not found' };
-        }
-        
-        const keyData = keyDoc.data();
-        
-        // Server-side keys are permanent (no expiration check needed)
-        // Check if key is already used
-        if (keyData.used) {
-            return { valid: false, reason: 'Key already used' };
-        }
-        
-        return { 
-            valid: true, 
-            userId: keyData.userId,
-            userEmail: keyData.email
-        };
-    } catch (error) {
-        console.error('Error validating telegram key:', error);
-        return { valid: false, reason: 'Validation error' };
-    }
-}
-
-// Mark telegram key as used and store connection
-export async function connectTelegramAccount(key, telegramUserData) {
-    try {
-        console.log('Connecting telegram account with key:', key);
-        
-        // First validate the key
-        const validation = await validateTelegramKey(key);
-        if (!validation.valid) {
-            throw new Error(validation.reason);
-        }
-        
-        const { userId, userEmail } = validation;
-        
-        // Mark key as used in telegram_keys collection
-        const keyLookupRef = doc(db, 'telegram_keys', key);
-        await updateDoc(keyLookupRef, { 
-            used: true,
-            usedAt: new Date().toISOString(),
-            telegramUserId: telegramUserData.id.toString()
-        });
-        
-        // Update user document with telegram connection info
-        const userDocRef = doc(db, 'users', userId);
-        await updateDoc(userDocRef, {
-            telegramKeyUsed: true,
-            telegramLinkedAt: new Date().toISOString(),
-            telegramUserId: telegramUserData.id.toString(),
-            telegramUsername: telegramUserData.username,
-            telegramFirstName: telegramUserData.first_name,
-            telegramLastName: telegramUserData.last_name
-        });
-        
-        console.log('Telegram account connected successfully');
-        return { success: true, userId, userEmail };
-    } catch (error) {
-        console.error('Error connecting telegram account:', error);
-        throw error;
-    }
-}
-
-// Disconnect telegram account
-export async function disconnectTelegramAccount(userId) {
-    try {
-        const userDocRef = doc(db, 'users', userId);
-        await updateDoc(userDocRef, {
-            telegramKeyUsed: false,
-            telegramDisconnectedAt: new Date().toISOString(),
-            telegramUserId: null,
-            telegramUsername: null
-        });
-        
-        console.log('Telegram account disconnected');
-        return true;
-    } catch (error) {
-        console.error('Error disconnecting telegram account:', error);
-        return false;
-    }
-}
 
 // Export these Firestore functions to be used in dashboard.js
 export { doc, setDoc, getDocs, collection, deleteDoc, db, updateDoc };

@@ -22,7 +22,7 @@
    ```bash
    # Copy environment templates
    copy env.example .env
-   copy telegram-bot\env.example telegram-bot\.env
+   
    ```
 
 4. **Edit environment files**:
@@ -39,7 +39,7 @@
 Contact the project owner for these credentials:
 - Gemini API Key
 - Firebase Project Credentials
-- Telegram Bot Token (if using telegram features)
+
 
 ## Troubleshooting
 

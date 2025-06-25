@@ -82,15 +82,12 @@ Location: `/system_audit/{auditId}`
 - `CREDENTIAL_VERIFICATION_ATTEMPT` - Credential verification requests
 - `CREDENTIAL_VERIFICATION_SUCCESS` - Successful verifications
 - `CREDENTIAL_VERIFICATION_FAILED` - Failed verifications
-- `TELEGRAM_KEY_CREATED` - New Telegram key generation
-- `TELEGRAM_KEY_CHANGED` - Telegram key modifications
-- `TELEGRAM_KEY_VALIDATION_SUCCESS` - Successful key validations
-- `TELEGRAM_KEY_VALIDATION_FAILED` - Failed key validations
+
 
 ### Security Events
 - `UNAUTHORIZED_ACCESS_ATTEMPT` - Attempted unauthorized access
 - `SUSPICIOUS_ACTIVITY_DETECTED` - Automated threat detection
-- `TELEGRAM_ACCOUNT_CONNECTED` - Telegram account linking
+
 
 ## 🔍 Security Audit Dashboard
 
@@ -108,7 +105,7 @@ NODE_ENV=production node scripts/security-audit-dashboard.js
 
 1. **User Credentials Audit**
    - Total users and credential completeness
-   - Telegram key status and usage
+   
    - Data quality issues identification
    - Security policy compliance
 
@@ -136,7 +133,7 @@ NODE_ENV=production node scripts/security-audit-dashboard.js
 📋 SECURITY AUDIT SUMMARY
 =====================================
 🔐 User Credentials: 145/150 users have complete credentials
-🔑 Telegram Keys: 148 users with keys, 23 unused
+
 📝 Audit Coverage: 96.7% of users have audit trails
 ⚠️ Risk Level: LOW
 📊 Compliance Score: 87/100

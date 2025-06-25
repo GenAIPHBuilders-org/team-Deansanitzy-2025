@@ -117,47 +117,7 @@
             transform: scale(1.1);
         }
 
-        /* Navigation divider styling */
-        .nav-divider {
-            position: relative;
-            width: 1px;
-            margin: 0 10px;
-        }
-        
-        .nav-divider:after {
-            content: '';
-            position: absolute;
-            height: 24px;
-            width: 1px;
-            background: var(--glass-border);
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        @media (max-width: 768px) {
-            .nav-divider {
-                display: none;
-            }
-
-            .header {
-                padding: 1rem;
-            }
-
-            .header-nav-items {
-                flex-wrap: wrap;
-                gap: 0.5rem;
-            }
-
-            .welcome-banner {
-                margin: 1rem;
-                padding: 2rem 1rem;
-            }
-
-            .ai-agents-container {
-                margin: 1rem;
-                grid-template-columns: 1fr;
-            }
-        }
+        /* Mobile responsiveness handled by theme.css */
 
         .transactions-table td.actions {
             width: 50px;
@@ -1030,12 +990,12 @@
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="#" class="active" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                     <li><a href="transactions.html"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
+                    <li><a href="accounts.html"><i class="fas fa-wallet"></i> Accounts</a></li>
                     <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
-                    <div class="nav-divider"></div>
                     <li><a href="../index.html"><i class="fas fa-home"></i> Home</a></li>
-                    <li><a href="login.html"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                    <li><a href="#" id="logout-button" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </nav>
         </header>
@@ -1789,6 +1749,50 @@
                 window.location = `/public/agents/${agentName}.html`;
             }
         }
+
+        // Ensure logout button works - fallback handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutButton = document.getElementById('logout-button');
+            if (logoutButton) {
+                // Remove any existing listeners first
+                logoutButton.replaceWith(logoutButton.cloneNode(true));
+                const newLogoutButton = document.getElementById('logout-button');
+                
+                newLogoutButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('🔐 Logout button clicked');
+                    
+                    // Clear storage
+                    if (typeof secureStorage !== 'undefined' && secureStorage.clearAll) {
+                        secureStorage.clearAll();
+                    }
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    // Sign out from Firebase
+                    if (window.auth) {
+                        import("https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js")
+                            .then(({ signOut }) => {
+                                signOut(window.auth).then(() => {
+                                    console.log('✅ Firebase logout successful');
+                                    window.location.href = "login.html";
+                                }).catch((error) => {
+                                    console.error('❌ Firebase logout error:', error);
+                                    // Force redirect even if there's an error
+                                    window.location.href = "login.html";
+                                });
+                            });
+                    } else {
+                        // Fallback if Firebase not available
+                        console.log('⚠️ Firebase not available, redirecting to login');
+                        window.location.href = "login.html";
+                    }
+                });
+                console.log('✅ Fallback logout handler attached');
+            } else {
+                console.error('❌ Logout button not found in DOM');
+            }
+        });
         
         // Chatbot functionality is now handled by dashboardChatbot.js
 

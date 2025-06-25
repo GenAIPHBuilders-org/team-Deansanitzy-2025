@@ -191,199 +191,7 @@ app.post('/api/user/:userId/regenerate-telegram-key', devAuth, (req, res) => {
     });
 });
 
-// Telegram bot endpoints
-app.post('/api/telegram/validate-key', (req, res) => {
-    const { key } = req.body;
-    
-    console.log(`\n🔍 ========== TELEGRAM BOT VALIDATION REQUEST ==========`);
-    console.log(`🔑 Key: ${key}`);
-    console.log(`🕐 Time: ${new Date().toISOString()}`);
-    console.log(`📡 Request from: ${req.ip}`);
-    
-    if (!key) {
-        console.log(`❌ No key provided in request`);
-        return res.status(400).json({ error: 'Key is required' });
-    }
-    
-    const validation = validateTelegramKey(key);
-    
-    if (!validation.valid) {
-        console.log(`❌ Key validation failed: ${validation.reason}`);
-        return res.json({ valid: false, reason: validation.reason });
-    }
-    
-    console.log(`✅ Valid key found:`, {
-        key: key,
-        userId: validation.userId,
-        email: validation.userEmail,
-        userData: validation.userData ? {
-            email: validation.userData.email,
-            displayName: validation.userData.displayName,
-            firstName: validation.userData.firstName,
-            lastName: validation.userData.lastName
-        } : 'No user data'
-    });
-    
-    res.json({
-        valid: true,
-        userId: validation.userId,
-        userEmail: validation.userEmail,
-        userData: validation.userData
-    });
-});
 
-app.post('/api/telegram/connect', (req, res) => {
-    const { key, telegramUserData } = req.body;
-    
-    console.log(`🔗 Telegram connection request:`, {
-        key: key,
-        telegramUser: telegramUserData
-    });
-    
-    if (!key || !telegramUserData) {
-        return res.status(400).json({ error: 'Key and telegram user data are required' });
-    }
-    
-    const validation = validateTelegramKey(key);
-    
-    if (!validation.valid) {
-        console.log(`❌ Invalid key: ${key}`, { reason: validation.reason });
-        return res.status(400).json({ error: validation.reason });
-    }
-    
-    // Mark key as used and update user data
-    const user = users.get(validation.userId);
-    if (user) {
-        user.telegramKeyUsed = true;
-        user.telegramLinkedAt = new Date().toISOString();
-        user.telegramUserId = telegramUserData.id.toString();
-        user.telegramUsername = telegramUserData.username;
-        user.telegramFirstName = telegramUserData.first_name;
-        user.telegramLastName = telegramUserData.last_name;
-        users.set(validation.userId, user);
-        
-        console.log(`✅ Connected Telegram account:`, {
-            userId: validation.userId,
-            userEmail: validation.userEmail,
-            telegramId: telegramUserData.id,
-            telegramUsername: telegramUserData.username
-        });
-    } else {
-        console.log(`⚠️ No user data found for userId: ${validation.userId}`);
-    }
-    
-    res.json({
-        success: true,
-        userId: validation.userId,
-        userEmail: validation.userEmail,
-        userData: user || null
-    });
-});
-
-// Save transaction from Telegram bot (development mode)
-app.post('/api/telegram/save-transaction', (req, res) => {
-    const { userId, userEmail, transactionData } = req.body;
-    
-    if (!userId || !userEmail || !transactionData) {
-        return res.status(400).json({ 
-            error: 'User ID, email, and transaction data are required' 
-        });
-    }
-
-    console.log(`💾 Telegram bot saving transaction for user ${userId} (${userEmail}):`, transactionData);
-
-    // Find the user by ID
-    const user = users.get(userId);
-    if (!user) {
-        console.log(`❌ User not found: ${userId}`);
-        return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (!user.telegramKeyUsed) {
-        console.log(`❌ User ${userId} does not have a connected Telegram account`);
-        return res.status(403).json({ 
-            error: 'User does not have a connected Telegram account' 
-        });
-    }
-
-    if (user.email !== userEmail) {
-        console.log(`❌ Email mismatch for user ${userId}: expected ${user.email}, got ${userEmail}`);
-        return res.status(403).json({ 
-            error: 'Email mismatch for user account' 
-        });
-    }
-
-    // Initialize transactions array if not exists
-    if (!user.transactions) {
-        user.transactions = [];
-    }
-
-    // Create transaction with ID and metadata
-    const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const enhancedTransaction = {
-        id: transactionId,
-        ...transactionData,
-        source: 'telegram_bot',
-        scannedAt: new Date().toISOString(),
-        telegramUserId: user.telegramUserId,
-        verified: false,
-        timestamp: new Date().toISOString()
-    };
-
-    // Add to user's transactions
-    user.transactions.push(enhancedTransaction);
-    users.set(userId, user);
-    
-    console.log(`✅ Transaction saved successfully: ${transactionId} for user ${userId}`);
-    console.log(`💰 Transaction details:`, {
-        id: transactionId,
-        amount: transactionData.amount,
-        category: transactionData.category,
-        merchant: transactionData.receiptData?.merchant || 'Unknown'
-    });
-
-    res.json({ 
-        success: true, 
-        transactionId: transactionId,
-        message: 'Transaction saved successfully from Telegram bot',
-        data: {
-            transactionId,
-            userId,
-            amount: transactionData.amount,
-            category: transactionData.category,
-            merchant: transactionData.receiptData?.merchant
-        }
-    });
-});
-
-// Get user's Telegram connection status and info
-app.get('/api/user/:userId/telegram-status', devAuth, (req, res) => {
-    const { userId } = req.params;
-    
-    const user = users.get(userId);
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-    }
-
-    const status = {
-        connected: user.telegramKeyUsed || false,
-        telegramKey: user.telegramKey,
-        connectionInfo: user.telegramKeyUsed ? {
-            telegramUserId: user.telegramUserId,
-            telegramUsername: user.telegramUsername,
-            telegramFirstName: user.telegramFirstName,
-            telegramLastName: user.telegramLastName,
-            connectedAt: user.telegramLinkedAt
-        } : null,
-        botInfo: {
-            botName: 'Kita-kita Bot',
-            botUsername: '@KitakitaAIBot',
-            botUrl: 'https://t.me/KitakitaAIBot'
-        }
-    };
-    
-    res.json({ success: true, data: status });
-});
 
 // Get user's transactions (including Telegram scanned ones)
 app.get('/api/user/:userId/transactions', devAuth, (req, res) => {
@@ -399,8 +207,7 @@ app.get('/api/user/:userId/transactions', devAuth, (req, res) => {
     // Add some metadata about transaction sources
     const transactionStats = {
         total: transactions.length,
-        telegramScanned: transactions.filter(t => t.source === 'telegram_bot').length,
-        webApp: transactions.filter(t => t.source !== 'telegram_bot').length
+        total: transactions.length
     };
 
     res.json({ 
@@ -505,9 +312,7 @@ app.post('/api/generate-simple-key', (req, res) => {
         displayName: displayName || email.split('@')[0],
         firstName: displayName ? displayName.split(' ')[0] : email.split('@')[0],
         lastName: displayName ? displayName.split(' ').slice(1).join(' ') : '',
-        telegramKey: telegramKey,
-        telegramKeyCreatedAt: new Date().toISOString(),
-        telegramKeyUsed: false,
+
         createdAt: new Date().toISOString()
     };
     
@@ -563,7 +368,7 @@ app.get('/simple-connect', (req, res) => {
         <p><strong>Next Steps:</strong></p>
         <ol>
             <li>Copy the key above</li>
-            <li>Go to Telegram and find the Kita-kita bot</li>
+
             <li>Send: <code>/connect YOUR_KEY_HERE</code></li>
         </ol>
     </div>
@@ -600,101 +405,14 @@ app.get('/simple-connect', (req, res) => {
     `);
 });
 
-// Ensure user has fixed telegram key (no regeneration)
-app.post('/api/user/ensure-fixed-key', devAuth, (req, res) => {
-    const { userId, email, displayName, fixedKey } = req.body;
-    
-    console.log(`🔑 Ensuring fixed key for ${userId}: ${fixedKey}`);
-    
-    // Check if user already exists
-    let user = users.get(userId);
-    
-    if (!user) {
-        // Create new user with fixed key
-        user = {
-            email: email,
-            displayName: displayName || email.split('@')[0],
-            firstName: displayName ? displayName.split(' ')[0] : email.split('@')[0],
-            lastName: displayName ? displayName.split(' ').slice(1).join(' ') : '',
-            telegramKey: fixedKey,
-            telegramKeyCreatedAt: new Date().toISOString(),
-            telegramKeyUsed: false,
-            createdAt: new Date().toISOString()
-        };
-        
-        users.set(userId, user);
-        console.log(`📝 Created new user with fixed key: ${userId}`);
-    } else {
-        // Update existing user with fixed key only if they don't have the same one
-        if (!user.telegramKey || user.telegramKey !== fixedKey) {
-            user.telegramKey = fixedKey;
-            user.telegramKeyCreatedAt = new Date().toISOString();
-            users.set(userId, user);
-            console.log(`📝 Updated user with fixed key: ${userId}`);
-        }
-    }
-    
-    res.json({
-        success: true,
-        message: 'Fixed key ensured',
-        telegramKey: fixedKey
-    });
-});
 
-// Generate fixed telegram key based on email address
-function generateFixedTelegramKey(email) {
-    // Generate a fixed key based on email address (deterministic)
-    const emailHash = Buffer.from(email).toString('base64').replace(/[^A-Z0-9]/g, '');
-    
-    // Create consistent parts from email hash
-    let hash = emailHash;
-    while (hash.length < 20) {
-        hash += emailHash; // Repeat if too short
-    }
-    
-    const part1 = hash.substring(0, 6);
-    const part2 = hash.substring(6, 13);
-    const part3 = hash.substring(13, 19);
-    
-    return `TG-${part1}-${part2}-${part3}`;
-}
-
-// Helper function to find user by telegram key
-function findUserByTelegramKey(telegramKey) {
-    for (const [userId, userData] of users.entries()) {
-        if (userData.telegramKey === telegramKey) {
-            return { userId, userData };
-        }
-    }
-    return null;
-}
-
-// Helper function to validate telegram key
-function validateTelegramKey(telegramKey) {
-    const userMatch = findUserByTelegramKey(telegramKey);
-    
-    if (!userMatch) {
-        return { valid: false, reason: 'Telegram key not found' };
-    }
-    
-    if (userMatch.userData.telegramKeyUsed) {
-        return { valid: false, reason: 'Telegram key already used' };
-    }
-    
-    return {
-        valid: true,
-        userId: userMatch.userId,
-        userEmail: userMatch.userData.email,
-        userData: userMatch.userData
-    };
-}
 
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 Development server running on port ${PORT}`);
     console.log(`📊 Environment: development`);
     console.log(`🔧 Database: in-memory (for testing)`);
-    console.log(`🔑 Telegram integration: enabled`);
+
     console.log(`\n🌐 Open http://localhost:${PORT} to test`);
 });
 

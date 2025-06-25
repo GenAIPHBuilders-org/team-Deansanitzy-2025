@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebas
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { storeUserData } from "./firestoredb.js";
 import { firebaseConfig } from "./config.js";
 import { 
@@ -17,13 +17,7 @@ import {
   clearValidationError,
   clearAllValidationErrors 
 } from "./helpers.js";
-import { 
-  improvedGoogleSignIn, 
-  handleRedirectResult, 
-  shouldHandleRedirectResult,
-  clearRedirectFlag,
-  getReadableAuthError 
-} from "./auth-helpers.js";
+import { signInWithPopup } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -41,83 +35,13 @@ provider.setCustomParameters({
 
 //submit button  
 document.addEventListener('DOMContentLoaded', async function() {
-  // Check for redirect result first
-  if (shouldHandleRedirectResult()) {
-    try {
-      const result = await handleRedirectResult();
-      if (result) {
-        console.log("Handling redirect result for signup:", result.user);
-        clearRedirectFlag();
-        
-        // Show loading state
-        document.body.innerHTML = `
-          <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #060e21; color: white; font-family: -webkit-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;">
-            <div style="text-align: center;">
-              <div style="margin-bottom: 20px;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
-              </div>
-              <h2>Completing your signup...</h2>
-              <p>Please wait while we set up your account.</p>
-            </div>
-          </div>
-        `;
-        
-        // Handle signup completion
-        try {
-          const user = result.user;
-          
-          // Initialize encryption with user ID (now just compatibility)
-          await initEncryption(user.uid);
-          
-          // Create a user data object
-          const userData = {
-            firstName: sanitizeString(user.displayName ? user.displayName.split(' ')[0] : ''),
-            lastName: sanitizeString(user.displayName ? user.displayName.split(' ').slice(1).join(' ') : ''),
-            email: sanitizeString(user.email),
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-            accountStatus: 'active',
-            securityLevel: 'standard'
-          };
-          
-          // Store in Firestore
-          await storeUserData(user.uid, userData);
-          
-          // Also store in secure storage for quick access
-          await secureStorage.setItem('userData', userData);
-          secureStorage.setSecureCookie('auth_session', 'authenticated', 1);
-          
-          console.log("Redirect signup complete, redirecting to dashboard");
-          
-          // Redirect to dashboard
-          window.location.href = "dashboard.html";
-          
-        } catch (error) {
-          console.error("Error completing redirect signup:", error);
-          
-          // Show error and redirect back to signup
-          document.body.innerHTML = `
-            <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #060e21; color: white; font-family: -webkit-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;">
-              <div style="text-align: center; max-width: 400px; padding: 2rem;">
-                <div style="margin-bottom: 20px;">
-                  <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff3b30;"></i>
-                </div>
-                <h2>Signup Error</h2>
-                <p>There was an error completing your signup. Please try again.</p>
-                <button onclick="window.location.href='sign-up.html'" style="background: #10df6f; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 1rem;">
-                  Try Again
-                </button>
-              </div>
-            </div>
-          `;
-        }
-        return;
-      }
-    } catch (error) {
-      console.error("Error handling redirect result:", error);
-      clearRedirectFlag();
+  // Check for existing authentication
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log("User already signed in:", user.uid);
+      window.location.href = "dashboard.html";
     }
-  }
+  });
   // Initialize Google login button
   const googleLogin = document.getElementById("google-login");
   if (!googleLogin) {
@@ -138,128 +62,93 @@ document.addEventListener('DOMContentLoaded', async function() {
       return;
     }
     
+    // Show loading state
+    googleLogin.disabled = true;
+    googleLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing up with Google...';
+    googleLogin.style.opacity = '0.8';
+    
     try {
-      await improvedGoogleSignIn(provider, {
-        useRedirectFallback: true,
-        onLoading: (isLoading) => {
-          googleLogin.disabled = isLoading;
-          if (isLoading) {
-            googleLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing up with Google...';
-            googleLogin.style.opacity = '0.8';
-          } else {
-            googleLogin.innerHTML = originalGoogleText;
-            googleLogin.style.opacity = '1';
-          }
-        },
-        onSuccess: async (result) => {
-          try {
-            const user = result.user;
-            console.log("Google signup successful for user:", user.uid);
-            
-            // Show loading state
-            document.body.innerHTML = `
-              <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #060e21; color: white; font-family: -webkit-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;">
-                <div style="text-align: center;">
-                  <div style="margin-bottom: 20px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
-                  </div>
-                  <h2>Setting up your account...</h2>
-                  <p>Please wait while we create your profile.</p>
-                </div>
-              </div>
-            `;
-            
-            // Initialize encryption with user ID (now just compatibility)
-            await initEncryption(user.uid);
-            
-            // Create a user data object
-            const userData = {
-              firstName: sanitizeString(user.displayName ? user.displayName.split(' ')[0] : ''),
-              lastName: sanitizeString(user.displayName ? user.displayName.split(' ').slice(1).join(' ') : ''),
-              email: sanitizeString(user.email),
-              createdAt: new Date().toISOString(),
-              lastLogin: new Date().toISOString(),
-              accountStatus: 'active',
-              securityLevel: 'standard'
-            };
-            
-            console.log("Storing user data:", userData);
-            
-            // Store in Firestore
-            await storeUserData(user.uid, userData);
-            console.log("User data stored successfully");
-            
-            // Register user with fixed telegram key
-            try {
-              const idToken = await user.getIdToken();
-              const response = await fetch('/api/user/register', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${idToken}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userData)
-              });
-              
-              if (response.ok) {
-                const result = await response.json();
-                console.log('User registered with fixed telegram key:', result.data?.telegramKey);
-              } else {
-                console.warn('Failed to register with telegram key, but user account created successfully');
-              }
-            } catch (keyError) {
-              console.warn('Failed to generate telegram key during signup:', keyError);
-              // Don't fail the entire signup process for this
-            }
-            
-            // Also store in secure storage for quick access - updated
-            await secureStorage.setItem('userData', userData);
-            secureStorage.setSecureCookie('auth_session', 'authenticated', 1);
-            
-            console.log("Account setup complete, redirecting to dashboard");
-            
-            // Redirect directly to dashboard instead of login page
-            window.location.href = "dashboard.html";
-            
-          } catch (error) {
-            console.error("Error in Google signup success handler:", error);
-            
-            // Show error page instead of white screen
-            document.body.innerHTML = `
-              <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #060e21; color: white; font-family: -webkit-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;">
-                <div style="text-align: center; max-width: 400px; padding: 2rem;">
-                  <div style="margin-bottom: 20px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #ff3b30;"></i>
-                  </div>
-                  <h2>Setup Error</h2>
-                  <p>There was an error setting up your account. Please try again.</p>
-                  <button onclick="window.location.href='sign-up.html'" style="background: #10df6f; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 1rem;">
-                    Try Again
-                  </button>
-                </div>
-              </div>
-            `;
-          }
-        },
-        onError: (error) => {
-          console.error("Google signup error:", error);
-          
-          // Reset the button
-          googleLogin.disabled = false;
-          googleLogin.innerHTML = originalGoogleText;
-          googleLogin.style.opacity = '1';
-          
-          // Display user-friendly error message
-          const errorMessage = getReadableAuthError(error);
-          showError(errorMessage);
+      console.log("Attempting Google sign-up...");
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log("Google signup successful for user:", user.uid);
+      
+      // Initialize encryption with user ID (now just compatibility)
+      await initEncryption(user.uid);
+      
+      // Create a user data object
+      const userData = {
+        firstName: sanitizeString(user.displayName ? user.displayName.split(' ')[0] : ''),
+        lastName: sanitizeString(user.displayName ? user.displayName.split(' ').slice(1).join(' ') : ''),
+        email: sanitizeString(user.email),
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        accountStatus: 'active',
+        securityLevel: 'standard'
+      };
+      
+      console.log("Storing user data for:", user.uid);
+      
+      // Store in Firestore
+      await storeUserData(user.uid, userData);
+      
+      
+      try {
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/user/register', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(userData)
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('User registered successfully');
         }
-      });
+      } catch (keyError) {
+        console.warn('Failed to generate telegram key during signup:', keyError);
+        // Don't fail the entire signup process for this
+      }
+      
+      // Store in secure storage for quick access
+      await secureStorage.setItem('userData', userData);
+      secureStorage.setSecureCookie('auth_session', 'authenticated', 1);
+      
+      console.log("Account setup complete, redirecting to dashboard");
+      
+      // Redirect to dashboard
+      window.location.href = "dashboard.html";
+      
     } catch (error) {
-      console.error("Exception in Google signup:", error);
+      console.error("Google signup error:", error);
+      
+      // Reset button state
       googleLogin.disabled = false;
       googleLogin.innerHTML = originalGoogleText;
       googleLogin.style.opacity = '1';
-      showError("Error during Google sign-up setup: " + error.message);
+      
+      // Handle different error types gracefully
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log("User cancelled sign-up");
+        // Don't show error for user cancellation
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        console.log("Sign-up request cancelled");
+        // Don't show error for cancellation
+      } else if (error.code === 'auth/popup-blocked') {
+        showError("Your browser blocked the sign-up popup. Please allow popups for this site and try again.");
+      } else if (error.code === 'auth/network-request-failed') {
+        showError("Network error. Please check your internet connection and try again.");
+      } else if (error.code === 'auth/operation-not-allowed') {
+        showError("Google sign-up is not enabled. Please contact support.");
+      } else if (error.code === 'auth/email-already-in-use') {
+        showError("An account with this email already exists. Please sign in instead.");
+      } else {
+        // Show a user-friendly error for other issues
+        showError("Sign-up failed. Please try again or contact support if the problem persists.");
+      }
     }
   });
 
@@ -509,7 +398,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Store in Firestore
       await storeUserData(user.uid, userData);
       
-      // Register user with fixed telegram key
+      // Register user
       try {
         const idToken = await user.getIdToken();
         const response = await fetch('/api/user/register', {
@@ -523,9 +412,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         if (response.ok) {
           const result = await response.json();
-          console.log('User registered with fixed telegram key:', result.data?.telegramKey);
+          console.log('User registered successfully');
         } else {
-          console.warn('Failed to register with telegram key, but user account created successfully');
+          console.warn('User account created successfully');
         }
       } catch (keyError) {
         console.warn('Failed to generate telegram key during signup:', keyError);

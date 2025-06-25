@@ -1,15 +1,21 @@
 /**
  * AI Agent Configuration - Production-Ready Autonomous Behavior Settings
  * Defines autonomous behavior parameters, scalability settings, and production features
+ * Now properly separated between development and production environments
  * 
  * @version 2.0.0
  * @author Kita-kita AI Team
  */
 
-export const AGENT_CONFIG = {
-    // Global Agent Settings
-    version: "2.0.0",
-    environment: process.env.NODE_ENV || 'development',
+import { isProduction, isDevelopment, getEnvironmentConfig } from "../js/utils/environment.js";
+
+// Get current environment configuration
+const envConfig = getEnvironmentConfig();
+
+// Base configuration that applies to all environments
+const AGENT_CONFIG = {
+    version: '2.0.0',
+    environment: envConfig.environment,
     
     // Autonomous Behavior Configuration
     autonomy: {
@@ -141,62 +147,62 @@ export const AGENT_CONFIG = {
     agents: {
         iponCoach: {
             name: 'Enhanced Ipon Coach',
-            specialization: 'savings_and_goals',
-            culturalFocus: 'filipino_savings_culture',
+            specialization: 'savings_optimization',
+            culturalFocus: 'filipino_financial_habits',
             autonomyLevel: 'high',
             
-            // Specialized settings
-            savingsStrategies: {
-                alkansya_method: { weight: 0.3, cultural_relevance: 'high' },
-                paluwagan_system: { weight: 0.4, cultural_relevance: 'very_high' },
-                modern_digital: { weight: 0.2, cultural_relevance: 'medium' },
-                hybrid_approach: { weight: 0.1, cultural_relevance: 'high' }
+            // Savings targets and strategies
+            savingsGoals: {
+                emergency_fund: { months: 6, priority: 'critical' },
+                short_term: { timeframe: '1-2 years', priority: 'high' },
+                medium_term: { timeframe: '3-5 years', priority: 'medium' },
+                long_term: { timeframe: '10+ years', priority: 'medium' }
             },
             
-            // Motivational factors
-            motivationFactors: {
-                family_security: 0.4,
-                future_opportunities: 0.3,
-                financial_independence: 0.2,
-                emergency_preparedness: 0.1
+            // Filipino-specific savings strategies
+            strategies: {
+                paluwagan: { enabled: true, risk_assessment: 'medium' },
+                cooperative: { enabled: true, risk_assessment: 'low' },
+                time_deposits: { enabled: true, risk_assessment: 'low' },
+                mutual_funds: { enabled: true, risk_assessment: 'medium' }
             },
             
-            // Performance thresholds
-            performance: {
-                recommendationAccuracy: 0.8,
-                userEngagement: 0.7,
-                goalAchievementRate: 0.6
+            // Behavioral analysis
+            behaviorAnalysis: {
+                spending_patterns: 'comprehensive',
+                saving_consistency: 'detailed',
+                goal_adherence: 'tracked',
+                cultural_factors: 'integrated'
             }
         },
 
         gastosGuardian: {
             name: 'Enhanced Gastos Guardian',
-            specialization: 'expense_analysis_optimization',
+            specialization: 'expense_optimization',
             culturalFocus: 'filipino_spending_patterns',
             autonomyLevel: 'high',
             
-            // Analysis capabilities
-            analysisDepth: {
-                pattern_recognition: 'advanced',
-                anomaly_detection: 'high',
-                cultural_spending: 'expert',
-                optimization_suggestions: 'comprehensive'
+            // Expense categories (Filipino context)
+            categories: {
+                necessities: ['food', 'transportation', 'utilities', 'shelter'],
+                family_obligations: ['padala', 'tuition', 'medical', 'celebrations'],
+                lifestyle: ['entertainment', 'clothing', 'personal_care'],
+                investments: ['insurance', 'mutual_funds', 'emergency_fund']
             },
             
-            // Detection thresholds
-            thresholds: {
-                spending_leak: 0.15,    // 15% above optimal
-                anomaly_detection: 0.25, // 25% deviation
-                optimization_potential: 0.10 // 10% savings possible
+            // Alert thresholds
+            alerts: {
+                unusual_spending: 0.3, // 30% increase from average
+                budget_overrun: 0.1,   // 10% over budget
+                category_concentration: 0.4 // 40% in single category
             },
             
-            // Cultural expense categories
-            culturalCategories: {
-                food_dining: { optimal_ratio: 0.25, max_ratio: 0.35 },
-                family_support: { optimal_ratio: 0.15, max_ratio: 0.25 },
-                transportation: { optimal_ratio: 0.12, max_ratio: 0.18 },
-                utilities: { optimal_ratio: 0.12, max_ratio: 0.15 },
-                entertainment: { optimal_ratio: 0.08, max_ratio: 0.12 }
+            // Optimization strategies
+            optimization: {
+                tipid_tips: 'culturally_relevant',
+                bulk_buying: 'recommended',
+                loyalty_programs: 'maximized',
+                seasonal_planning: 'enabled'
             }
         },
 
@@ -232,7 +238,7 @@ export const AGENT_CONFIG = {
         }
     },
 
-    // Production & Scalability Settings
+    // Production Configuration
     production: {
         // Error handling configuration
         errorHandling: {
@@ -255,10 +261,11 @@ export const AGENT_CONFIG = {
             
             // Logging configuration
             logging: {
-                level: process.env.LOG_LEVEL || 'info',
+                level: 'info',
                 enableStructuredLogs: true,
                 enablePerformanceLogs: true,
-                enableDecisionLogs: true
+                enableDecisionLogs: true,
+                enableDebugLogs: false
             }
         },
         
@@ -317,22 +324,35 @@ export const AGENT_CONFIG = {
         }
     },
 
-    // Development & Testing Configuration
+    // Development Configuration (only applied in development)
     development: {
         // Debug settings
         debug: {
-            enableVerboseLogs: false,
-            enableReasoningTrace: false,
-            enablePerformanceTrace: false,
+            enableVerboseLogs: envConfig.enableVerboseLogging,
+            enableReasoningTrace: envConfig.enableDebugLogs,
+            enablePerformanceTrace: envConfig.enableDebugLogs,
             mockExternalAPIs: false
         },
         
         // Testing configuration
         testing: {
-            enableTestMode: false,
-            useMockData: false,
+            enableTestMode: envConfig.enableTestMode,
+            useMockData: envConfig.features.mockData,
             simulateErrors: false,
             performanceSimulation: false
+        },
+        
+        // Development-only monitoring
+        monitoring: {
+            enableMetrics: true,
+            metricsInterval: 30000, // 30 seconds (more frequent in dev)
+            logging: {
+                level: 'debug',
+                enableStructuredLogs: true,
+                enablePerformanceLogs: true,
+                enableDecisionLogs: true,
+                enableDebugLogs: true
+            }
         }
     },
 
@@ -366,7 +386,7 @@ export const AGENT_CONFIG = {
         }
     },
 
-    // Feature Flags
+    // Feature Flags (environment-aware)
     features: {
         autonomousDecisionMaking: true,
         advancedReasoning: true,
@@ -377,24 +397,47 @@ export const AGENT_CONFIG = {
         errorRecovery: true,
         userFeedbackLoop: true,
         proactiveRecommendations: true,
-        goalEvolution: false // Disabled by default for safety
+        goalEvolution: isProduction() ? false : true // Only enabled in development for safety
     }
 };
 
-// Environment-specific overrides
-if (AGENT_CONFIG.environment === 'production') {
-    // Production optimizations
-    AGENT_CONFIG.development.debug.enableVerboseLogs = false;
+// Apply environment-specific configurations
+if (isProduction()) {
+    // Production-specific overrides
     AGENT_CONFIG.production.monitoring.enableMetrics = true;
     AGENT_CONFIG.production.security.humanOversight.enabled = true;
+    AGENT_CONFIG.production.logging = {
+        level: 'info',
+        enableDebugLogs: false,
+        enableVerboseLogs: false
+    };
 }
 
-if (AGENT_CONFIG.environment === 'development') {
-    // Development conveniences
-    AGENT_CONFIG.development.debug.enableVerboseLogs = true;
-    AGENT_CONFIG.development.testing.enableTestMode = true;
+if (isDevelopment()) {
+    // Development-specific overrides
+    AGENT_CONFIG.development.debug.enableVerboseLogs = envConfig.enableVerboseLogging;
+    AGENT_CONFIG.development.testing.enableTestMode = envConfig.enableTestMode;
     AGENT_CONFIG.production.security.humanOversight.threshold = 0.8;
 }
+
+// Helper function to get environment-specific config
+export const getAgentConfig = () => {
+    const config = { ...AGENT_CONFIG };
+    
+    // Return only relevant configuration based on environment
+    if (isProduction()) {
+        // In production, remove development config
+        delete config.development;
+    } else {
+        // In development, merge development overrides
+        config.production.monitoring = {
+            ...config.production.monitoring,
+            ...config.development.monitoring
+        };
+    }
+    
+    return config;
+};
 
 // Export configuration
 export default AGENT_CONFIG; 

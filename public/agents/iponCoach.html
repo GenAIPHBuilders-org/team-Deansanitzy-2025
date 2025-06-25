@@ -38,7 +38,7 @@
             <!-- Enhanced Hero Section -->
             <div class="welcome-banner">
                 <h1><i class="fas fa-robot"></i> Ipon Coach AI</h1>
-                <p class="tagline">Your intelligent Filipino savings assistant powered by AI. Personalized guidance based on your actual spending patterns.</p>
+                <p class="tagline">Your intelligent Filipino financial assistant powered by AI. Get personalized advice based on your spending patterns and financial goals.</p>
             </div>
 
             <!-- AI Dashboard Content -->
@@ -51,10 +51,10 @@
 
                 <!-- Empty State -->
                 <div id="empty-state" class="empty-message" style="display: none;">
-                    <h2><i class="fas fa-chart-line"></i> Insufficient Data for AI Analysis</h2>
-                    <p>I need at least 5 transactions to provide meaningful AI-powered insights. Start tracking your expenses to unlock personalized Filipino savings strategies!</p>
+                    <h2><i class="fas fa-chart-line"></i> Ready to Analyze Your Finances</h2>
+                    <p>I need your transaction and account data to provide personalized AI-powered financial insights. Let's start your savings journey!</p>
                     <a href="../pages/dashboard.html" class="btn-primary">
-                        <i class="fas fa-plus"></i> Add Transactions
+                        <i class="fas fa-plus"></i> Add Financial Data
                     </a>
                 </div>
 
@@ -62,71 +62,106 @@
                 <div id="content-loaded" style="display: none;">
                     <!-- AI-Powered Card Grid -->
                     <div class="card-grid">
-                        <!-- AI Coach's Personalized Tip Card -->
-                        <div class="theme-card" id="coach-tip-card">
+                        <!-- AI Financial Analysis Card -->
+                        <div class="theme-card wide-card" id="ai-analysis-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-brain"></i> AI Coach's Insight</h2>
-                                <span class="ai-badge">🤖 AI-Powered</span>
+                                <h2><i class="fas fa-brain"></i> AI Financial Analysis</h2>
+                                <span class="ai-badge">🤖 Live AI</span>
                             </div>
                             <div class="card-content">
-                                <div id="coach-tip-text">
+                                <div id="ai-analysis-content">
                                     <div class="coach-message">
                                         <div class="coach-avatar">🤖</div>
-                                        <div class="coach-text">Analyzing your spending patterns...</div>
+                                        <div class="coach-text">Generating personalized financial insights...</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Filipino Wisdom Card -->
-                        <div class="theme-card" id="motivation-card">
+                        <!-- AI Recommendations Card -->
+                        <div class="theme-card" id="ai-recommendations-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-quote-left"></i> Karunungang Filipino</h2>
-                                <span class="wisdom-badge">💎 Daily Wisdom</span>
+                                <h2><i class="fas fa-lightbulb"></i> Smart Recommendations</h2>
+                                <span class="ai-badge">🎯 Personalized</span>
                             </div>
-                            <div class="card-content">
-                                <blockquote id="motivational-quote-text">
-                                    Loading inspirational Filipino wisdom...
-                                </blockquote>
-                                <cite id="motivational-quote-author">Filipino Proverb</cite>
-                            </div>
-                        </div>
-
-                        <!-- AI-Generated Savings Goals -->
-                        <div class="theme-card wide-card" id="savings-goals-card">
-                            <div class="card-header">
-                                <h2><i class="fas fa-bullseye"></i> AI-Recommended Goals</h2>
-                                <span class="ai-badge">🎯 Smart Goals</span>
-                            </div>
-                            <div class="card-content" id="savings-goals-list">
+                            <div class="card-content" id="ai-recommendations-content">
                                 <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Generating personalized savings goals...
+                                    <i class="fas fa-cog fa-spin"></i> Generating recommendations...
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Weekly Challenge Card -->
-                        <div class="theme-card" id="alkansya-challenge-card">
+                        <!-- AI-Generated Savings Goals -->
+                        <div class="theme-card" id="savings-goals-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-trophy"></i> Weekly Challenge</h2>
-                                <span class="challenge-badge">⚡ Active</span>
+                                <h2><i class="fas fa-bullseye"></i> AI-Generated Goals</h2>
+                                <span class="ai-badge">🎯 Smart Goals</span>
                             </div>
-                            <div class="card-content">
-                                <h3 id="alkansya-challenge-name">Loading Challenge...</h3>
-                                <p id="alkansya-challenge-desc">Preparing your personalized challenge...</p>
-                                <div class="challenge-progress">
-                                    <strong>Target: <span id="alkansya-challenge-target">₱0</span></strong>
+                            <div class="card-content" id="savings-goals-list">
+                                <div class="loading-goals">
+                                    <i class="fas fa-cog fa-spin"></i> Creating personalized goals...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Financial Health Score -->
+                        <div class="theme-card" id="financial-health-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-heartbeat"></i> Financial Health Score</h2>
+                                <span class="ai-badge">📊 AI Scored</span>
+                            </div>
+                            <div class="card-content" id="financial-health-content">
+                                <div class="loading-goals">
+                                    <i class="fas fa-cog fa-spin"></i> Calculating health score...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Market Insights -->
+                        <div class="theme-card" id="market-insights-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-chart-line"></i> Market Insights</h2>
+                                <span class="ai-badge">📈 Real-time</span>
+                            </div>
+                            <div class="card-content" id="market-insights-content">
+                                <div class="loading-goals">
+                                    <i class="fas fa-cog fa-spin"></i> Fetching market insights...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Risk Assessment -->
+                        <div class="theme-card" id="risk-assessment-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-shield-alt"></i> Risk Assessment</h2>
+                                <span class="ai-badge">⚡ Dynamic</span>
+                            </div>
+                            <div class="card-content" id="risk-assessment-content">
+                                <div class="loading-goals">
+                                    <i class="fas fa-cog fa-spin"></i> Analyzing financial risks...
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- AI Insights Section (Dynamically Generated) -->
-                    <!-- This section will be populated by JavaScript with:
-                         - Spending Analysis
-                         - Savings Opportunities  
-                         - Risk Assessment
-                         - Filipino Method Recommendations -->
+                    <!-- AI Chat Interface -->
+                    <div class="ai-chat-section">
+                        <div class="theme-card wide-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-comments"></i> Chat with Your AI Coach</h2>
+                                <span class="ai-badge">💬 Interactive</span>
+                            </div>
+                            <div class="card-content">
+                                <div id="chat-messages" class="chat-messages"></div>
+                                <div class="chat-input-container">
+                                    <input type="text" id="chat-input" placeholder="Ask your AI coach anything about finances..." maxlength="500">
+                                    <button id="send-message" class="btn-primary">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

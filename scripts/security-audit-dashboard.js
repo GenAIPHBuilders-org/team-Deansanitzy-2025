@@ -65,7 +65,7 @@ class SecurityAuditDashboard {
     const audit = {
       totalUsers: users.length,
       usersWithCredentials: 0,
-      usersWithTelegramKeys: 0,
+      
       usersWithActiveKeys: 0,
       usersWithAuditTrails: 0,
       dataQualityIssues: [],
@@ -74,17 +74,11 @@ class SecurityAuditDashboard {
 
     for (const user of users) {
       // Check credential completeness
-      if (user.email && user.telegramKey) {
+                  if (user.email) {
         audit.usersWithCredentials++;
       }
       
-      if (user.telegramKey) {
-        audit.usersWithTelegramKeys++;
-        
-        if (!user.telegramKeyUsed) {
-          audit.usersWithActiveKeys++;
-        }
-      }
+
 
       // Check for audit trail existence
       const auditLogsSnapshot = await db.collection('users')
@@ -122,14 +116,7 @@ class SecurityAuditDashboard {
         });
       }
 
-      // Check for weak or predictable telegram keys
-      if (user.telegramKey && user.telegramKey.length < 15) {
-        audit.securityIssues.push({
-          userId: user.id,
-          issue: 'weak_telegram_key',
-          severity: 'medium'
-        });
-      }
+
     }
 
     console.log(`   ✓ Audited ${audit.totalUsers} users`);
@@ -353,7 +340,7 @@ class SecurityAuditDashboard {
         category: 'security',
         title: 'Address Security Issues',
         description: `${auditResults.userAudit.securityIssues.length} users have security-related issues`,
-        action: 'Implement proper audit fields and strengthen telegram keys'
+        action: 'Implement proper audit fields and strengthen security'
       });
     }
 
@@ -415,7 +402,7 @@ class SecurityAuditDashboard {
     console.log('\n📋 SECURITY AUDIT SUMMARY');
     console.log('=====================================');
     console.log(`🔐 User Credentials: ${auditResults.userAudit.usersWithCredentials}/${auditResults.userAudit.totalUsers} users have complete credentials`);
-    console.log(`🔑 Telegram Keys: ${auditResults.userAudit.usersWithTelegramKeys} users with keys, ${auditResults.userAudit.usersWithActiveKeys} unused`);
+
     console.log(`📝 Audit Coverage: ${auditResults.compliance.auditTrailCoverage.toFixed(1)}% of users have audit trails`);
     console.log(`⚠️ Risk Level: ${auditResults.systemAudit.riskLevel.toUpperCase()}`);
     console.log(`📊 Compliance Score: ${auditResults.compliance.overallScore}/100`);

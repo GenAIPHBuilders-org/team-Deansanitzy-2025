@@ -10,7 +10,8 @@
 
 import { GEMINI_API_KEY, GEMINI_MODEL } from "../js/config.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-import { getUserData, getUserTransactions, storeUserData } from "../js/firestoredb.js";
+import { getUserData, getUserTransactions, getUserBankAccounts, storeUserData } from "../js/firestoredb.js";
+import { devLog, devWarn, prodError, prodLog, isProduction, getEnvironmentConfig } from "../js/utils/environment.js";
 
 /**
  * Abstract base class implementing autonomous agentic behaviors
@@ -29,6 +30,9 @@ export class BaseAgent {
         this.version = "2.0.0";
         this.initialized = false;
         
+        // Environment-aware configuration
+        this.envConfig = getEnvironmentConfig();
+        
         // Autonomous Behavior Systems
         this.autonomyLevel = config.autonomyLevel || 'high'; // high, medium, low
         this.decisionThreshold = config.decisionThreshold || 0.7;
@@ -39,6 +43,13 @@ export class BaseAgent {
         this.longTermMemory = new Map();  // Persistent knowledge
         this.episodicMemory = [];         // Experience history
         this.semanticMemory = new Map();  // Factual knowledge
+        
+        // User Financial Data Cache
+        this.userAccounts = [];           // User's bank accounts and wallets
+        this.userTransactions = [];       // User's transaction history
+        this.userFinancialProfile = null; // User's profile data
+        this.accountInsights = new Map(); // Account-specific insights
+        this.lastAccountsUpdate = null;   // Track when accounts were last loaded
         
         // Goal & Planning Systems
         this.currentGoals = [];
@@ -63,7 +74,8 @@ export class BaseAgent {
             successfulRecommendations: 0,
             userSatisfactionScore: 0,
             learningIterations: 0,
-            autonomousActions: 0
+            autonomousActions: 0,
+            accountAnalysisCount: 0
         };
         
         // Error Handling & Resilience
@@ -91,15 +103,857 @@ export class BaseAgent {
             await this.initializeReasoningEngine();
             await this.initializeUserContext();
             await this.initializeLearningSystem();
+            await this.loadUserFinancialData();
             
             this.initialized = true;
             this.currentState = 'ready';
-            this.logAgentAction('initialization_complete', { agentType: this.agentType });
+            this.logAgentAction('initialization_complete', { 
+                agentType: this.agentType,
+                accountsLoaded: this.userAccounts.length,
+                transactionsLoaded: this.userTransactions.length
+            });
             
         } catch (error) {
             this.handleError('initialization_failed', error);
             await this.activateRecoveryMode();
         }
+    }
+
+    /**
+     * Load comprehensive user financial data including accounts
+     */
+    async loadUserFinancialData() {
+        try {
+            devLog(`🔄 [${this.agentType}] Loading user financial data...`);
+            
+            const currentUser = this.auth.currentUser;
+            if (!currentUser) {
+                devLog(`⚠️ [${this.agentType}] No authenticated user found`);
+                return;
+            }
+
+            this.currentUser = currentUser;
+
+            // Load all financial data in parallel
+            const [userData, transactions, accounts] = await Promise.allSettled([
+                getUserData(currentUser.uid),
+                getUserTransactions(currentUser.uid),
+                getUserBankAccounts(currentUser.uid)
+            ]);
+
+            // Process user profile data
+            this.userFinancialProfile = userData.status === 'fulfilled' ? userData.value : null;
+            
+            // Process transactions
+            this.userTransactions = transactions.status === 'fulfilled' ? 
+                (transactions.value || []) : [];
+            
+            // Process accounts
+            this.userAccounts = accounts.status === 'fulfilled' ? 
+                (accounts.value || []) : [];
+
+            // Generate account-specific insights
+            await this.generateAccountInsights();
+
+            // Store in memory systems
+            this.storeInShortTermMemory('userAccounts', this.userAccounts);
+            this.storeInShortTermMemory('userTransactions', this.userTransactions);
+            this.storeInShortTermMemory('userProfile', this.userFinancialProfile);
+
+            this.lastAccountsUpdate = new Date().toISOString();
+            
+            devLog(`✅ [${this.agentType}] Financial data loaded:`, {
+                accounts: this.userAccounts.length,
+                transactions: this.userTransactions.length,
+                hasProfile: !!this.userFinancialProfile
+            });
+
+        } catch (error) {
+            prodError(`❌ [${this.agentType}] Error loading financial data:`, error);
+            this.handleError('financial_data_load_failed', error);
+        }
+    }
+
+    /**
+     * Generate detailed insights for each account
+     */
+    async generateAccountInsights() {
+        for (const account of this.userAccounts) {
+            try {
+                const insights = await this.analyzeAccount(account);
+                this.accountInsights.set(account.id, insights);
+                this.performanceMetrics.accountAnalysisCount++;
+            } catch (error) {
+                console.error(`Error analyzing account ${account.id}:`, error);
+            }
+        }
+    }
+
+    /**
+     * Analyze a specific account for insights
+     * @param {Object} account - Account data
+     * @returns {Promise<Object>} Account insights
+     */
+    async analyzeAccount(account) {
+        const accountTransactions = this.getAccountTransactions(account.id);
+        const monthlyFlow = this.calculateMonthlyFlow(accountTransactions);
+        const usagePattern = this.analyzeUsagePattern(accountTransactions);
+        const balanceTrend = this.calculateBalanceTrend(account, accountTransactions);
+
+        return {
+            accountId: account.id,
+            accountName: account.name,
+            accountType: account.accountType || account.category,
+            provider: account.provider || account.bank,
+            
+            // Financial metrics
+            currentBalance: parseFloat(account.balance || 0),
+            monthlyInflow: monthlyFlow.inflow,
+            monthlyOutflow: monthlyFlow.outflow,
+            netMonthlyFlow: monthlyFlow.net,
+            averageTransactionAmount: this.calculateAverageTransaction(accountTransactions),
+            
+            // Usage patterns
+            usageFrequency: usagePattern.frequency,
+            primaryUsage: usagePattern.primaryUsage,
+            transactionCount: accountTransactions.length,
+            lastActivityDate: this.getLastActivityDate(accountTransactions),
+            
+            // Risk and optimization
+            balanceTrend: balanceTrend.trend,
+            balanceStability: balanceTrend.stability,
+            riskLevel: await this.assessAccountRisk(account, accountTransactions),
+            recommendations: await this.generateAccountRecommendations(account, accountTransactions),
+            optimizationOpportunities: this.identifyOptimizationOpportunities(account, accountTransactions),
+            
+            // Behavioral insights
+            spendingVelocity: this.calculateAccountSpendingVelocity(accountTransactions),
+            savingsContribution: this.calculateSavingsContribution(account, accountTransactions),
+            liquidityScore: this.calculateLiquidityScore(account),
+            
+            // Account efficiency
+            utilizationRate: this.calculateUtilizationRate(account, accountTransactions),
+            efficiencyScore: this.calculateAccountEfficiency(account, accountTransactions),
+            
+            // Metadata
+            analysisDate: new Date().toISOString(),
+            dataQuality: this.assessAccountDataQuality(account, accountTransactions)
+        };
+    }
+
+    /**
+     * Get transactions for a specific account
+     * @param {string} accountId - Account ID
+     * @returns {Array} Filtered transactions
+     */
+    getAccountTransactions(accountId) {
+        return this.userTransactions.filter(tx => tx.accountId === accountId);
+    }
+
+    /**
+     * Calculate monthly cash flow for an account
+     * @param {Array} transactions - Account transactions
+     * @returns {Object} Monthly flow data
+     */
+    calculateMonthlyFlow(transactions) {
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        
+        const monthlyTransactions = transactions.filter(tx => {
+            const txDate = new Date(tx.date || tx.timestamp);
+            return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        });
+
+        let inflow = 0;
+        let outflow = 0;
+
+        monthlyTransactions.forEach(tx => {
+            const amount = parseFloat(tx.amount || 0);
+            if (tx.type === 'income' || tx.type === 'deposit') {
+                inflow += amount;
+            } else if (tx.type === 'expense' || tx.type === 'withdrawal') {
+                outflow += amount;
+            }
+        });
+
+        return {
+            inflow,
+            outflow,
+            net: inflow - outflow,
+            transactionCount: monthlyTransactions.length
+        };
+    }
+
+    /**
+     * Analyze usage patterns for an account
+     * @param {Array} transactions - Account transactions
+     * @returns {Object} Usage pattern analysis
+     */
+    analyzeUsagePattern(transactions) {
+        if (transactions.length === 0) {
+            return {
+                frequency: 'inactive',
+                primaryUsage: 'dormant',
+                pattern: 'no_activity',
+                recommendation: 'Consider activating this account or consolidating with active accounts'
+            };
+        }
+
+        // Calculate frequency
+        const daysSinceLastTransaction = this.getDaysSinceLastTransaction(transactions);
+        const monthlyTransactionCount = this.getMonthlyTransactionCount(transactions);
+        
+        let frequency;
+        if (monthlyTransactionCount > 20) frequency = 'very_active';
+        else if (monthlyTransactionCount > 10) frequency = 'active';
+        else if (monthlyTransactionCount > 5) frequency = 'moderate';
+        else if (monthlyTransactionCount > 0) frequency = 'low';
+        else frequency = 'inactive';
+
+        // Determine primary usage
+        const transactionTypes = this.analyzeTransactionTypes(transactions);
+        let primaryUsage;
+        
+        if (transactionTypes.incomeRatio > 0.7) primaryUsage = 'income_receiving';
+        else if (transactionTypes.expenseRatio > 0.8) primaryUsage = 'spending';
+        else if (transactionTypes.savingsRatio > 0.5) primaryUsage = 'savings';
+        else primaryUsage = 'mixed_usage';
+
+        return {
+            frequency,
+            primaryUsage,
+            monthlyTransactionCount,
+            daysSinceLastTransaction,
+            transactionTypes,
+            averageTransactionValue: transactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) / transactions.length,
+            pattern: this.identifyTransactionPattern(transactions)
+        };
+    }
+
+    /**
+     * Calculate balance trend for an account
+     * @param {Object} account - Account data
+     * @param {Array} transactions - Account transactions
+     * @returns {Object} Balance trend analysis
+     */
+    calculateBalanceTrend(account, transactions) {
+        const currentBalance = parseFloat(account.balance || 0);
+        
+        // Calculate historical balance trend based on transactions
+        const sortedTransactions = transactions
+            .sort((a, b) => new Date(a.date || a.timestamp) - new Date(b.date || b.timestamp));
+        
+        let balanceHistory = [currentBalance];
+        let runningBalance = currentBalance;
+        
+        // Work backwards from current balance
+        for (let i = sortedTransactions.length - 1; i >= 0; i--) {
+            const tx = sortedTransactions[i];
+            const amount = parseFloat(tx.amount || 0);
+            
+            if (tx.type === 'income' || tx.type === 'deposit') {
+                runningBalance -= amount;
+            } else if (tx.type === 'expense' || tx.type === 'withdrawal') {
+                runningBalance += amount;
+            }
+            
+            balanceHistory.unshift(runningBalance);
+        }
+
+        // Calculate trend
+        const balanceChange = balanceHistory.length > 1 ? 
+            balanceHistory[balanceHistory.length - 1] - balanceHistory[0] : 0;
+        
+        let trend;
+        if (Math.abs(balanceChange) < 1000) trend = 'stable';
+        else if (balanceChange > 0) trend = 'increasing';
+        else trend = 'decreasing';
+
+        // Calculate stability (variance in balance changes)
+        const balanceChanges = [];
+        for (let i = 1; i < balanceHistory.length; i++) {
+            balanceChanges.push(balanceHistory[i] - balanceHistory[i - 1]);
+        }
+        
+        const variance = this.calculateVariance(balanceChanges);
+        let stability;
+        if (variance < 10000) stability = 'very_stable';
+        else if (variance < 50000) stability = 'stable';
+        else if (variance < 100000) stability = 'moderate';
+        else stability = 'volatile';
+
+        return {
+            trend,
+            stability,
+            balanceChange,
+            currentBalance,
+            historicalLow: Math.min(...balanceHistory),
+            historicalHigh: Math.max(...balanceHistory),
+            variance,
+            balanceHistory: balanceHistory.slice(-30) // Last 30 data points
+        };
+    }
+
+    /**
+     * Generate comprehensive account recommendations
+     * @param {Object} account - Account data
+     * @param {Array} transactions - Account transactions
+     * @returns {Promise<Array>} Account recommendations
+     */
+    async generateAccountRecommendations(account, transactions) {
+        const recommendations = [];
+        const currentBalance = parseFloat(account.balance || 0);
+        const monthlyFlow = this.calculateMonthlyFlow(transactions);
+        const usagePattern = this.analyzeUsagePattern(transactions);
+
+        // Balance-based recommendations
+        if (currentBalance < 1000 && account.accountType !== 'credit-card') {
+            recommendations.push({
+                type: 'low_balance',
+                priority: 'high',
+                title: 'Low Account Balance',
+                description: `Your ${account.name} balance is below ₱1,000. Consider transferring funds or setting up automatic transfers.`,
+                action: 'Increase account balance',
+                targetAmount: 5000
+            });
+        }
+
+        // Activity-based recommendations
+        if (usagePattern.frequency === 'inactive') {
+            recommendations.push({
+                type: 'inactive_account',
+                priority: 'medium',
+                title: 'Inactive Account',
+                description: `${account.name} shows minimal activity. Consider consolidating or closing if unnecessary.`,
+                action: 'Review account necessity',
+                potentialSavings: this.calculatePotentialSavings(account)
+            });
+        }
+
+        // Cash flow recommendations
+        if (monthlyFlow.net < -5000) {
+            recommendations.push({
+                type: 'negative_flow',
+                priority: 'high',
+                title: 'Negative Cash Flow',
+                description: `${account.name} has consistent outflow. Monitor spending or increase income deposits.`,
+                action: 'Optimize cash flow',
+                monthlyImpact: Math.abs(monthlyFlow.net)
+            });
+        }
+
+        // Account-specific recommendations
+        if (account.category === 'digital-wallet' && currentBalance > 50000) {
+            recommendations.push({
+                type: 'excess_digital_balance',
+                priority: 'medium',
+                title: 'High Digital Wallet Balance',
+                description: `Consider transferring excess funds from ${account.name} to a higher-yield savings account.`,
+                action: 'Optimize fund allocation',
+                potentialGain: this.calculatePotentialInterestGain(currentBalance - 50000)
+            });
+        }
+
+        if (account.category === 'traditional-bank' && usagePattern.frequency === 'very_active' && currentBalance < 10000) {
+            recommendations.push({
+                type: 'low_primary_balance',
+                priority: 'medium',
+                title: 'Primary Account Underfunded',
+                description: `${account.name} is heavily used but underfunded. Consider maintaining a higher balance.`,
+                action: 'Increase primary account balance',
+                targetAmount: 25000
+            });
+        }
+
+        return recommendations;
+    }
+
+    /**
+     * Assess risk level for an account
+     * @param {Object} account - Account data
+     * @param {Array} transactions - Account transactions
+     * @returns {Object} Risk assessment
+     */
+    assessAccountRisk(account, transactions) {
+        let riskScore = 0;
+        const riskFactors = [];
+        
+        const currentBalance = parseFloat(account.balance || 0);
+        const monthlyFlow = this.calculateMonthlyFlow(transactions);
+        const usagePattern = this.analyzeUsagePattern(transactions);
+
+        // Balance risk
+        if (currentBalance < 1000) {
+            riskScore += 30;
+            riskFactors.push('Very low balance');
+        } else if (currentBalance < 5000) {
+            riskScore += 15;
+            riskFactors.push('Low balance');
+        }
+
+        // Cash flow risk
+        if (monthlyFlow.net < -10000) {
+            riskScore += 25;
+            riskFactors.push('High monthly outflow');
+        } else if (monthlyFlow.net < -5000) {
+            riskScore += 15;
+            riskFactors.push('Moderate monthly outflow');
+        }
+
+        // Activity risk
+        if (usagePattern.frequency === 'inactive' && currentBalance > 0) {
+            riskScore += 10;
+            riskFactors.push('Unused funds');
+        }
+
+        // Account type specific risks
+        if (account.category === 'digital-wallet' && currentBalance > 100000) {
+            riskScore += 20;
+            riskFactors.push('Excessive funds in digital wallet');
+        }
+
+        if (account.category === 'cash' && currentBalance > 20000) {
+            riskScore += 15;
+            riskFactors.push('High cash holdings');
+        }
+
+        // Determine risk level
+        let riskLevel;
+        if (riskScore >= 50) riskLevel = 'high';
+        else if (riskScore >= 25) riskLevel = 'medium';
+        else riskLevel = 'low';
+
+        return {
+            riskLevel,
+            riskScore,
+            riskFactors,
+            description: this.getRiskDescription(riskLevel),
+            recommendations: this.getRiskMitigationRecommendations(riskLevel, riskFactors)
+        };
+    }
+
+    /**
+     * Get risk level description
+     * @param {string} riskLevel - Risk level
+     * @returns {string} Risk description
+     */
+    getRiskDescription(riskLevel) {
+        const descriptions = {
+            low: 'This account appears to be well-managed with minimal risk factors.',
+            medium: 'This account has some areas that could be optimized to reduce risk.',
+            high: 'This account requires attention to address significant risk factors.'
+        };
+        return descriptions[riskLevel] || 'Unknown risk level';
+    }
+
+    /**
+     * Get risk mitigation recommendations
+     * @param {string} riskLevel - Risk level
+     * @param {Array} riskFactors - List of risk factors
+     * @returns {Array} Mitigation recommendations
+     */
+    getRiskMitigationRecommendations(riskLevel, riskFactors) {
+        const recommendations = [];
+        
+        riskFactors.forEach(factor => {
+            switch (factor) {
+                case 'Very low balance':
+                    recommendations.push('Transfer funds to maintain minimum balance');
+                    break;
+                case 'High monthly outflow':
+                    recommendations.push('Review and reduce unnecessary expenses');
+                    break;
+                case 'Excessive funds in digital wallet':
+                    recommendations.push('Transfer excess to savings or investment account');
+                    break;
+                case 'High cash holdings':
+                    recommendations.push('Deposit cash into interest-bearing account');
+                    break;
+                default:
+                    recommendations.push(`Address: ${factor}`);
+            }
+        });
+
+        return recommendations;
+    }
+
+    /**
+     * Identify optimization opportunities for an account
+     * @param {Object} account - Account data
+     * @param {Array} transactions - Account transactions
+     * @returns {Array} Optimization opportunities
+     */
+    identifyOptimizationOpportunities(account, transactions) {
+        const opportunities = [];
+        const currentBalance = parseFloat(account.balance || 0);
+        const monthlyFlow = this.calculateMonthlyFlow(transactions);
+        const usagePattern = this.analyzeUsagePattern(transactions);
+
+        // Interest optimization
+        if (account.category === 'traditional-bank' && account.accountType === 'savings' && currentBalance > 25000) {
+            const potentialGain = this.calculateHighYieldPotential(currentBalance);
+            if (potentialGain > 100) {
+                opportunities.push({
+                    type: 'interest_optimization',
+                    title: 'Higher Yield Opportunity',
+                    description: 'Consider moving funds to a higher-yield savings account',
+                    potentialMonthlyGain: potentialGain,
+                    difficulty: 'easy',
+                    timeToImplement: '1-2 days'
+                });
+            }
+        }
+
+        // Fee optimization
+        if (usagePattern.frequency === 'low' && account.category === 'traditional-bank') {
+            opportunities.push({
+                type: 'fee_optimization',
+                title: 'Reduce Account Fees',
+                description: 'Low usage account may be incurring unnecessary maintenance fees',
+                potentialMonthlySavings: 150,
+                difficulty: 'medium',
+                timeToImplement: '1 week'
+            });
+        }
+
+        // Liquidity optimization
+        if (currentBalance > 100000 && usagePattern.frequency === 'low') {
+            opportunities.push({
+                type: 'liquidity_optimization',
+                title: 'Optimize Fund Allocation',
+                description: 'Large balance could be earning more in time deposits or investments',
+                potentialMonthlyGain: this.calculateInvestmentPotential(currentBalance),
+                difficulty: 'medium',
+                timeToImplement: '1-2 weeks'
+            });
+        }
+
+        // Digital wallet optimization
+        if (account.category === 'digital-wallet' && currentBalance > 25000) {
+            opportunities.push({
+                type: 'digital_optimization',
+                title: 'Digital Wallet Optimization',
+                description: 'Transfer excess funds to earn interest while maintaining transaction capability',
+                potentialMonthlyGain: this.calculateInterestEarnings(currentBalance - 10000),
+                difficulty: 'easy',
+                timeToImplement: 'Same day'
+            });
+        }
+
+        return opportunities;
+    }
+
+    /**
+     * Get comprehensive financial overview from all accounts
+     * @returns {Object} Financial overview
+     */
+    getFinancialOverview() {
+        const overview = {
+            totalBalance: 0,
+            monthlyIncome: 0,
+            monthlyExpenses: 0,
+            netMonthlyCashFlow: 0,
+            accountsByCategory: {},
+            savingsRate: 0,
+            liquidityRatio: 0,
+            riskDistribution: {},
+            totalAccounts: this.userAccounts.length
+        };
+
+        // Calculate totals and categorize accounts
+        this.userAccounts.forEach(account => {
+            const balance = parseFloat(account.balance || 0);
+            overview.totalBalance += balance;
+
+            const category = account.category || 'unknown';
+            if (!overview.accountsByCategory[category]) {
+                overview.accountsByCategory[category] = {
+                    count: 0,
+                    totalBalance: 0,
+                    accounts: []
+                };
+            }
+            overview.accountsByCategory[category].count++;
+            overview.accountsByCategory[category].totalBalance += balance;
+            overview.accountsByCategory[category].accounts.push(account);
+        });
+
+        // Calculate monthly flows from transactions
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        
+        const monthlyTransactions = this.userTransactions.filter(tx => {
+            const txDate = new Date(tx.date || tx.timestamp);
+            return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        });
+
+        monthlyTransactions.forEach(tx => {
+            const amount = parseFloat(tx.amount || 0);
+            if (tx.type === 'income' || tx.type === 'deposit') {
+                overview.monthlyIncome += amount;
+            } else if (tx.type === 'expense' || tx.type === 'withdrawal') {
+                overview.monthlyExpenses += amount;
+            }
+        });
+
+        overview.netMonthlyCashFlow = overview.monthlyIncome - overview.monthlyExpenses;
+        overview.savingsRate = overview.monthlyIncome > 0 ? 
+            ((overview.monthlyIncome - overview.monthlyExpenses) / overview.monthlyIncome) * 100 : 0;
+
+        // Calculate liquidity ratio
+        const liquidAccounts = ['traditional-bank', 'digital-wallet', 'cash'];
+        const liquidBalance = Object.entries(overview.accountsByCategory)
+            .filter(([category]) => liquidAccounts.includes(category))
+            .reduce((sum, [, data]) => sum + data.totalBalance, 0);
+        
+        overview.liquidityRatio = overview.totalBalance > 0 ? (liquidBalance / overview.totalBalance) * 100 : 0;
+
+        return overview;
+    }
+
+    // Helper methods for calculations
+    calculateAverageTransaction(transactions) {
+        if (transactions.length === 0) return 0;
+        const total = transactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+        return total / transactions.length;
+    }
+
+    getLastActivityDate(transactions) {
+        if (transactions.length === 0) return null;
+        const dates = transactions.map(tx => new Date(tx.date || tx.timestamp));
+        return new Date(Math.max(...dates)).toISOString();
+    }
+
+    getDaysSinceLastTransaction(transactions) {
+        const lastDate = this.getLastActivityDate(transactions);
+        if (!lastDate) return Infinity;
+        return Math.floor((new Date() - new Date(lastDate)) / (1000 * 60 * 60 * 24));
+    }
+
+    getMonthlyTransactionCount(transactions) {
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        
+        return transactions.filter(tx => {
+            const txDate = new Date(tx.date || tx.timestamp);
+            return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        }).length;
+    }
+
+    analyzeTransactionTypes(transactions) {
+        let incomeCount = 0, expenseCount = 0, savingsCount = 0;
+        
+        transactions.forEach(tx => {
+            if (tx.type === 'income' || tx.type === 'deposit') incomeCount++;
+            else if (tx.type === 'expense' || tx.type === 'withdrawal') expenseCount++;
+            else if (tx.type === 'savings' || tx.type === 'transfer') savingsCount++;
+        });
+
+        const total = transactions.length;
+        return {
+            incomeRatio: total > 0 ? incomeCount / total : 0,
+            expenseRatio: total > 0 ? expenseCount / total : 0,
+            savingsRatio: total > 0 ? savingsCount / total : 0
+        };
+    }
+
+    identifyTransactionPattern(transactions) {
+        if (transactions.length < 5) return 'insufficient_data';
+        
+        const amounts = transactions.map(tx => parseFloat(tx.amount || 0));
+        const variance = this.calculateVariance(amounts);
+        const mean = amounts.reduce((sum, amt) => sum + amt, 0) / amounts.length;
+        
+        const coefficientOfVariation = variance > 0 ? Math.sqrt(variance) / mean : 0;
+        
+        if (coefficientOfVariation < 0.3) return 'consistent';
+        else if (coefficientOfVariation < 0.7) return 'moderate_variation';
+        else return 'highly_variable';
+    }
+
+    calculateVariance(numbers) {
+        if (numbers.length === 0) return 0;
+        const mean = numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
+        const squaredDifferences = numbers.map(num => Math.pow(num - mean, 2));
+        return squaredDifferences.reduce((sum, diff) => sum + diff, 0) / numbers.length;
+    }
+
+    calculateAccountSpendingVelocity(transactions) {
+        const expenseTransactions = transactions.filter(tx => 
+            tx.type === 'expense' || tx.type === 'withdrawal'
+        );
+        
+        if (expenseTransactions.length === 0) return 0;
+        
+        const totalExpenses = expenseTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+        const daysSinceFirst = this.getDaysBetweenTransactions(expenseTransactions);
+        
+        return daysSinceFirst > 0 ? totalExpenses / daysSinceFirst : 0;
+    }
+
+    calculateSavingsContribution(account, transactions) {
+        const savingsTransactions = transactions.filter(tx => 
+            tx.type === 'deposit' || tx.type === 'savings' || tx.type === 'income'
+        );
+        
+        return savingsTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+    }
+
+    calculateLiquidityScore(account) {
+        const balance = parseFloat(account.balance || 0);
+        const category = account.category;
+        
+        let baseScore = 0;
+        if (category === 'cash') baseScore = 100;
+        else if (category === 'digital-wallet') baseScore = 95;
+        else if (category === 'traditional-bank') baseScore = 85;
+        else if (category === 'investment') baseScore = 30;
+        
+        // Adjust based on balance
+        if (balance > 50000) baseScore *= 1.1;
+        else if (balance < 1000) baseScore *= 0.8;
+        
+        return Math.min(100, Math.max(0, baseScore));
+    }
+
+    calculateUtilizationRate(account, transactions) {
+        const currentBalance = parseFloat(account.balance || 0);
+        const monthlyFlow = this.calculateMonthlyFlow(transactions);
+        
+        if (currentBalance === 0) return 0;
+        return Math.min(100, (Math.abs(monthlyFlow.outflow) / currentBalance) * 100);
+    }
+
+    calculateAccountEfficiency(account, transactions) {
+        const balance = parseFloat(account.balance || 0);
+        const usagePattern = this.analyzeUsagePattern(transactions);
+        const liquidityScore = this.calculateLiquidityScore(account);
+        
+        let efficiencyScore = 50; // Base score
+        
+        // Adjust for usage frequency
+        if (usagePattern.frequency === 'very_active') efficiencyScore += 20;
+        else if (usagePattern.frequency === 'active') efficiencyScore += 10;
+        else if (usagePattern.frequency === 'inactive') efficiencyScore -= 20;
+        
+        // Adjust for balance optimization
+        if (balance > 0 && balance < 100000) efficiencyScore += 10;
+        else if (balance > 100000) efficiencyScore -= 5;
+        
+        // Adjust for account type appropriateness
+        if (account.category === 'digital-wallet' && usagePattern.frequency === 'very_active') {
+            efficiencyScore += 15;
+        }
+        
+        return Math.min(100, Math.max(0, efficiencyScore));
+    }
+
+    assessAccountDataQuality(account, transactions) {
+        let qualityScore = 0;
+        const qualityFactors = [];
+        
+        // Account information completeness
+        if (account.name) qualityScore += 20;
+        if (account.balance !== undefined) qualityScore += 20;
+        if (account.category) qualityScore += 15;
+        if (account.provider || account.bank) qualityScore += 10;
+        
+        // Transaction data quality
+        if (transactions.length > 0) {
+            qualityScore += 20;
+            if (transactions.length > 10) qualityScore += 10;
+            if (transactions.length > 50) qualityScore += 5;
+        }
+        
+        // Data recency
+        const lastActivity = this.getLastActivityDate(transactions);
+        if (lastActivity) {
+            const daysSinceActivity = this.getDaysSinceLastTransaction(transactions);
+            if (daysSinceActivity < 30) qualityScore += 10;
+            else if (daysSinceActivity < 90) qualityScore += 5;
+        }
+        
+        let qualityLevel;
+        if (qualityScore >= 80) qualityLevel = 'excellent';
+        else if (qualityScore >= 60) qualityLevel = 'good';
+        else if (qualityScore >= 40) qualityLevel = 'fair';
+        else qualityLevel = 'poor';
+        
+        return {
+            score: qualityScore,
+            level: qualityLevel,
+            factors: qualityFactors
+        };
+    }
+
+    // Financial calculation helpers
+    calculatePotentialSavings(account) {
+        // Estimate potential savings from account optimization
+        const balance = parseFloat(account.balance || 0);
+        return balance * 0.01; // 1% potential monthly savings
+    }
+
+    calculatePotentialInterestGain(amount) {
+        // Calculate potential interest gain at 2.5% annual rate
+        return (amount * 0.025) / 12;
+    }
+
+    calculateHighYieldPotential(balance) {
+        // Assume 2% higher yield potential
+        return (balance * 0.02) / 12;
+    }
+
+    calculateInvestmentPotential(balance) {
+        // Conservative investment return estimate (5% annual)
+        return (balance * 0.05) / 12;
+    }
+
+    calculateInterestEarnings(amount) {
+        // Standard savings rate calculation
+        return (amount * 0.015) / 12;
+    }
+
+    getDaysBetweenTransactions(transactions) {
+        if (transactions.length < 2) return 0;
+        
+        const dates = transactions
+            .map(tx => new Date(tx.date || tx.timestamp))
+            .sort((a, b) => a - b);
+        
+        const firstDate = dates[0];
+        const lastDate = dates[dates.length - 1];
+        
+        return Math.floor((lastDate - firstDate) / (1000 * 60 * 60 * 24));
+    }
+
+    /**
+     * Store data in short-term memory
+     * @param {string} key - Memory key
+     * @param {*} value - Value to store
+     */
+    storeInShortTermMemory(key, value) {
+        this.shortTermMemory.set(key, {
+            value,
+            timestamp: new Date().toISOString(),
+            accessCount: 0
+        });
+    }
+
+    /**
+     * Get data from short-term memory
+     * @param {string} key - Memory key
+     * @returns {*} Stored value
+     */
+    getFromShortTermMemory(key) {
+        const item = this.shortTermMemory.get(key);
+        if (item) {
+            item.accessCount++;
+            return item.value;
+        }
+        return null;
     }
 
     /**
@@ -424,7 +1278,10 @@ export class BaseAgent {
             state: this.currentState
         };
         
-        console.log(`[${this.agentType}] ${action}:`, data);
+        // Environment-aware logging
+        if (this.envConfig.enableDebugLogs) {
+            devLog(`[${this.agentType}] ${action}:`, data);
+        }
         
         // Store in short-term memory
         const interactions = this.shortTermMemory.get('user_interactions') || [];
@@ -450,7 +1307,7 @@ export class BaseAgent {
             stackTrace: error.stack
         };
         
-        console.error(`[${this.agentType}] Error:`, errorLog);
+        prodError(`[${this.agentType}] Error:`, errorLog);
         
         // Store error for learning
         this.storeEpisodicMemory({ type: 'error', data: errorLog });

@@ -1,59 +1,47 @@
 /**
- * Ipon Coach AI - Real Autonomous Financial Assistant
- * Implements true agentic behavior with Gemini AI reasoning, planning, and learning
+ * Ipon Coach AI - Dynamic Gemini-Powered Financial Assistant
+ * Provides real-time AI analysis and personalized Filipino financial guidance
  */
 
-import { GEMINI_API_KEY, GEMINI_MODEL } from "../js/config.js";
-import { storeUserData, getUserData, storeTransaction, getUserTransactions } from "../js/firestoredb.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+import { BaseAgent } from "./BaseAgent.js";
 
-class IponCoachAI {
+class IponCoachAI extends BaseAgent {
     constructor() {
-        this.userData = null;
-        this.aiInsights = null;
-        this.analysisComplete = false;
-        this.auth = getAuth();
-        this.learningHistory = [];
-        this.decisionHistory = [];
-        this.userInteractions = [];
-        this.filipinoWisdom = [];
+        super('iponCoach', {
+            autonomyLevel: 'high',
+            planningHorizon: 'medium_term',
+            learningRate: 0.2
+        });
+        
+        this.geminiApiKey = 'AIzaSyCdyWLIr2dJmtPJ8eBXdj7nYNNz3cjMfFo'; // Your Gemini API key
+        this.geminiModel = 'gemini-1.5-flash';
+        this.conversationHistory = [];
+        this.analysisCache = new Map();
+        this.lastAnalysisTime = null;
+        
         this.initializeElements();
-        this.initializeAI();
+        this.initializeEventListeners();
     }
 
-    // Initialize AI system and load Filipino wisdom
-    async initializeAI() {
-        try {
-            console.log("Initializing Ipon Coach AI system...");
-            
-            // Load Filipino wisdom database
-            this.loadFilipinoWisdom();
-            
-            // Load user's learning history
-            await this.loadUserLearningHistory();
-            
-            console.log("Ipon Coach AI system initialized successfully");
-        } catch (error) {
-            console.error("Error initializing AI system:", error);
-        }
-    }
-
-    // Initialize DOM elements with proper error handling
+    // Initialize DOM elements
     initializeElements() {
         this.elements = {
             loadingState: document.getElementById('loading-state'),
             contentLoaded: document.getElementById('content-loaded'),
             emptyState: document.getElementById('empty-state'),
-            coachTipText: document.getElementById('coach-tip-text'),
+            aiAnalysisContent: document.getElementById('ai-analysis-content'),
+            aiRecommendationsContent: document.getElementById('ai-recommendations-content'),
             savingsGoalsList: document.getElementById('savings-goals-list'),
-            challengeName: document.getElementById('alkansya-challenge-name'),
-            challengeDesc: document.getElementById('alkansya-challenge-desc'),
-            challengeTarget: document.getElementById('alkansya-challenge-target'),
-            quoteText: document.getElementById('motivational-quote-text'),
-            quoteAuthor: document.getElementById('motivational-quote-author')
+            financialHealthContent: document.getElementById('financial-health-content'),
+            marketInsightsContent: document.getElementById('market-insights-content'),
+            riskAssessmentContent: document.getElementById('risk-assessment-content'),
+            chatMessages: document.getElementById('chat-messages'),
+            chatInput: document.getElementById('chat-input'),
+            sendButton: document.getElementById('send-message')
         };
 
-        // Validate all elements exist
+        // Validate elements
         Object.entries(this.elements).forEach(([key, element]) => {
             if (!element) {
                 console.warn(`Element ${key} not found in DOM`);
@@ -61,1282 +49,816 @@ class IponCoachAI {
         });
     }
 
-    // Filipino wisdom and proverbs database
-    loadFilipinoWisdom() {
-        this.filipinoWisdom = [
-            {
-                text: 'Ang pag-iimpok ay parang pagtatanim, sa una\'y maliit, ngunit paglaon ay lumalaki at namumunga.',
-                author: 'Filipino Proverb',
-                translation: 'Saving is like planting, small at first, but grows and bears fruit over time.'
-            },
-            {
-                text: 'Nasa huli ang pagsisisi, nasa umpisa ang pag-iingat.',
-                author: 'Filipino Proverb',
-                translation: 'Regret comes last, caution comes first.'
-            },
-            {
-                text: 'Ang taong marunong mag-impok, hindi nababaon sa utang.',
-                author: 'Filipino Proverb',
-                translation: 'A person who knows how to save doesn\'t drown in debt.'
-            },
-            {
-                text: 'Kapag may tiyaga, may nilaga.',
-                author: 'Filipino Proverb',
-                translation: 'With patience and perseverance, you will reap the rewards.'
-            }
-        ];
-    }
-
-    // Load user's actual financial data from Firestore
-    async loadUserFinancialData() {
-        try {
-            const userId = this.auth.currentUser?.uid;
-            if (!userId) {
-                console.log("No authenticated user found");
-                return null;
-            }
-
-            console.log("Loading financial data for user:", userId);
-
-            // Get user profile data
-            const userData = await getUserData(userId);
-            
-            // Get all transactions
-            const transactions = await getUserTransactions(userId);
-            
-            console.log("Retrieved transactions:", transactions?.length || 0);
-            
-            // Analyze real user data
-            const analyzedData = await this.analyzeRealUserData(userData, transactions);
-            
-            this.userData = analyzedData;
-            return analyzedData;
-        } catch (error) {
-            console.error("Error loading user financial data:", error);
-            return null;
+    // Initialize event listeners
+    initializeEventListeners() {
+        if (this.elements.sendButton) {
+            this.elements.sendButton.addEventListener('click', () => this.sendChatMessage());
         }
-    }
-
-    // Analyze real user financial data 
-    async analyzeRealUserData(userData, transactions) {
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-
-        // Calculate current month transactions
-        const currentMonthTransactions = transactions.filter(t => {
-            const transactionDate = new Date(t.date || t.timestamp);
-            return transactionDate.getMonth() === currentMonth && 
-                   transactionDate.getFullYear() === currentYear;
-        });
-
-        // Calculate spending by category
-        const categories = {};
-        let totalSpent = 0;
-        let totalIncome = 0;
-
-        currentMonthTransactions.forEach(transaction => {
-            const amount = parseFloat(transaction.amount) || 0;
-            if (transaction.type === 'expense') {
-                totalSpent += amount;
-                const category = transaction.category || 'Other';
-                categories[category] = (categories[category] || 0) + amount;
-            } else if (transaction.type === 'income') {
-                totalIncome += amount;
-            }
-        });
-
-        // Get current savings from user profile
-        const currentSavings = userData?.financialProfile?.currentSavings || 0;
-        const monthlyIncome = userData?.financialProfile?.monthlyIncome || totalIncome;
-
-        return {
-            hasTransactions: transactions.length > 0,
-            transactionCount: transactions.length,
-            totalSpent,
-            totalIncome,
-            categories,
-            monthlyIncome,
-            currentSavings,
-            transactions: currentMonthTransactions,
-            spendingPattern: this.determineSpendingPattern(totalSpent, monthlyIncome),
-            riskProfile: this.assessRiskProfile(userData)
-        };
-    }
-
-    // Determine spending pattern based on real data
-    determineSpendingPattern(totalSpent, monthlyIncome) {
-        if (monthlyIncome === 0) return 'unknown';
-        const spendingRatio = totalSpent / monthlyIncome;
         
-        if (spendingRatio > 0.8) return 'high_spender';
-        if (spendingRatio > 0.6) return 'moderate_spender';
-        return 'conservative_spender';
-    }
-
-    // Assess risk profile from user data
-    assessRiskProfile(userData) {
-        const profile = userData?.financialProfile;
-        if (profile?.riskProfile) return profile.riskProfile;
-        
-        // Default assessment
-        const age = profile?.age || 30;
-        if (age < 30) return 'moderate';
-        if (age < 50) return 'conservative';
-        return 'very_conservative';
-    }
-
-    // Real AI Analysis Engine using Gemini AI
-    async analyzeUserData(userData) {
-        try {
-            console.log("Starting AI analysis with Gemini...");
-            
-            // Check if we have valid API key
-            if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key-here') {
-                console.warn("Gemini API key not configured, using fallback analysis");
-                return this.getFallbackAnalysis(userData);
-            }
-            
-            // Load previous learning history for context
-            await this.loadUserLearningHistory();
-            
-            // Create AI prompt with real user data and learning context
-            const aiPrompt = this.createAIPrompt(userData);
-            
-            // Get AI analysis from Gemini
-            const aiResponse = await this.callGeminiAI(aiPrompt);
-            
-            // Store this interaction for learning
-            await this.storeInteraction('analysis', userData, aiResponse);
-            
-            // Parse and structure AI response
-            const analysis = this.parseAIAnalysis(aiResponse, userData);
-            
-            return analysis;
-        } catch (error) {
-            console.error("Error in AI analysis:", error);
-            // Fallback to basic analysis if AI fails
-            return this.getFallbackAnalysis(userData);
-        }
-    }
-
-    // Create AI prompt for financial analysis
-    createAIPrompt(userData) {
-        return `
-Ikaw ay isang Filipino AI Financial Coach na nag-aanalyze ng financial data. Gumawa ng comprehensive analysis sa JSON format.
-
-USER DATA:
-- Monthly Income: ₱${userData.monthlyIncome.toLocaleString()}
-- Total Spent: ₱${userData.totalSpent.toLocaleString()}
-- Savings Rate: ${userData.monthlyIncome > 0 ? ((userData.monthlyIncome - userData.totalSpent) / userData.monthlyIncome * 100).toFixed(1) : 0}%
-- Transaction Count: ${userData.transactionCount}
-- Top Categories: ${userData.topCategories.map(cat => `${cat.category}: ₱${cat.amount.toLocaleString()}`).join(', ')}
-
-IMPORTANT: Mag-respond ka ng COMPLETE at VALID JSON lang. Walang markdown, walang extra text. Siguruhing complete ang lahat ng fields.
-
-Gamitin ang format na ito EXACTLY:
-
-{
-  "spendingInsights": {
-    "insight": "Detailed Filipino analysis ng spending patterns (minimum 100 characters)",
-    "savingsRate": ${userData.monthlyIncome > 0 ? ((userData.monthlyIncome - userData.totalSpent) / userData.monthlyIncome * 100).toFixed(1) : 0},
-    "severity": "low/medium/high",
-    "culturalContext": "Filipino cultural insight about money management"
-  },
-  "savingsOpportunities": [
-    {
-      "category": "Category name",
-      "currentSpending": 0,
-      "suggestedReduction": 0,
-      "strategy": "Filipino strategy para sa category na ito",
-      "impact": "Expected impact sa savings"
-    }
-  ],
-  "personalizedGoals": [
-    {
-      "goal": "Specific Filipino financial goal",
-      "timeframe": "Timeline",
-      "strategy": "How to achieve using Filipino methods",
-      "motivation": "Filipino cultural motivation"
-    }
-  ],
-  "riskAssessment": {
-    "level": "low/medium/high",
-    "factors": ["Risk factor 1", "Risk factor 2"],
-    "mitigation": "Filipino strategies to reduce risks"
-  },
-  "filipinoStrategies": [
-    {
-      "name": "Filipino strategy name",
-      "description": "How it works in Filipino context",
-      "implementation": "Step-by-step sa Filipino way"
-    }
-  ],
-  "reasoning": "Detailed explanation ng analysis process",
-  "confidence": 0.85,
-  "nextSteps": [
-    "Immediate action 1",
-    "Immediate action 2", 
-    "Immediate action 3"
-  ]
-}
-
-Mag-respond ka ng COMPLETE JSON lang. Walang iba. Siguruhing lahat ng brackets at quotes ay properly closed.`;
-    }
-
-    // Call Gemini AI with error handling and retries
-    async callGeminiAI(prompt) {
-        const maxRetries = 3;
-        let attempt = 0;
-
-        while (attempt < maxRetries) {
-            try {
-                console.log(`Calling Gemini AI (attempt ${attempt + 1}/${maxRetries})...`);
-                
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: prompt
-                            }]
-                        }],
-                        generationConfig: {
-                            temperature: 0.7,
-                            topK: 40,
-                            topP: 0.95,
-                            maxOutputTokens: 4096, // Increased for more complete responses
-                            candidateCount: 1,
-                            stopSequences: []
-                        },
-                        safetySettings: [
-                            {
-                                category: "HARM_CATEGORY_HARASSMENT",
-                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                            },
-                            {
-                                category: "HARM_CATEGORY_HATE_SPEECH", 
-                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                            },
-                            {
-                                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                            },
-                            {
-                                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                            }
-                        ]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`AI API error: ${response.status} - ${response.statusText}: ${errorText}`);
+        if (this.elements.chatInput) {
+            this.elements.chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.sendChatMessage();
                 }
-
-                const data = await response.json();
-                
-                // Check for safety filter blocks
-                if (data.candidates && data.candidates[0] && data.candidates[0].finishReason === 'SAFETY') {
-                    throw new Error('Response blocked by safety filters');
-                }
-                
-                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                
-                if (!aiText) {
-                    console.error('No AI response received. Full response:', data);
-                    throw new Error('No AI response received');
-                }
-
-                console.log("Gemini AI response received successfully");
-                console.log("Response length:", aiText.length, "characters");
-                
-                return aiText;
-            } catch (error) {
-                attempt++;
-                console.error(`AI call attempt ${attempt} failed:`, error);
-                
-                if (attempt >= maxRetries) {
-                    throw error;
-                }
-                
-                // Wait before retry with exponential backoff
-                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-            }
+            });
         }
     }
 
-    // Parse AI response and structure it
-    parseAIAnalysis(aiResponse, userData) {
-        try {
-            console.log("Raw AI Response:", aiResponse);
-            
-            // Clean up the response - remove markdown code blocks if present
-            let cleanedResponse = aiResponse;
-            if (aiResponse.includes('```json')) {
-                // Extract JSON from markdown code blocks
-                const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
-                if (jsonMatch) {
-                    cleanedResponse = jsonMatch[1];
-                } else {
-                    // Try to find JSON without closing ```
-                    const startMatch = aiResponse.match(/```json\s*([\s\S]*)/);
-                    if (startMatch) {
-                        cleanedResponse = startMatch[1];
-                    }
-                }
-            }
-            
-            // Remove any trailing incomplete text
-            cleanedResponse = cleanedResponse.trim();
-            
-            // Try to fix incomplete JSON by finding the last complete object
-            if (!cleanedResponse.endsWith('}')) {
-                // Find the last complete closing brace
-                let braceCount = 0;
-                let lastValidIndex = -1;
-                
-                for (let i = 0; i < cleanedResponse.length; i++) {
-                    if (cleanedResponse[i] === '{') {
-                        braceCount++;
-                    } else if (cleanedResponse[i] === '}') {
-                        braceCount--;
-                        if (braceCount === 0) {
-                            lastValidIndex = i;
-                        }
-                    }
-                }
-                
-                if (lastValidIndex > -1) {
-                    cleanedResponse = cleanedResponse.substring(0, lastValidIndex + 1);
-                }
-            }
-            
-            console.log("Cleaned AI Response:", cleanedResponse);
-            
-            // Try to parse as JSON
-            const parsed = JSON.parse(cleanedResponse);
-            
-            // Validate required fields
-            if (parsed.spendingInsights && parsed.savingsOpportunities) {
-                console.log("Successfully parsed AI response as JSON");
-                return parsed;
-            } else {
-                console.log("Parsed JSON but missing required fields, using fallback");
-                throw new Error("Missing required fields in parsed JSON");
-            }
-        } catch (error) {
-            console.log("AI response not in valid JSON format, creating structured response:", error.message);
-            
-            // Extract insights from the raw text
-            const extractedInsight = this.extractInsightFromText(aiResponse);
-            
-            return this.createStructuredResponse(extractedInsight, userData);
-        }
-    }
-
-    // Extract meaningful insight from raw AI text
-    extractInsightFromText(aiResponse) {
-        // Look for Filipino text or meaningful financial advice
-        const sentences = aiResponse.split(/[.!?]+/).filter(s => s.trim().length > 10);
-        
-        // Find the most relevant sentence about spending or savings
-        const relevantSentence = sentences.find(sentence => 
-            sentence.includes('gastusin') || 
-            sentence.includes('kita') || 
-            sentence.includes('ipon') || 
-            sentence.includes('savings') ||
-            sentence.includes('spending') ||
-            sentence.includes('₱')
-        );
-        
-        return relevantSentence ? relevantSentence.trim() : 
-               "Nakita ko ang inyong financial data. Magpatuloy tayo sa pag-improve ng inyong savings habits gamit ang Filipino strategies!";
-    }
-
-    // Create a structured response when JSON parsing fails
-    createStructuredResponse(insight, userData) {
-        const savingsRate = userData.monthlyIncome > 0 
-            ? ((userData.monthlyIncome - userData.totalSpent) / userData.monthlyIncome * 100) 
-            : 0;
-
-        return {
-            spendingInsights: {
-                insight: insight,
-                savingsRate: Math.round(savingsRate * 10) / 10, // Round to 1 decimal
-                severity: this.determineSeverity(userData),
-                culturalContext: "Ginagamit namin ang Filipino financial wisdom para sa guidance"
-            },
-            savingsOpportunities: this.extractOpportunities('', userData),
-            personalizedGoals: this.extractGoals('', userData),
-            riskAssessment: this.extractRisks('', userData),
-            filipinoStrategies: this.extractStrategies(''),
-            reasoning: "AI analysis na may Filipino cultural considerations",
-            confidence: 0.7,
-            nextSteps: this.extractNextSteps('')
-        };
-    }
-
-    // Load user's learning history from Firestore
-    async loadUserLearningHistory() {
-        try {
-            const userId = this.auth.currentUser?.uid;
-            if (!userId) return;
-
-            const userData = await getUserData(userId);
-            const learningData = userData?.iponCoachLearning || {};
-            
-            this.learningHistory = learningData.interactions || [];
-            this.decisionHistory = learningData.decisions || [];
-            this.userInteractions = learningData.userFeedback || [];
-            
-            console.log(`Loaded ${this.learningHistory.length} learning interactions`);
-        } catch (error) {
-            console.error("Error loading learning history:", error);
-            this.learningHistory = [];
-            this.decisionHistory = [];
-            this.userInteractions = [];
-        }
-    }
-
-    // Store interaction for learning and adaptation
-    async storeInteraction(type, inputData, outputData, userFeedback = null) {
-        try {
-            const userId = this.auth.currentUser?.uid;
-            if (!userId) return;
-
-            const interaction = {
-                id: `interaction_${Date.now()}`,
-                type, // 'analysis', 'decision', 'recommendation'
-                timestamp: new Date().toISOString(),
-                inputData: this.sanitizeForStorage(inputData),
-                outputData: this.sanitizeForStorage(outputData),
-                userFeedback,
-                success: userFeedback ? userFeedback.rating > 3 : null
-            };
-
-            this.learningHistory.push(interaction);
-            
-            // Keep only last 50 interactions for performance
-            if (this.learningHistory.length > 50) {
-                this.learningHistory = this.learningHistory.slice(-50);
-            }
-
-            // Store in Firestore
-            await this.saveLearningData();
-            
-            console.log(`Stored ${type} interaction for learning`);
-        } catch (error) {
-            console.error("Error storing interaction:", error);
-        }
-    }
-
-    // Save learning data to Firestore
-    async saveLearningData() {
-        try {
-            const userId = this.auth.currentUser?.uid;
-            if (!userId) return;
-
-            const learningData = {
-                interactions: this.learningHistory,
-                decisions: this.decisionHistory,
-                userFeedback: this.userInteractions,
-                lastUpdated: new Date().toISOString(),
-                version: '1.0'
-            };
-
-            await storeUserData(userId, { iponCoachLearning: learningData });
-        } catch (error) {
-            console.error("Error saving learning data:", error);
-        }
-    }
-
-    // Sanitize data for storage (remove functions, circular refs, etc.)
-    sanitizeForStorage(data) {
-        return JSON.parse(JSON.stringify(data, (key, value) => {
-            if (typeof value === 'function') return '[Function]';
-            if (value instanceof Date) return value.toISOString();
-            return value;
-        }));
-    }
-
-    // Learn from user feedback and adapt recommendations
-    async learnFromFeedback(interactionId, feedback) {
-        try {
-            const interaction = this.learningHistory.find(i => i.id === interactionId);
-            if (interaction) {
-                interaction.userFeedback = feedback;
-                interaction.success = feedback.rating > 3;
-                
-                // Analyze feedback for improvement
-                await this.analyzeAndImprove(interaction);
-                
-                // Save updated learning data
-                await this.saveLearningData();
-                
-                console.log("Learning updated from user feedback");
-            }
-        } catch (error) {
-            console.error("Error learning from feedback:", error);
-        }
-    }
-
-    // Analyze feedback and improve future recommendations
-    async analyzeAndImprove(interaction) {
-        try {
-            // If this was a successful interaction, reinforce similar patterns
-            if (interaction.success) {
-                // Find similar successful patterns
-                const successfulPatterns = this.learningHistory.filter(i => 
-                    i.success && i.type === interaction.type
-                );
-                
-                // Use these patterns to improve future recommendations
-                console.log(`Found ${successfulPatterns.length} successful patterns to reinforce`);
-            } else {
-                // Analyze what went wrong and adjust
-                console.log("Analyzing unsuccessful interaction to improve future responses");
-                
-                // Store what didn't work to avoid similar mistakes
-                const pattern = {
-                    type: interaction.type,
-                    context: interaction.inputData,
-                    failedResponse: interaction.outputData,
-                    userFeedback: interaction.userFeedback,
-                    timestamp: new Date().toISOString()
-                };
-                
-                // This could be used to train a more sophisticated learning model
-            }
-        } catch (error) {
-            console.error("Error in analyze and improve:", error);
-        }
-    }
-
-    async updateLoadingMessage(message) {
-        const loadingText = this.elements.loadingState?.querySelector('p');
-        if (loadingText) {
-            loadingText.textContent = message;
-        }
-        await this.delay(500); // Small delay for better UX
-    }
-
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // Render AI insights with enhanced UI
-    renderAIInsights(insights) {
-        this.renderCoachTip(insights.spendingInsights);
-        this.renderSavingsGoals(insights.personalizedGoals);
-        this.renderChallenge();
-        this.renderFilipinoWisdom();
-        this.renderDetailedInsights(insights);
-    }
-
-    renderCoachTip(spendingInsights) {
-        if (!this.elements.coachTipText) return;
-        
-        this.elements.coachTipText.innerHTML = `
-            <div class="coach-message">
-                <div class="coach-avatar">🤖</div>
-                <div class="coach-text">
-                    <strong>AI Analysis Complete!</strong><br>
-                    ${spendingInsights.insight}
-                </div>
-            </div>
-        `;
-    }
-
-    renderSavingsGoals(goals) {
-        if (!this.elements.savingsGoalsList || !goals) return;
-
-        const goalsHTML = goals.map(goal => {
-            const percentage = Math.min((goal.current / goal.target) * 100, 100);
-            return `
-                <div class="goal-item">
-                    <div class="goal-header">
-                        <h4>${goal.name}</h4>
-                        <span class="goal-priority priority-${goal.priority}">${goal.priority}</span>
-                    </div>
-                    <div class="goal-progress">
-                        <div class="progress-bar">
-                            <div class="progress-bar-inner" style="width: ${percentage}%">
-                                ${Math.round(percentage)}%
-                            </div>
-                        </div>
-                        <div class="goal-amounts">
-                            <span>₱${goal.current.toLocaleString()}</span>
-                            <span>₱${goal.target.toLocaleString()}</span>
-                        </div>
-                    </div>
-                    <div class="goal-method">
-                        <i class="fas fa-lightbulb"></i>
-                        ${goal.method}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        this.elements.savingsGoalsList.innerHTML = goalsHTML;
-    }
-
-    renderChallenge() {
-        const challenges = [
-            {
-                name: '7-Day Ipon Challenge',
-                description: 'Save ₱50 every day for a week. Small steps lead to big victories!',
-                target: 350
-            },
-            {
-                name: 'Alkansya Month',
-                description: 'Use a traditional coin bank and save all your loose change for 30 days.',
-                target: 2000
-            },
-            {
-                name: 'Baon Challenge',
-                description: 'Bring lunch from home for 2 weeks instead of buying outside.',
-                target: 1500
-            }
-        ];
-
-        const randomChallenge = challenges[Math.floor(Math.random() * challenges.length)];
-
-        if (this.elements.challengeName) {
-            this.elements.challengeName.textContent = randomChallenge.name;
-        }
-        if (this.elements.challengeDesc) {
-            this.elements.challengeDesc.textContent = randomChallenge.description;
-        }
-        if (this.elements.challengeTarget) {
-            this.elements.challengeTarget.textContent = `₱${randomChallenge.target.toLocaleString()}`;
-        }
-    }
-
-    renderFilipinoWisdom() {
-        const randomWisdom = this.filipinoWisdom[Math.floor(Math.random() * this.filipinoWisdom.length)];
-        
-        if (this.elements.quoteText) {
-            this.elements.quoteText.textContent = randomWisdom.text;
-        }
-        if (this.elements.quoteAuthor) {
-            this.elements.quoteAuthor.textContent = `— ${randomWisdom.author}`;
-        }
-    }
-
-    renderDetailedInsights(insights) {
-        // Create insights section dynamically
-        const mainContent = document.querySelector('#coach-dashboard');
-        if (!mainContent) return;
-
-        const insightsSection = document.createElement('div');
-        insightsSection.className = 'insights-section';
-        insightsSection.innerHTML = `
-            <h2><i class="fas fa-brain"></i> AI-Powered Insights</h2>
-            <div class="insights-grid">
-                ${this.createOpportunitiesCard(insights.savingsOpportunities)}
-                ${this.createStrategiesCard(insights.filipinoStrategies)}
-                ${this.createRisksCard(insights.riskAssessment)}
-            </div>
-        `;
-
-        // Remove existing insights section if it exists
-        const existingInsights = mainContent.querySelector('.insights-section');
-        if (existingInsights) {
-            existingInsights.remove();
-        }
-
-        mainContent.appendChild(insightsSection);
-    }
-
-    createOpportunitiesCard(opportunities) {
-        const opportunitiesHTML = opportunities.map(opp => `
-            <div class="opportunity-item">
-                <div class="opportunity-desc">${opp.category} Optimization</div>
-                <div class="opportunity-potential">Save up to ₱${opp.potential.toLocaleString()}/month</div>
-                <div class="opportunity-method">${opp.strategy}</div>
-            </div>
-        `).join('');
-
-        return `
-            <div class="insight-card">
-                <h3><i class="fas fa-coins"></i> Savings Opportunities</h3>
-                <div class="opportunities-list">
-                    ${opportunitiesHTML || '<p>Great job! Your spending is well-optimized.</p>'}
-                </div>
-            </div>
-        `;
-    }
-
-    createStrategiesCard(strategies) {
-        const strategiesHTML = strategies.map(strategy => `
-            <div class="category-item">
-                <div class="category-name">${strategy.name}</div>
-                <div class="category-amount">${strategy.suitability}</div>
-            </div>
-        `).join('');
-
-        return `
-            <div class="insight-card">
-                <h3><i class="fas fa-flag-philippines"></i> Filipino Strategies</h3>
-                <div class="category-list">
-                    ${strategiesHTML}
-                </div>
-            </div>
-        `;
-    }
-
-    createRisksCard(risks) {
-        const risksHTML = risks.map(risk => `
-            <div class="risk-item severity-${risk.severity}">
-                <div class="risk-desc">${risk.risk}</div>
-                <div class="risk-recommendation">${risk.recommendation}</div>
-            </div>
-        `).join('');
-
-        return `
-            <div class="insight-card">
-                <h3><i class="fas fa-shield-alt"></i> Risk Assessment</h3>
-                <div class="risks-list">
-                    ${risksHTML || '<div class="risk-item severity-low"><div class="risk-desc">Low Risk Profile</div><div class="risk-recommendation">Your financial health looks good! Keep up the great work.</div></div>'}
-                </div>
-            </div>
-        `;
-    }
-
-    // State management with error handling
-    showState(stateName) {
-        const stateElements = {
-            'loadingState': this.elements.loadingState,
-            'contentLoaded': this.elements.contentLoaded,
-            'emptyState': this.elements.emptyState
-        };
-        
-        // Hide all states first
-        Object.values(stateElements).forEach(element => {
-            if (element) {
-                element.style.display = 'none';
-            }
-        });
-        
-        // Show the requested state
-        const targetElement = stateElements[stateName];
-        if (targetElement) {
-            targetElement.style.display = 'block';
-            
-            // Add special styling for loading state
-            if (stateName === 'loadingState') {
-                targetElement.classList.add('loading-indicator');
-            }
-        }
-    }
-
-    // Main autonomous execution with real AI
+    // Start the AI coach
     async start() {
         try {
-            console.log("Starting Ipon Coach AI...");
-            this.showState('loadingState');
+            console.log("🤖 Starting Ipon Coach AI...");
+            this.showLoadingState();
             
-            // Check authentication first
-            await this.updateLoadingMessage('Checking authentication...');
-            if (!this.auth.currentUser) {
-                console.log("User not authenticated, waiting for auth state...");
-                
-                // Wait for auth state to be ready
-                await new Promise((resolve) => {
-                    const unsubscribe = this.auth.onAuthStateChanged((user) => {
-                        if (user) {
-                            console.log("User authenticated:", user.uid);
-                            unsubscribe();
-                            resolve();
-                        } else {
-                            console.log("No user authenticated, showing empty state");
-                            unsubscribe();
-                            resolve();
-                        }
-                    });
-                });
-            }
+            // Wait for authentication
+            await this.waitForAuth();
             
-            if (!this.auth.currentUser) {
-                this.showState('emptyState');
+            if (!this.currentUser) {
+                this.showEmptyState("Please log in to access AI financial coaching.");
                 return;
             }
-            
-            // Load real user financial data
-            await this.updateLoadingMessage('Loading your financial data...');
-            this.userData = await this.loadUserFinancialData();
-            
-            if (!this.userData || !this.userData.hasTransactions || this.userData.transactionCount < 1) {
-                console.log("Insufficient transaction data for analysis");
+
+            // Initialize BaseAgent with timeout and wait for data loading
+            try {
+                await this.waitForInitialization();
                 
-                // If user has no transactions at all, show a helpful message
-                if (!this.userData || this.userData.transactionCount === 0) {
-                    this.showEmptyStateWithPrompt();
-                } else {
-                    this.showState('emptyState');
+                // Force data reload if BaseAgent initialization succeeded
+                if (this.initialized) {
+                    console.log("🔄 BaseAgent initialized, loading financial data...");
+                    await this.loadUserFinancialData();
                 }
+            } catch (error) {
+                console.warn("BaseAgent initialization failed, loading data manually:", error);
+                await this.loadUserFinancialDataFallback();
+            }
+            
+            // Wait a bit more for data to be processed
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Ensure arrays are initialized
+            if (!this.userTransactions) this.userTransactions = [];
+            if (!this.userAccounts) this.userAccounts = [];
+            
+            console.log("📊 Data check:", {
+                transactions: this.userTransactions.length,
+                accounts: this.userAccounts.length,
+                initialized: this.initialized
+            });
+            
+            // Check if we have data
+            if (this.userTransactions.length === 0 && this.userAccounts.length === 0) {
+                console.log("⚠️ No financial data found, showing empty state");
+                this.showEmptyState();
                 return;
             }
+
+            // Load AI analysis
+            await this.loadAIAnalysis();
             
-            // Perform real AI analysis using Gemini
-            await this.updateLoadingMessage('AI is analyzing your financial patterns...');
-            this.aiInsights = await this.analyzeUserData(this.userData);
-            
-            // Render insights
-            await this.updateLoadingMessage('Generating personalized recommendations...');
-            this.renderAIInsights(this.aiInsights);
-            
-            // Show content
-            this.showState('contentLoaded');
-            
-            // Mark analysis as complete
-            this.analysisComplete = true;
-            
-            // Add feedback interface for learning
-            this.addFeedbackInterface();
-            
-            console.log('Ipon Coach AI analysis complete with real data and AI!', this.aiInsights);
+            this.showContentState();
+            console.log("✅ Ipon Coach AI initialized successfully");
             
         } catch (error) {
-            console.error('Error in Ipon Coach AI:', error);
-            this.showError('Failed to analyze your financial data. Please try again.');
+            console.error("❌ Error starting Ipon Coach AI:", error);
+            this.showErrorMessage("Failed to initialize AI coach. Please try again.");
         }
     }
 
-    // Add feedback interface for learning
-    addFeedbackInterface() {
-        const mainContent = document.querySelector('#coach-dashboard');
-        if (!mainContent) return;
-
-        const feedbackSection = document.createElement('div');
-        feedbackSection.className = 'feedback-section';
-        feedbackSection.innerHTML = `
-            <div class="feedback-card">
-                <h3><i class="fas fa-star"></i> Rate This Analysis</h3>
-                <p>Help me learn and improve by rating this financial analysis:</p>
-                <div class="rating-buttons">
-                    <button class="rating-btn" data-rating="1">😟 Poor</button>
-                    <button class="rating-btn" data-rating="2">😐 Fair</button>
-                    <button class="rating-btn" data-rating="3">🙂 Good</button>
-                    <button class="rating-btn" data-rating="4">😊 Great</button>
-                    <button class="rating-btn" data-rating="5">🤩 Excellent</button>
-                </div>
-                <div class="feedback-text" style="display: none;">
-                    <textarea placeholder="Any specific feedback to help me improve?"></textarea>
-                    <button class="submit-feedback-btn">Submit Feedback</button>
-                </div>
-            </div>
-        `;
-
-        mainContent.appendChild(feedbackSection);
-
-        // Add event listeners for feedback
-        const ratingButtons = feedbackSection.querySelectorAll('.rating-btn');
-        ratingButtons.forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const rating = parseInt(btn.dataset.rating);
-                const feedbackText = feedbackSection.querySelector('.feedback-text');
-                feedbackText.style.display = 'block';
-                
-                // Highlight selected rating
-                ratingButtons.forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                
-                const submitBtn = feedbackSection.querySelector('.submit-feedback-btn');
-                submitBtn.addEventListener('click', async () => {
-                    const comments = feedbackSection.querySelector('textarea').value;
-                    await this.submitFeedback(rating, comments);
-                    feedbackSection.innerHTML = '<p><i class="fas fa-check"></i> Thank you for your feedback! I\'ll use this to improve future recommendations.</p>';
+    // Wait for authentication
+    async waitForAuth() {
+        const auth = getAuth();
+        return new Promise((resolve) => {
+            if (auth.currentUser) {
+                this.currentUser = auth.currentUser;
+                resolve();
+            } else {
+                const unsubscribe = auth.onAuthStateChanged((user) => {
+                    this.currentUser = user;
+                    unsubscribe();
+                    resolve();
                 });
-            });
+            }
         });
     }
 
-    // Submit user feedback for learning
-    async submitFeedback(rating, comments) {
+    // Wait for BaseAgent initialization
+    async waitForInitialization() {
+        const maxWait = 10000; // 10 seconds max
+        const checkInterval = 100; // Check every 100ms
+        let waited = 0;
+
+        while (!this.initialized && waited < maxWait) {
+            await new Promise(resolve => setTimeout(resolve, checkInterval));
+            waited += checkInterval;
+        }
+
+        if (!this.initialized) {
+            console.warn('⚠️ BaseAgent initialization timeout, proceeding with available data');
+        }
+        
+        return this.initialized;
+    }
+
+    // Load comprehensive AI analysis
+    async loadAIAnalysis() {
         try {
-            const feedback = {
-                rating,
-                comments,
-                timestamp: new Date().toISOString(),
-                analysisType: 'financial_overview'
-            };
+            console.log("🧠 Loading AI financial analysis...");
 
-            // Find the most recent interaction to attach feedback to
-            const lastInteractionId = this.learningHistory.length > 0 
-                ? this.learningHistory[this.learningHistory.length - 1].id 
-                : `interaction_${Date.now()}`;
+            // Generate multiple AI insights in parallel
+            const analysisPromises = [
+                this.generateFinancialAnalysis(),
+                this.generatePersonalizedRecommendations(),
+                this.generateSmartGoals(),
+                this.generateHealthScore(),
+                this.generateMarketInsights(),
+                this.generateRiskAssessment()
+            ];
 
-            await this.learnFromFeedback(lastInteractionId, feedback);
-            
-            console.log('Feedback submitted and learning updated');
+            const [
+                financialAnalysis,
+                recommendations,
+                goals,
+                healthScore,
+                marketInsights,
+                riskAssessment
+            ] = await Promise.all(analysisPromises);
+
+            // Update UI with AI-generated content
+            this.updateFinancialAnalysis(financialAnalysis);
+            this.updateRecommendations(recommendations);
+            this.updateGoals(goals);
+            this.updateHealthScore(healthScore);
+            this.updateMarketInsights(marketInsights);
+            this.updateRiskAssessment(riskAssessment);
+
+            // Add welcome message to chat
+            this.addChatMessage("ai", "Kumusta! I'm your AI financial coach. I've analyzed your data and I'm here to help you achieve your financial goals. Ask me anything about your finances!");
+
         } catch (error) {
-            console.error('Error submitting feedback:', error);
+            console.error("Error loading AI analysis:", error);
+            this.showErrorMessage("Failed to generate AI insights.");
         }
     }
 
-    showError(message) {
-        const errorElement = document.createElement('div');
-        errorElement.className = 'error-message';
-        errorElement.innerHTML = `
-            <i class="fas fa-exclamation-triangle"></i>
-            <h3>Oops! Something went wrong</h3>
-            <p>${message}</p>
-        `;
-        
-        document.body.appendChild(errorElement);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            errorElement.remove();
-        }, 5000);
-    }
-
-    // Helper methods for parsing AI responses when JSON parsing fails
-    extractOpportunities(aiResponse, userData) {
-        const opportunities = [];
-        const categories = userData.categories || {};
-        
-        // Basic opportunity detection based on spending patterns
-        Object.entries(categories).forEach(([category, amount]) => {
-            const percentage = (amount / userData.totalSpent) * 100;
+    // Generate comprehensive financial analysis using Gemini AI
+    async generateFinancialAnalysis() {
+        try {
+            const financialData = this.prepareFinancialData();
             
-            if (percentage > 25) {
-                opportunities.push({
-                    category,
-                    potential: Math.round(amount * 0.2),
-                    strategy: `Reduce ${category} spending using Filipino "tipid" methods`,
-                    impact: 'medium'
-                });
-            }
-        });
-        
-        return opportunities;
-    }
+            const prompt = `As a Filipino financial advisor AI, analyze this user's financial data and provide personalized insights in a conversational, encouraging tone. Be specific about the data you see and give actionable advice.
 
-    extractGoals(aiResponse, userData) {
-        const income = userData.monthlyIncome || 0;
-        const currentSavings = userData.currentSavings || 0;
-        
-        return [
-            {
-                name: 'Emergency Fund',
-                current: currentSavings,
-                target: income * 3,
-                priority: 'high',
-                method: 'Alkansya Method',
-                timeline: '6 months'
-            },
-            {
-                name: 'Investment Fund',
-                current: Math.round(currentSavings * 0.3),
-                target: income * 2,
-                priority: 'medium',
-                method: 'Paluwagan System',
-                timeline: '12 months'
-            }
-        ];
-    }
+Financial Data:
+${JSON.stringify(financialData, null, 2)}
 
-    extractRisks(aiResponse, userData) {
-        const risks = [];
-        const savingsRate = userData.monthlyIncome > 0 
-            ? ((userData.monthlyIncome - userData.totalSpent) / userData.monthlyIncome * 100) 
-            : 0;
-        
-        if (savingsRate < 10) {
-            risks.push({
-                risk: 'Low Savings Rate',
-                severity: 'high',
-                recommendation: 'Increase savings to at least 20% using "ipon" strategies',
-                urgency: 'immediate'
-            });
+Provide analysis covering:
+1. Overall financial health summary
+2. Spending patterns and trends
+3. Savings opportunities
+4. Account optimization suggestions
+5. Filipino-context financial advice
+
+Keep response under 300 words, friendly tone, use some Filipino expressions naturally.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            return response || "I'm analyzing your financial patterns to provide personalized insights...";
+            
+        } catch (error) {
+            console.error("Error generating financial analysis:", error);
+            return "I'm currently learning about your financial patterns. Let me gather more insights for you.";
         }
-        
-        return risks;
     }
 
-    extractStrategies(aiResponse) {
-        return [
-            {
-                name: 'Alkansya Method',
-                description: 'Traditional Filipino coin saving technique',
-                suitability: 'Perfect for building daily saving habits',
-                implementation: 'Save all loose change in a coin bank daily'
-            },
-            {
-                name: 'Baon Strategy',
-                description: 'Bring packed lunch to work/school',
-                suitability: 'Reduces food expenses significantly',
-                implementation: 'Prepare meals at home 3-4 times per week'
+    // Generate personalized recommendations
+    async generatePersonalizedRecommendations() {
+        try {
+            const financialData = this.prepareFinancialData();
+            
+            const prompt = `Based on this Filipino user's financial data, generate 3-5 specific, actionable recommendations. Each should be practical and achievable.
+
+Financial Data:
+${JSON.stringify(financialData, null, 2)}
+
+Format as JSON array with objects containing:
+- title: Brief recommendation title
+- description: Detailed explanation
+- priority: "high", "medium", or "low"
+- actionSteps: Array of specific steps to take
+
+Focus on Filipino financial context (e.g., OFW remittances, peso inflation, local banking options).`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                return JSON.parse(response);
+            } catch {
+                // Fallback if JSON parsing fails
+                return this.generateFallbackRecommendations();
             }
-        ];
+            
+        } catch (error) {
+            console.error("Error generating recommendations:", error);
+            return this.generateFallbackRecommendations();
+        }
     }
 
-    extractNextSteps(aiResponse) {
-        return [
-            'Start tracking daily expenses',
-            'Set up automatic savings transfer',
-            'Create a monthly budget plan',
-            'Review and adjust spending categories'
-        ];
+    // Generate smart savings goals
+    async generateSmartGoals() {
+        try {
+            const financialData = this.prepareFinancialData();
+            
+            const prompt = `Create 2-4 personalized savings goals for this Filipino user based on their financial data. Make goals SMART (Specific, Measurable, Achievable, Relevant, Time-bound).
+
+Financial Data:
+${JSON.stringify(financialData, null, 2)}
+
+Format as JSON array with objects containing:
+- title: Goal name
+- description: What this achieves
+- targetAmount: Numeric amount in PHP
+- timeframe: Realistic timeframe
+- monthlyTarget: Monthly savings needed
+- priority: "high", "medium", or "low"
+- benefits: Array of benefits
+
+Consider Filipino financial priorities: emergency fund, family support, education, business capital.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                return JSON.parse(response);
+            } catch {
+                return this.generateFallbackGoals();
+            }
+            
+        } catch (error) {
+            console.error("Error generating smart goals:", error);
+            return this.generateFallbackGoals();
+        }
     }
 
-    determineSeverity(userData) {
-        const savingsRate = userData.monthlyIncome > 0 
-            ? ((userData.monthlyIncome - userData.totalSpent) / userData.monthlyIncome * 100) 
-            : 0;
+    // Generate financial health score
+    async generateHealthScore() {
+        try {
+            const financialData = this.prepareFinancialData();
+            
+            const prompt = `Calculate a financial health score (0-100) for this Filipino user and explain the scoring.
+
+Financial Data:
+${JSON.stringify(financialData, null, 2)}
+
+Format as JSON object:
+{
+  "score": number (0-100),
+  "level": "poor|fair|good|excellent",
+  "factors": {
+    "emergency_fund": {"score": number, "weight": number, "status": "string"},
+    "debt_ratio": {"score": number, "weight": number, "status": "string"},
+    "savings_rate": {"score": number, "weight": number, "status": "string"},
+    "diversification": {"score": number, "weight": number, "status": "string"}
+  },
+  "summary": "Brief explanation",
+  "improvements": ["improvement suggestions"]
+}
+
+Use Filipino financial standards and context.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                return JSON.parse(response);
+            } catch {
+                return this.generateFallbackHealthScore();
+            }
+            
+        } catch (error) {
+            console.error("Error generating health score:", error);
+            return this.generateFallbackHealthScore();
+        }
+    }
+
+    // Generate market insights
+    async generateMarketInsights() {
+        try {
+            const prompt = `Provide current financial market insights relevant to Filipino investors and savers. Include 3-4 brief insights about:
+
+1. Philippine peso trends
+2. Local interest rates
+3. Investment opportunities
+4. Economic outlook
+
+Format as JSON array:
+[
+  {
+    "title": "Insight title",
+    "value": "Key metric or trend",
+    "description": "Brief explanation",
+    "impact": "How this affects the user"
+  }
+]
+
+Keep current with 2024 Philippine economic context.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                return JSON.parse(response);
+            } catch {
+                return this.generateFallbackMarketInsights();
+            }
+            
+        } catch (error) {
+            console.error("Error generating market insights:", error);
+            return this.generateFallbackMarketInsights();
+        }
+    }
+
+    // Generate risk assessment
+    async generateRiskAssessment() {
+        try {
+            const financialData = this.prepareFinancialData();
+            
+            const prompt = `Assess financial risks for this Filipino user based on their data. Identify 3-5 specific risks.
+
+Financial Data:
+${JSON.stringify(financialData, null, 2)}
+
+Format as JSON array:
+[
+  {
+    "risk": "Risk description",
+    "severity": "high|medium|low",
+    "probability": "high|medium|low",
+    "impact": "Impact description",
+    "mitigation": "How to address this risk"
+  }
+]
+
+Consider Filipino-specific risks: OFW dependency, peso volatility, natural disasters, healthcare costs.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            try {
+                return JSON.parse(response);
+            } catch {
+                return this.generateFallbackRiskAssessment();
+            }
+            
+        } catch (error) {
+            console.error("Error generating risk assessment:", error);
+            return this.generateFallbackRiskAssessment();
+        }
+    }
+
+    // Prepare financial data for AI analysis
+    prepareFinancialData() {
+        // Ensure we have arrays initialized
+        if (!this.userTransactions) this.userTransactions = [];
+        if (!this.userAccounts) this.userAccounts = [];
         
-        if (savingsRate < 10) return 'high';
-        if (savingsRate < 20) return 'medium';
-        return 'low';
-    }
-
-    // Fallback analysis when AI fails
-    getFallbackAnalysis(userData) {
-        const savingsRate = userData.monthlyIncome > 0 
-            ? ((userData.monthlyIncome - userData.totalSpent) / userData.monthlyIncome * 100) 
-            : 0;
-
+        const overview = this.getFinancialOverview();
+        
         return {
-            spendingInsights: {
-                insight: `You're currently saving ${Math.round(savingsRate)}% of your income. Let's work together to improve your financial health using Filipino-inspired strategies.`,
-                savingsRate,
-                severity: this.determineSeverity(userData),
-                culturalContext: "Using traditional Filipino financial wisdom for guidance"
+            summary: {
+                totalBalance: overview.totalBalance || 0,
+                monthlyIncome: overview.monthlyIncome || 0,
+                monthlyExpenses: overview.monthlyExpenses || 0,
+                savingsRate: overview.savingsRate || 0,
+                transactionCount: this.userTransactions.length,
+                accountCount: this.userAccounts.length
             },
-            savingsOpportunities: this.extractOpportunities('', userData),
-            personalizedGoals: this.extractGoals('', userData),
-            riskAssessment: this.extractRisks('', userData),
-            filipinoStrategies: this.extractStrategies(''),
-            reasoning: "Basic analysis based on spending patterns and Filipino financial principles",
-            confidence: 0.6,
-            nextSteps: this.extractNextSteps('')
+            accounts: this.userAccounts.map(acc => ({
+                type: acc.category || 'unknown',
+                balance: acc.balance || 0,
+                provider: acc.provider || 'unknown'
+            })),
+            recentTransactions: this.userTransactions
+                .slice(-20)
+                .map(tx => ({
+                    type: tx.type || 'unknown',
+                    amount: tx.amount || 0,
+                    category: tx.category || 'unknown',
+                    date: tx.date || new Date().toISOString()
+                })),
+            spendingByCategory: this.getSpendingByCategory() || {},
+            trends: this.getSpendingTrends() || {}
         };
     }
 
-    // Display AI analysis results
-    displayAnalysis(analysis) {
-        console.log("Displaying analysis:", analysis);
+    // Fallback method for getFinancialOverview if BaseAgent doesn't provide it
+    getFinancialOverview() {
+        if (super.getFinancialOverview) {
+            return super.getFinancialOverview();
+        }
         
-        const analysisContainer = document.getElementById('analysis-results');
-        if (!analysisContainer) {
-            console.error('Analysis container not found');
-            return;
-        }
+        // Fallback implementation
+        const totalBalance = this.userAccounts ? 
+            this.userAccounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0) : 0;
+        
+        const monthlyIncome = this.userTransactions ?
+            this.userTransactions
+                .filter(tx => tx.type === 'income' && this.isWithinLastMonth(tx.date))
+                .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) : 0;
+        
+        const monthlyExpenses = this.userTransactions ?
+            this.userTransactions
+                .filter(tx => tx.type === 'expense' && this.isWithinLastMonth(tx.date))
+                .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0) : 0;
+        
+        const savingsRate = monthlyIncome > 0 ? 
+            ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
+        
+        return {
+            totalBalance,
+            monthlyIncome,
+            monthlyExpenses,
+            savingsRate,
+            netMonthlyCashFlow: monthlyIncome - monthlyExpenses
+        };
+    }
 
-        // Ensure we have valid analysis data
-        if (!analysis || typeof analysis !== 'object') {
-            console.error('Invalid analysis data:', analysis);
-            analysisContainer.innerHTML = `
-                <div class="error-message">
-                    <h3>❌ Analysis Error</h3>
-                    <p>Hindi ma-process ang AI analysis. Please try again.</p>
-                </div>
-            `;
-            return;
-        }
+    // Helper method to check if date is within last month
+    isWithinLastMonth(dateString) {
+        if (!dateString) return false;
+        const date = new Date(dateString);
+        const now = new Date();
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        return date >= lastMonth;
+    }
 
+    // Fallback method for getSpendingByCategory
+    getSpendingByCategory() {
+        if (super.getSpendingByCategory) {
+            return super.getSpendingByCategory();
+        }
+        
+        if (!this.userTransactions) return {};
+        
+        return this.userTransactions
+            .filter(tx => tx.type === 'expense')
+            .reduce((acc, tx) => {
+                const category = tx.category || 'Other';
+                acc[category] = (acc[category] || 0) + parseFloat(tx.amount || 0);
+                return acc;
+            }, {});
+    }
+
+    // Fallback method for getSpendingTrends
+    getSpendingTrends() {
+        if (super.getSpendingTrends) {
+            return super.getSpendingTrends();
+        }
+        
+        if (!this.userTransactions) return {};
+        
+        // Simple trend calculation
+        const thisMonth = this.userTransactions
+            .filter(tx => tx.type === 'expense' && this.isWithinLastMonth(tx.date))
+            .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+        
+        return {
+            currentMonth: thisMonth,
+            trend: 'stable' // Simplified for fallback
+        };
+    }
+
+    // Call Gemini AI API
+    async callGeminiAPI(prompt, options = {}) {
         try {
-            analysisContainer.innerHTML = `
-                <div class="analysis-header">
-                    <h2>🤖 AI Coach Insights</h2>
-                    <div class="confidence-badge">
-                        Confidence: ${Math.round((analysis.confidence || 0.7) * 100)}%
-                    </div>
-                </div>
+            const requestBody = {
+                contents: [{
+                    parts: [{
+                        text: prompt
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 2048,
+                    ...options
+                }
+            };
 
-                <div class="insights-section">
-                    <h3>💡 Spending Insights</h3>
-                    <div class="insight-card">
-                        <p class="main-insight">${analysis.spendingInsights?.insight || 'Analyzing your financial patterns...'}</p>
-                        <div class="metrics">
-                            <div class="metric">
-                                <span class="label">Savings Rate:</span>
-                                <span class="value ${this.getSavingsRateClass(analysis.spendingInsights?.savingsRate || 0)}">
-                                    ${(analysis.spendingInsights?.savingsRate || 0).toFixed(1)}%
-                                </span>
-                            </div>
-                            <div class="metric">
-                                <span class="label">Risk Level:</span>
-                                <span class="value risk-${analysis.riskAssessment?.level || 'medium'}">
-                                    ${(analysis.riskAssessment?.level || 'medium').toUpperCase()}
-                                </span>
-                            </div>
-                        </div>
-                        ${analysis.spendingInsights?.culturalContext ? 
-                            `<p class="cultural-context">🇵🇭 ${analysis.spendingInsights.culturalContext}</p>` : ''}
-                    </div>
-                </div>
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
 
-                <div class="opportunities-section">
-                    <h3>💰 Savings Opportunities</h3>
-                    <div class="opportunities-grid">
-                        ${this.renderSavingsOpportunities(analysis.savingsOpportunities || [])}
-                    </div>
-                </div>
+            if (!response.ok) {
+                throw new Error(`Gemini API error: ${response.status}`);
+            }
 
-                <div class="goals-section">
-                    <h3>🎯 Personalized Goals</h3>
-                    <div class="goals-list">
-                        ${this.renderPersonalizedGoals(analysis.personalizedGoals || [])}
-                    </div>
-                </div>
-
-                <div class="strategies-section">
-                    <h3>🇵🇭 Filipino Strategies</h3>
-                    <div class="strategies-grid">
-                        ${this.renderFilipinoStrategies(analysis.filipinoStrategies || [])}
-                    </div>
-                </div>
-
-                <div class="next-steps-section">
-                    <h3>📋 Next Steps</h3>
-                    <div class="next-steps-list">
-                        ${this.renderNextSteps(analysis.nextSteps || [])}
-                    </div>
-                </div>
-
-                <div class="reasoning-section">
-                    <h3>🧠 AI Reasoning</h3>
-                    <p class="reasoning-text">${analysis.reasoning || 'AI analysis completed successfully.'}</p>
-                </div>
-            `;
-
-            // Add interaction handlers
-            this.addInteractionHandlers();
+            const data = await response.json();
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
             
         } catch (error) {
-            console.error('Error displaying analysis:', error);
-            analysisContainer.innerHTML = `
-                <div class="error-message">
-                    <h3>❌ Display Error</h3>
-                    <p>May problema sa pag-display ng analysis. Please refresh and try again.</p>
-                    <details>
-                        <summary>Technical Details</summary>
-                        <pre>${error.message}</pre>
-                    </details>
-                </div>
-            `;
+            console.error('Gemini API call failed:', error);
+            throw error;
         }
     }
 
-    // Get CSS class for savings rate color coding
-    getSavingsRateClass(rate) {
-        if (rate >= 20) return 'excellent';
-        if (rate >= 10) return 'good';
-        if (rate >= 5) return 'fair';
-        return 'poor';
-    }
-
-    // Render savings opportunities
-    renderSavingsOpportunities(opportunities) {
-        if (!opportunities || opportunities.length === 0) {
-            return '<p class="no-data">Walang specific opportunities na na-identify. Keep tracking your expenses!</p>';
-        }
-
-        return opportunities.map(opp => `
-            <div class="opportunity-card">
-                <h4>${opp.category || 'General'}</h4>
-                <p class="strategy">${opp.strategy || 'No specific strategy available'}</p>
-                <div class="savings-potential">
-                    <span class="current">Current: ₱${(opp.currentSpending || 0).toLocaleString()}</span>
-                    <span class="suggested">Suggested: ₱${(opp.suggestedReduction || 0).toLocaleString()}</span>
-                </div>
-                <p class="impact">Impact: ${opp.impact || 'Medium'}</p>
-            </div>
-        `).join('');
-    }
-
-    // Render personalized goals
-    renderPersonalizedGoals(goals) {
-        if (!goals || goals.length === 0) {
-            return '<p class="no-data">Mag-set tayo ng financial goals based sa inyong data!</p>';
-        }
-
-        return goals.map(goal => `
-            <div class="goal-card">
-                <h4>${goal.goal || 'Financial Goal'}</h4>
-                <p class="timeframe">Timeline: ${goal.timeframe || 'To be determined'}</p>
-                <p class="strategy">${goal.strategy || 'Strategy to be developed'}</p>
-                <p class="motivation">💪 ${goal.motivation || 'Stay motivated!'}</p>
-            </div>
-        `).join('');
-    }
-
-    // Render Filipino strategies
-    renderFilipinoStrategies(strategies) {
-        if (!strategies || strategies.length === 0) {
-            return '<p class="no-data">Mag-suggest tayo ng Filipino financial strategies!</p>';
-        }
-
-        return strategies.map(strategy => `
-            <div class="strategy-card">
-                <h4>${strategy.name || 'Filipino Strategy'}</h4>
-                <p class="description">${strategy.description || 'Traditional Filipino approach to saving money'}</p>
-                <div class="implementation">
-                    <strong>How to implement:</strong>
-                    <p>${strategy.implementation || 'Step-by-step guide coming soon'}</p>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // Render next steps
-    renderNextSteps(steps) {
-        if (!steps || steps.length === 0) {
-            return '<p class="no-data">Continue tracking your expenses para sa better insights!</p>';
-        }
-
-        return steps.map((step, index) => `
-            <div class="step-item">
-                <span class="step-number">${index + 1}</span>
-                <span class="step-text">${step}</span>
-            </div>
-        `).join('');
-    }
-
-    showEmptyStateWithPrompt() {
-        // Show empty state with helpful guidance
-        this.showState('emptyState');
+    // Handle chat messages
+    async sendChatMessage() {
+        const input = this.elements.chatInput;
+        const message = input.value.trim();
         
-        // Update empty state content to be more helpful
-        const emptyStateElement = this.elements.emptyState;
-        if (emptyStateElement) {
-            emptyStateElement.innerHTML = `
-                <div class="empty-state-content">
-                    <i class="fas fa-chart-line" style="font-size: 3rem; color: rgba(255, 255, 255, 0.3); margin-bottom: 1.5rem;"></i>
-                    <h3>Start Your Financial Journey</h3>
-                    <p>To get personalized savings advice from your Ipon Coach, you need to:</p>
-                    <ul style="list-style: none; padding: 0; margin-top: 1rem; text-align: left; display: inline-block;">
-                        <li style="margin-bottom: 0.5rem;"><i class="fas fa-plus-circle" style="margin-right: 0.5rem; color: #4CAF50;"></i> Add at least 1 transaction</li>
-                        <li style="margin-bottom: 0.5rem;"><i class="fas fa-bank" style="margin-right: 0.5rem; color: #2196F3;"></i> Connect your bank accounts (optional)</li>
-                        <li style="margin-bottom: 0.5rem;"><i class="fas fa-refresh" style="margin-right: 0.5rem; color: #FF9800;"></i> Come back for AI-powered insights</li>
-                    </ul>
-                    <p style="margin-top: 1.5rem;">Once you have some transaction data, I'll analyze your spending patterns and provide personalized Filipino-inspired savings strategies!</p>
-                    <div style="margin-top: 2rem;">
-                        <button onclick="window.location.href='/pages/transactions.html'" class="btn btn-primary" style="margin-right: 1rem;">
-                            <i class="fas fa-plus"></i> Add Transaction
-                        </button>
-                        <button onclick="location.reload()" class="btn btn-secondary">
-                            <i class="fas fa-refresh"></i> Refresh
-                        </button>
-                    </div>
+        if (!message) return;
+        
+        // Clear input
+        input.value = '';
+        
+        // Add user message
+        this.addChatMessage('user', message);
+        
+        // Show typing indicator
+        this.addChatMessage('ai', 'Thinking...', true);
+        
+        try {
+            const financialData = this.prepareFinancialData();
+            const conversationContext = this.conversationHistory.slice(-10);
+            
+            const prompt = `You are a helpful Filipino financial advisor AI. The user asked: "${message}"
+
+User's financial context:
+${JSON.stringify(financialData, null, 2)}
+
+Recent conversation:
+${conversationContext.map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+
+Provide a helpful, personalized response. Use Filipino expressions naturally when appropriate. Be encouraging and specific. Keep under 200 words.`;
+
+            const response = await this.callGeminiAPI(prompt);
+            
+            // Remove typing indicator
+            this.removeChatMessage();
+            
+            // Add AI response
+            this.addChatMessage('ai', response);
+            
+            // Store in conversation history
+            this.conversationHistory.push(
+                { role: 'user', content: message },
+                { role: 'assistant', content: response }
+            );
+            
+        } catch (error) {
+            console.error('Chat error:', error);
+            this.removeChatMessage();
+            this.addChatMessage('ai', 'Sorry, I encountered an error. Please try asking again.');
+        }
+    }
+
+    // Add chat message to UI
+    addChatMessage(sender, content, isTemporary = false) {
+        const messagesContainer = this.elements.chatMessages;
+        if (!messagesContainer) return;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        if (isTemporary) messageDiv.classList.add('temporary');
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.textContent = content;
+        
+        const time = document.createElement('div');
+        time.className = 'message-time';
+        time.textContent = new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        messageDiv.appendChild(bubble);
+        messageDiv.appendChild(time);
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Remove last message (for typing indicator)
+    removeChatMessage() {
+        const messagesContainer = this.elements.chatMessages;
+        if (!messagesContainer) return;
+        
+        const lastMessage = messagesContainer.querySelector('.message.temporary');
+        if (lastMessage) {
+            lastMessage.remove();
+        }
+    }
+
+    // Update UI methods
+    updateFinancialAnalysis(analysis) {
+        if (this.elements.aiAnalysisContent) {
+            this.elements.aiAnalysisContent.innerHTML = `
+                <div class="coach-message">
+                    <div class="coach-avatar">🤖</div>
+                    <div class="coach-text">${analysis}</div>
                 </div>
             `;
         }
+    }
+
+    updateRecommendations(recommendations) {
+        if (this.elements.aiRecommendationsContent && Array.isArray(recommendations)) {
+            this.elements.aiRecommendationsContent.innerHTML = recommendations.map(rec => `
+                <div class="recommendation-item">
+                    <div class="recommendation-priority priority-${rec.priority}">${rec.priority.toUpperCase()}</div>
+                    <div class="recommendation-title">${rec.title}</div>
+                    <div class="recommendation-desc">${rec.description}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    updateGoals(goals) {
+        if (this.elements.savingsGoalsList && Array.isArray(goals)) {
+            this.elements.savingsGoalsList.innerHTML = goals.map(goal => `
+                <div class="goal-item">
+                    <div class="goal-header">
+                        <h4>${goal.title}</h4>
+                        <span class="goal-priority priority-${goal.priority}">${goal.priority}</span>
+                    </div>
+                    <p>${goal.description}</p>
+                    <div class="goal-amounts">
+                        <span>Target: ₱${goal.targetAmount?.toLocaleString() || 'TBD'}</span>
+                        <span>Monthly: ₱${goal.monthlyTarget?.toLocaleString() || 'TBD'}</span>
+                    </div>
+                    <div class="goal-timeframe">Timeline: ${goal.timeframe}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    updateHealthScore(scoreData) {
+        if (this.elements.financialHealthContent && scoreData.score) {
+            this.elements.financialHealthContent.innerHTML = `
+                <div class="health-score-display">
+                    <div class="score-circle" style="background: conic-gradient(var(--primary-green) ${scoreData.score * 3.6}deg, #333 0deg)">
+                        <div class="score-number">${scoreData.score}</div>
+                    </div>
+                    <div class="score-label">${scoreData.level} Financial Health</div>
+                    <p>${scoreData.summary}</p>
+                    ${scoreData.improvements ? scoreData.improvements.map(imp => `<div class="recommendation-item"><div class="recommendation-desc">${imp}</div></div>`).join('') : ''}
+                </div>
+            `;
+        }
+    }
+
+    updateMarketInsights(insights) {
+        if (this.elements.marketInsightsContent && Array.isArray(insights)) {
+            this.elements.marketInsightsContent.innerHTML = insights.map(insight => `
+                <div class="market-insight-item">
+                    <div class="insight-header">
+                        <div class="insight-title">${insight.title}</div>
+                        <div class="insight-value">${insight.value}</div>
+                    </div>
+                    <div class="insight-description">${insight.description}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    updateRiskAssessment(risks) {
+        if (this.elements.riskAssessmentContent && Array.isArray(risks)) {
+            this.elements.riskAssessmentContent.innerHTML = risks.map(risk => `
+                <div class="risk-item severity-${risk.severity}">
+                    <div class="risk-desc">${risk.risk}</div>
+                    <div class="risk-recommendation">${risk.mitigation}</div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Fallback methods for when AI calls fail
+    generateFallbackRecommendations() {
+        const overview = this.getFinancialOverview();
+        const recommendations = [];
+        
+        if (overview.savingsRate < 10) {
+            recommendations.push({
+                title: "Increase Your Savings Rate",
+                description: "Try to save at least 10-20% of your income monthly for better financial security.",
+                priority: "high"
+            });
+        }
+        
+        if (this.userAccounts.length < 2) {
+            recommendations.push({
+                title: "Diversify Your Accounts",
+                description: "Consider opening different types of accounts to optimize your money management.",
+                priority: "medium"
+            });
+        }
+        
+        return recommendations;
+    }
+
+    generateFallbackGoals() {
+        const overview = this.getFinancialOverview();
+        return [{
+            title: "Emergency Fund",
+            description: "Build an emergency fund covering 3-6 months of expenses",
+            targetAmount: overview.monthlyExpenses * 3,
+            timeframe: "6 months",
+            monthlyTarget: overview.monthlyExpenses * 0.5,
+            priority: "high"
+        }];
+    }
+
+    generateFallbackHealthScore() {
+        const overview = this.getFinancialOverview();
+        let score = 50;
+        
+        if (overview.savingsRate > 15) score += 20;
+        if (overview.totalBalance > overview.monthlyExpenses * 3) score += 15;
+        if (this.userAccounts.length > 2) score += 10;
+        
+        return {
+            score: Math.min(100, score),
+            level: score >= 80 ? 'excellent' : score >= 60 ? 'good' : 'fair',
+            summary: "Your financial health is being calculated based on your savings rate, emergency fund, and account diversification."
+        };
+    }
+
+    generateFallbackMarketInsights() {
+        return [
+            {
+                title: "Peso Strength",
+                value: "Monitoring",
+                description: "Keep track of peso performance against major currencies for better financial planning."
+            },
+            {
+                title: "Interest Rates",
+                value: "Stable",
+                description: "Current interest rates remain favorable for savers and investors."
+            }
+        ];
+    }
+
+    generateFallbackRiskAssessment() {
+        return [
+            {
+                risk: "Inflation Impact",
+                severity: "medium",
+                mitigation: "Maintain investments that can outpace inflation over time."
+            },
+            {
+                risk: "Emergency Preparedness",
+                severity: "high",
+                mitigation: "Build and maintain an adequate emergency fund."
+            }
+        ];
+    }
+
+    // State management methods
+    showLoadingState() {
+        if (this.elements.loadingState) this.elements.loadingState.style.display = 'block';
+        if (this.elements.contentLoaded) this.elements.contentLoaded.style.display = 'none';
+        if (this.elements.emptyState) this.elements.emptyState.style.display = 'none';
+    }
+
+    showContentState() {
+        if (this.elements.loadingState) this.elements.loadingState.style.display = 'none';
+        if (this.elements.contentLoaded) this.elements.contentLoaded.style.display = 'block';
+        if (this.elements.emptyState) this.elements.emptyState.style.display = 'none';
+    }
+
+    showEmptyState(message = null) {
+        if (this.elements.loadingState) this.elements.loadingState.style.display = 'none';
+        if (this.elements.contentLoaded) this.elements.contentLoaded.style.display = 'none';
+        if (this.elements.emptyState) {
+            this.elements.emptyState.style.display = 'block';
+            if (message) {
+                const p = this.elements.emptyState.querySelector('p');
+                if (p) p.textContent = message;
+            }
+        }
+    }
+
+    showErrorMessage(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Error</h3>
+            <p>${message}</p>
+        `;
+        document.body.appendChild(errorDiv);
+        
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
     }
 }
 
-// Initialize the AI Coach when DOM is ready
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM loaded, initializing Ipon Coach AI...");
-    const iponCoach = new IponCoachAI();
-    iponCoach.start();
+    console.log("🚀 Starting Dynamic Ipon Coach AI...");
+    const coach = new IponCoachAI();
+    coach.start();
 });
+
+export default IponCoachAI;
 

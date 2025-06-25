@@ -39,7 +39,13 @@ document.addEventListener('DOMContentLoaded', function () {
       // Setup logout button
       const logoutButton = document.getElementById('logout-button');
       if (logoutButton) {
-        logoutButton.addEventListener('click', secureLogout);
+        logoutButton.addEventListener('click', (e) => {
+          e.preventDefault();
+          secureLogout();
+        });
+        console.log('✅ Logout button event listener attached');
+      } else {
+        console.error('❌ Logout button not found in DOM');
       }
       await initializeBankSection();
       
@@ -207,26 +213,23 @@ async function updateUserInterface(user) {
   }
 }
 
+// Initialize dashboard functionality
 async function initializeDashboard() {
-  // First update only essential UI elements that are visible immediately
-  await updateBalanceSummary();
+  // Check authentication state before proceeding
+  const user = auth.currentUser;
+  if (!user) {
+    console.error('User not authenticated');
+    return;
+  }
 
-  // Initialize all dashboard components immediately
-  initializeTransactionHistory();
+  // Initialize core components
   initializeSpendingChart();
-  
-  // Initialize transaction form
-  initializeTransactionForm();
-  
-  // Initialize bank form
-  initializeBankForm();
+  initializeBankSection();
+  initializeTransactionHistory();
+  await initializeBankModalToggles();
   
   // Initialize financial health section
   refreshFinancialHealth();
-  
-  // Add sample transactions for testing (remove this in production)
-  // Uncomment the line below to add sample data for testing
-  // await addSampleTransactions();
 }
 
 function initializeSpendingChart() {

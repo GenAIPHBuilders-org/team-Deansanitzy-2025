@@ -6,10 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#060e21">
     <title>My Accounts - Kita-kita Banking</title>
-    <link rel="stylesheet" href="../../src/index.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="css/accounts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="../js/accounts.js" defer></script>
+    <script>
+        // Debug logging for add account button
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔧 DEBUG: accounts.html DOM loaded');
+            
+            // Add debug listener to the add account button
+            const addAccountBtn = document.getElementById('add-account-button');
+            if (addAccountBtn) {
+                console.log('✅ DEBUG: Add account button found');
+                addAccountBtn.addEventListener('click', () => {
+                    console.log('🎯 DEBUG: Add account button clicked');
+                });
+            } else {
+                console.error('❌ DEBUG: Add account button NOT found');
+            }
+        });
+    </script>
+
 </head>
 
 <body>
@@ -18,8 +37,11 @@
     <div class="light light-2"></div>
     <div class="light light-3"></div>
 
-    <div class="page-layout">
-        <!-- Header Navigation -->
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <div class="dashboard-layout">
+        <!-- Enhanced Header Navigation -->
         <header class="header">
             <div class="logo">
                 <i class="fas fa-coins" style="color: var(--primary-green); font-size: 1.5rem;"></i>
@@ -30,8 +52,7 @@
                     <li><a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
                     <li><a href="transactions.html"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
                     <li><a href="accounts.html" class="active"><i class="fas fa-wallet"></i> Accounts</a></li>
-                    <li><a href="dashboard.html#profile"><i class="fas fa-user"></i> Profile</a></li>
-                    <div class="nav-divider"></div>
+                    <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
                     <li><a href="../index.html"><i class="fas fa-home"></i> Home</a></li>
                 </ul>
             </nav>
@@ -39,6 +60,7 @@
 
         <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Page Header -->
             <div class="page-header">
                 <h1><i class="fas fa-wallet"></i> My Accounts & Wallets</h1>
                 <div class="header-actions">
@@ -49,66 +71,124 @@
             </div>
 
             <!-- Account Summary Cards -->
-            <div class="account-summary">
-                <div class="summary-card">
+            <div class="balance-summary-grid">
+                <div class="summary-card total-balance-card">
                     <div class="summary-icon">
                         <i class="fas fa-university"></i>
                     </div>
-                    <div class="summary-info">
-                        <h3 id="total-balance">₱0.00</h3>
-                        <p>Total Balance</p>
+                    <div class="summary-details">
+                        <div class="summary-label">Total Balance</div>
+                        <div class="summary-value" id="total-balance">₱0.00</div>
                     </div>
                 </div>
                 <div class="summary-card">
                     <div class="summary-icon">
                         <i class="fas fa-credit-card"></i>
                     </div>
-                    <div class="summary-info">
-                        <h3 id="total-accounts">0</h3>
-                        <p>Total Accounts</p>
+                    <div class="summary-details">
+                        <div class="summary-label">Total Accounts</div>
+                        <div class="summary-value" id="total-accounts">0</div>
                     </div>
                 </div>
                 <div class="summary-card">
                     <div class="summary-icon">
                         <i class="fas fa-mobile-alt"></i>
                     </div>
-                    <div class="summary-info">
-                        <h3 id="digital-wallets">0</h3>
-                        <p>Digital Wallets</p>
+                    <div class="summary-details">
+                        <div class="summary-label">Digital Wallets</div>
+                        <div class="summary-value" id="digital-wallets">0</div>
                     </div>
                 </div>
             </div>
 
+            <!-- Quick Actions Bar -->
+            <div class="quick-actions">
+                <button class="quick-action-btn active" data-filter="all">
+                    <i class="fas fa-list"></i> All Accounts
+                </button>
+                <button class="quick-action-btn" data-filter="traditional-bank">
+                    <i class="fas fa-university"></i> Banks
+                </button>
+                <button class="quick-action-btn" data-filter="digital-wallet">
+                    <i class="fas fa-mobile-alt"></i> E-Wallets
+                </button>
+                <button class="quick-action-btn" data-filter="cash">
+                    <i class="fas fa-money-bill-wave"></i> Cash
+                </button>
+                <button class="quick-action-btn" data-filter="investment">
+                    <i class="fas fa-chart-line"></i> Investments
+                </button>
+            </div>
+
             <!-- Accounts Container -->
-            <div class="accounts-container">
+            <div class="accounts-container theme-card">
                 <div class="accounts-grid" id="accounts-grid">
                     <!-- Account cards will be dynamically loaded here -->
                 </div>
                 
                 <div id="accounts-empty-state" class="empty-state-container" style="display: none;">
-                    <i class="fas fa-wallet empty-state-icon"></i>
-                    <h3>No accounts added yet</h3>
-                    <p>Start by adding your bank accounts, digital wallets, or cash tracking to get a complete view of your finances.</p>
-                    <p><strong>💡 Tip:</strong> Even if you don't have a bank account, you can track cash transactions!</p>
-                    <button class="primary-button" onclick="document.getElementById('add-account-button').click()">
-                        <i class="fas fa-plus"></i> Add Your First Account
-                    </button>
+                    <div class="empty-state-content">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <h3>No accounts added yet</h3>
+                        <p class="empty-state-subtitle">Start by adding your bank accounts, digital wallets, or cash tracking to get a complete view of your finances.</p>
+                        <div class="empty-state-tips">
+                            <div class="tip-item">
+                                <i class="fas fa-lightbulb"></i>
+                                <span>Even if you don't have a bank account, you can track cash transactions!</span>
+                            </div>
+                            <div class="tip-item">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Your data is secure and encrypted</span>
+                            </div>
+                        </div>
+                        <button class="primary-button" onclick="document.getElementById('add-account-button').click()">
+                            <i class="fas fa-plus"></i> Add Your First Account
+                        </button>
+                    </div>
                 </div>
                 
-                <div id="accounts-loading-state" class="loading-state-container">
-                    <div class="loading-spinner"></div>
-                    <p>Loading accounts...</p>
+                <div id="accounts-loading-state" class="loading-state">
+                    <div class="pulse-loader"></div>
+                    <p>Loading your accounts...</p>
+                </div>
+
+                <div id="accounts-error-state" class="empty-state-container" style="display: none;">
+                    <div class="empty-state-content">
+                        <i class="fas fa-exclamation-triangle empty-state-icon"></i>
+                        <h3>Unable to load accounts</h3>
+                        <p class="empty-state-subtitle">Please check your connection and try again</p>
+                        <button class="primary-button" onclick="location.reload()">
+                            <i class="fas fa-refresh"></i> Retry
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
     <!-- Add Account Modal -->
-    <div id="add-account-modal" class="modal">
+    <div id="add-account-modal" class="modal" style="display: none;">
         <div class="modal-content wider-modal">
             <div class="modal-header">
                 <h2><i class="fas fa-plus-circle"></i> Add New Account</h2>
-                <button class="modal-close-btn" id="close-add-account">×</button>
+                <button class="modal-close-btn" id="close-add-account" aria-label="Close modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Progress Indicator -->
+            <div class="progress-indicator">
+                <div class="progress-step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <span>Account Type</span>
+                </div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="2">
+                    <div class="step-number">2</div>
+                    <span>Details</span>
+                </div>
             </div>
             
             <!-- Account Type Selection -->
@@ -119,6 +199,9 @@
                     </div>
                     <h3>Traditional Bank</h3>
                     <p>Savings, checking, credit cards</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
                 </div>
                 
                 <div class="account-type-card" data-type="digital-wallet">
@@ -127,6 +210,9 @@
                     </div>
                     <h3>Digital Wallet</h3>
                     <p>GCash, PayMaya, GrabPay, etc.</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
                 </div>
                 
                 <div class="account-type-card" data-type="cash">
@@ -135,6 +221,9 @@
                     </div>
                     <h3>Cash</h3>
                     <p>Physical cash tracking</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
                 </div>
                 
                 <div class="account-type-card" data-type="investment">
@@ -143,66 +232,117 @@
                     </div>
                     <h3>Investment</h3>
                     <p>Stocks, bonds, crypto</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
                 </div>
             </div>
 
             <!-- Account Details Form (Hidden Initially) -->
-            <form id="add-account-form" style="display: none;">
-                <div class="form-group">
-                    <label for="account-name">Account Name</label>
-                    <input type="text" id="account-name" placeholder="e.g., BPI Savings, GCash" required>
-                    <small class="form-help-text">Give your account a recognizable name</small>
-                </div>
+            <form id="add-account-form" style="display: none;" novalidate>
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Basic Information
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label for="account-name">Account Name <span class="required">*</span></label>
+                        <input type="text" id="account-name" placeholder="e.g., BPI Savings, GCash" required>
+                        <div class="form-validation-message" id="account-name-error"></div>
+                        <small class="form-help-text">Give your account a recognizable name</small>
+                    </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="account-provider">Provider/Bank</label>
-                        <select id="account-provider" required>
-                            <option value="">-- Select Provider --</option>
-                            <!-- Options will be populated based on account type -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="account-type-display">Account Type</label>
-                        <select id="account-type-display" required>
-                            <option value="">-- Select Type --</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="account-number">Account/Card Number (Optional)</label>
-                        <input type="text" id="account-number" placeholder="Last 4 digits or full number">
-                        <small class="form-help-text">Only the last 4 digits will be displayed for security</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="account-balance">Current Balance</label>
-                        <div class="currency-input-container">
-                            <span>₱</span>
-                            <input type="number" id="account-balance" step="0.01" placeholder="0.00" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="account-provider">Provider/Bank <span class="required">*</span></label>
+                            <select id="account-provider" required>
+                                <option value="">-- Select Provider --</option>
+                                <!-- Options will be populated based on account type -->
+                            </select>
+                            <div class="form-validation-message" id="account-provider-error"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="account-type-display">Account Type <span class="required">*</span></label>
+                            <select id="account-type-display" required>
+                                <option value="">-- Select Type --</option>
+                            </select>
+                            <div class="form-validation-message" id="account-type-display-error"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="account-color">Account Color</label>
-                    <div class="color-picker">
-                        <input type="color" id="account-color" value="#1a73e8">
-                        <span class="color-preview"></span>
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Financial Details
+                    </h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="account-number">Account/Card Number (Optional)</label>
+                            <input type="text" id="account-number" placeholder="Last 4 digits or full number" maxlength="20">
+                            <small class="form-help-text">Only the last 4 digits will be displayed for security</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="account-balance">Current Balance <span class="required">*</span></label>
+                            <div class="currency-input-container">
+                                <span class="currency-symbol">₱</span>
+                                <input type="number" id="account-balance" step="0.01" placeholder="0.00" required min="0">
+                            </div>
+                            <div class="form-validation-message" id="account-balance-error"></div>
+                        </div>
                     </div>
-                    <small class="form-help-text">Choose a color to easily identify this account</small>
                 </div>
 
-                <div class="form-group">
-                    <label for="account-notes">Notes (Optional)</label>
-                    <textarea id="account-notes" rows="2" placeholder="Additional information about this account..."></textarea>
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-palette"></i>
+                        Personalization
+                    </h3>
+                    
+                    <div class="form-group">
+                        <label for="account-color">Account Color</label>
+                        <div class="color-picker-container">
+                            <div class="color-picker">
+                                <input type="color" id="account-color" value="#10df6f">
+                                <div class="color-preview-container">
+                                    <div class="color-preview"></div>
+                                    <span class="color-label">Primary</span>
+                                </div>
+                            </div>
+                            <div class="color-presets">
+                                <div class="color-preset" data-color="#10df6f" style="background: #10df6f;"></div>
+                                <div class="color-preset" data-color="#e96d1f" style="background: #e96d1f;"></div>
+                                <div class="color-preset" data-color="#1a73e8" style="background: #1a73e8;"></div>
+                                <div class="color-preset" data-color="#34a853" style="background: #34a853;"></div>
+                                <div class="color-preset" data-color="#9c27b0" style="background: #9c27b0;"></div>
+                                <div class="color-preset" data-color="#ff9800" style="background: #ff9800;"></div>
+                                <div class="color-preset" data-color="#607d8b" style="background: #607d8b;"></div>
+                                <div class="color-preset" data-color="#795548" style="background: #795548;"></div>
+                            </div>
+                        </div>
+                        <small class="form-help-text">Choose a color to easily identify this account</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="account-notes">Notes (Optional)</label>
+                        <textarea id="account-notes" rows="3" placeholder="Additional information about this account..." maxlength="500"></textarea>
+                        <div class="character-count">
+                            <span id="notes-char-count">0</span>/500
+                        </div>
+                    </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="submit" class="action-button">Add Account</button>
+                    <button type="submit" class="action-button">
+                        <span class="button-text">Add Account</span>
+                        <span class="button-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
                     <button type="button" class="cancel-button" id="cancel-add-account">Cancel</button>
-                    <button type="button" class="secondary-button" id="back-to-type-selection">
+                    <button type="button" class="cancel-button" id="back-to-type-selection">
                         <i class="fas fa-arrow-left"></i> Back
                     </button>
                 </div>
@@ -211,265 +351,61 @@
     </div>
 
     <!-- Edit Account Modal -->
-    <div id="edit-account-modal" class="modal">
+    <div id="edit-account-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-edit"></i> Edit Account</h2>
-                <button class="modal-close-btn" id="close-edit-account">×</button>
+                <button class="modal-close-btn" id="close-edit-account" aria-label="Close modal">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <form id="edit-account-form">
+            <form id="edit-account-form" novalidate>
                 <div class="form-group">
-                    <label for="edit-account-name">Account Name</label>
+                    <label for="edit-account-name">Account Name <span class="required">*</span></label>
                     <input type="text" id="edit-account-name" required>
+                    <div class="form-validation-message" id="edit-account-name-error"></div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="edit-account-balance">Current Balance</label>
+                        <label for="edit-account-balance">Current Balance <span class="required">*</span></label>
                         <div class="currency-input-container">
-                            <span>₱</span>
-                            <input type="number" id="edit-account-balance" step="0.01" required>
+                            <span class="currency-symbol">₱</span>
+                            <input type="number" id="edit-account-balance" step="0.01" required min="0">
                         </div>
+                        <div class="form-validation-message" id="edit-account-balance-error"></div>
                     </div>
                     <div class="form-group">
                         <label for="edit-account-color">Account Color</label>
-                        <input type="color" id="edit-account-color">
+                        <div class="color-picker">
+                            <input type="color" id="edit-account-color">
+                            <div class="color-preview-container">
+                                <div class="color-preview"></div>
+                                <span class="color-label">Current</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="edit-account-notes">Notes</label>
-                    <textarea id="edit-account-notes" rows="2"></textarea>
+                    <textarea id="edit-account-notes" rows="3" maxlength="500"></textarea>
+                    <div class="character-count">
+                        <span id="edit-notes-char-count">0</span>/500
+                    </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="submit" class="action-button">Update Account</button>
+                    <button type="submit" class="action-button">
+                        <span class="button-text">Update Account</span>
+                        <span class="button-loader" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
                     <button type="button" class="cancel-button" id="cancel-edit-account">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <style>
-        .accounts-container {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-top: 2rem;
-        }
-
-        .account-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .summary-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .summary-icon {
-            background: var(--primary-green);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: white;
-        }
-
-        .summary-info h3 {
-            margin: 0;
-            font-size: 1.5rem;
-            color: var(--primary-green);
-        }
-
-        .summary-info p {
-            margin: 0.25rem 0 0 0;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
-        }
-
-        .accounts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .account-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .account-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--primary-green);
-        }
-
-        .account-card-header {
-            display: flex;
-            justify-content: between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .account-info {
-            flex: 1;
-        }
-
-        .account-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: white;
-            margin-bottom: 0.25rem;
-        }
-
-        .account-provider {
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .account-balance {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary-green);
-            margin: 1rem 0;
-        }
-
-        .account-actions {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: flex-end;
-        }
-
-        .account-actions button {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            border-radius: 6px;
-            padding: 0.5rem;
-            color: white;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        .account-actions button:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .account-type-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .account-type-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .account-type-card:hover {
-            border-color: var(--primary-green);
-            background: rgba(26, 115, 232, 0.1);
-        }
-
-        .account-type-card.selected {
-            border-color: var(--primary-green);
-            background: rgba(26, 115, 232, 0.2);
-        }
-
-        .account-type-icon {
-            font-size: 2rem;
-            color: var(--primary-green);
-            margin-bottom: 1rem;
-        }
-
-        .account-type-card h3 {
-            margin: 0 0 0.5rem 0;
-            color: white;
-        }
-
-        .account-type-card p {
-            margin: 0;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
-        }
-
-        .color-picker {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .color-preview {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            background: var(--selected-color, #1a73e8);
-        }
-
-        .wider-modal .modal-content {
-            max-width: 600px;
-        }
-
-        .empty-state-container {
-            text-align: center;
-            padding: 3rem 2rem;
-        }
-
-        .empty-state-icon {
-            font-size: 4rem;
-            color: rgba(255, 255, 255, 0.3);
-            margin-bottom: 1rem;
-        }
-
-        .loading-state-container {
-            text-align: center;
-            padding: 3rem 2rem;
-        }
-
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-left: 4px solid var(--primary-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .account-color-indicator {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-    </style>
 </body>
 </html>

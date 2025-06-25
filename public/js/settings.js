@@ -1,14 +1,11 @@
 // Settings Page JavaScript
 
 // Global variables
-let currentLinkCode = null;
-let codeTimer = null;
-let linkingInProgress = false;
 
 // Initialize settings page
 document.addEventListener('DOMContentLoaded', function() {
     initializeSettings();
-    checkTelegramLinkStatus();
+
     loadUserSettings();
 });
 
@@ -25,19 +22,7 @@ function initializeSettings() {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Modal close on background click
-    document.getElementById('linkModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeLinkModal();
-        }
-    });
-    
-    // Escape key to close modal
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeLinkModal();
-        }
-    });
+
 }
 
 // Check authentication status
@@ -97,265 +82,11 @@ function getCurrentUserId() {
     return localStorage.getItem('userId') || 'default-user';
 }
 
-// Check Telegram link status
-async function checkTelegramLinkStatus() {
-    try {
-        const userId = getCurrentUserId();
-        
-        if (!userId) return;
-        
-        // Check if user has linked Telegram account
-        const linkDoc = await db.collection('telegram_links').doc(userId).get();
-        
-        if (linkDoc.exists) {
-            const linkData = linkDoc.data();
-            updateTelegramStatus(true, linkData);
-        } else {
-            updateTelegramStatus(false);
-        }
-    } catch (error) {
-        console.error('❌ Error checking Telegram link status:', error);
-        updateTelegramStatus(false);
-    }
-}
 
-// Update Telegram connection status UI
-function updateTelegramStatus(isConnected, linkData = null) {
-    const statusCard = document.getElementById('statusCard');
-    const statusIcon = document.getElementById('statusIcon');
-    const statusTitle = document.getElementById('statusTitle');
-    const statusDescription = document.getElementById('statusDescription');
-    const actionBtn = document.getElementById('telegramActionBtn');
-    
-    if (isConnected) {
-        // Connected state
-        statusCard.classList.add('connected');
-        statusIcon.innerHTML = '<i class="fas fa-link"></i>';
-        statusTitle.textContent = 'Connected';
-        statusDescription.textContent = `Connected to Telegram${linkData?.telegramUsername ? ` (@${linkData.telegramUsername})` : ''}`;
-        actionBtn.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
-        actionBtn.className = 'btn btn-outline';
-    } else {
-        // Disconnected state
-        statusCard.classList.remove('connected');
-        statusIcon.innerHTML = '<i class="fas fa-unlink"></i>';
-        statusTitle.textContent = 'Not Connected';
-        statusDescription.textContent = 'Connect your Telegram to start scanning receipts on the go';
-        actionBtn.innerHTML = '<i class="fab fa-telegram"></i> Connect Telegram';
-        actionBtn.className = 'btn btn-primary';
-    }
-}
 
-// Handle Telegram action (connect/disconnect)
-async function handleTelegramAction() {
-    const actionBtn = document.getElementById('telegramActionBtn');
-    const isConnected = actionBtn.textContent.includes('Disconnect');
-    
-    if (isConnected) {
-        await disconnectTelegram();
-    } else {
-        await initiateTelegramLink();
-    }
-}
 
-// Initiate Telegram linking process
-async function initiateTelegramLink() {
-    if (linkingInProgress) return;
-    
-    try {
-        linkingInProgress = true;
-        
-        // Generate new link code
-        await generateLinkCode();
-        
-        // Show link modal
-        document.getElementById('linkModal').style.display = 'flex';
-        
-        // Start polling for link confirmation
-        startLinkPolling();
-        
-    } catch (error) {
-        console.error('❌ Error initiating Telegram link:', error);
-        alert('Failed to generate link code. Please try again.');
-        linkingInProgress = false;
-    }
-}
 
-// Generate new link code
-async function generateLinkCode() {
-    const userId = getCurrentUserId();
-    
-    // Generate 6-character code
-    currentLinkCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
-    // Store link code in Firestore with expiration
-    const linkCodeData = {
-        userId: userId,
-        code: currentLinkCode,
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-        used: false
-    };
-    
-    await db.collection('link_codes').doc(currentLinkCode).set(linkCodeData);
-    
-    // Update UI
-    document.getElementById('linkCodeText').textContent = currentLinkCode;
-    
-    // Start countdown timer
-    startCodeTimer();
-    
-    console.log('🔗 Generated link code:', currentLinkCode);
-}
 
-// Start countdown timer for link code
-function startCodeTimer() {
-    let timeLeft = 10 * 60; // 10 minutes in seconds
-    const timerElement = document.getElementById('codeTimer');
-    
-    // Clear existing timer
-    if (codeTimer) {
-        clearInterval(codeTimer);
-    }
-    
-    codeTimer = setInterval(() => {
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
-        
-        timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        timeLeft--;
-        
-        if (timeLeft < 0) {
-            clearInterval(codeTimer);
-            timerElement.textContent = 'Expired';
-            timerElement.style.color = '#ef4444';
-            currentLinkCode = null;
-        }
-    }, 1000);
-}
-
-// Start polling for link confirmation
-function startLinkPolling() {
-    const pollInterval = setInterval(async () => {
-        if (!currentLinkCode) {
-            clearInterval(pollInterval);
-            return;
-        }
-        
-        try {
-            // Check if code has been used
-            const codeDoc = await db.collection('link_codes').doc(currentLinkCode).get();
-            
-            if (codeDoc.exists && codeDoc.data().used) {
-                // Link successful!
-                clearInterval(pollInterval);
-                closeLinkModal();
-                
-                // Show success message
-                showSuccessMessage('Telegram account linked successfully!');
-                
-                // Update status
-                checkTelegramLinkStatus();
-                
-                linkingInProgress = false;
-            }
-        } catch (error) {
-            console.error('❌ Error polling for link confirmation:', error);
-        }
-    }, 2000); // Poll every 2 seconds
-    
-    // Stop polling after 10 minutes
-    setTimeout(() => {
-        clearInterval(pollInterval);
-        linkingInProgress = false;
-    }, 10 * 60 * 1000);
-}
-
-// Disconnect Telegram account
-async function disconnectTelegram() {
-    if (!confirm('Are you sure you want to disconnect your Telegram account?')) {
-        return;
-    }
-    
-    try {
-        showLoading();
-        
-        const userId = getCurrentUserId();
-        
-        // Remove link from Firestore
-        await db.collection('telegram_links').doc(userId).delete();
-        
-        // Update UI
-        updateTelegramStatus(false);
-        
-        showSuccessMessage('Telegram account disconnected successfully!');
-        
-        hideLoading();
-    } catch (error) {
-        console.error('❌ Error disconnecting Telegram:', error);
-        alert('Failed to disconnect Telegram account. Please try again.');
-        hideLoading();
-    }
-}
-
-// Close link modal
-function closeLinkModal() {
-    document.getElementById('linkModal').style.display = 'none';
-    
-    // Clear timer
-    if (codeTimer) {
-        clearInterval(codeTimer);
-        codeTimer = null;
-    }
-    
-    currentLinkCode = null;
-    linkingInProgress = false;
-}
-
-// Copy link code to clipboard
-async function copyLinkCode() {
-    if (!currentLinkCode) return;
-    
-    try {
-        await navigator.clipboard.writeText(currentLinkCode);
-        
-        // Show feedback
-        const copyBtn = document.querySelector('.copy-btn');
-        const originalHTML = copyBtn.innerHTML;
-        copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-        
-        setTimeout(() => {
-            copyBtn.innerHTML = originalHTML;
-        }, 2000);
-        
-    } catch (error) {
-        console.error('❌ Failed to copy to clipboard:', error);
-        
-        // Fallback: select text
-        const linkCodeText = document.getElementById('linkCodeText');
-        linkCodeText.select();
-        document.execCommand('copy');
-    }
-}
-
-// Refresh link code
-async function refreshLinkCode() {
-    try {
-        await generateLinkCode();
-        showSuccessMessage('New link code generated!');
-    } catch (error) {
-        console.error('❌ Error refreshing link code:', error);
-        alert('Failed to generate new code. Please try again.');
-    }
-}
-
-// Open Telegram bot
-function openTelegramBot() {
-    // Open Telegram bot in new window/tab
-    const telegramURL = 'https://t.me/kitakita_receipt_bot';
-    window.open(telegramURL, '_blank');
-}
 
 // Update display name
 async function updateDisplayName() {

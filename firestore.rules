@@ -58,6 +58,11 @@ service cloud.firestore {
         allow read, write: if isAuthenticated() && isOwner(userId);
       }
       
+      // User bank accounts subcollection
+      match /bankAccounts/{accountId} {
+        allow read, write: if isAuthenticated() && isOwner(userId);
+      }
+      
       // AI decisions subcollection
       match /ai_decisions/{decisionId} {
         allow read, write: if isAuthenticated() && isOwner(userId);

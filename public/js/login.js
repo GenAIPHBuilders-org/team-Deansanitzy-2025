@@ -3,17 +3,11 @@
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
   // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
-  import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getUserData, storeUserData, checkLoginStatus, resetFailedLoginAttempts, recordFailedLoginAttempt } from "./firestoredb.js";
 import { firebaseConfig } from "./config.js";
 import { initEncryption, secureStorage } from "./helpers.js";
-import { 
-  improvedGoogleSignIn, 
-  handleRedirectResult, 
-  shouldHandleRedirectResult,
-  clearRedirectFlag,
-  getReadableAuthError 
-} from "./auth-helpers.js";
+import { signInWithPopup } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
@@ -32,49 +26,117 @@ import {
   provider.addScope('email');
   provider.addScope('profile');
 
-  // Global flags to prevent multiple simultaneous authentication attempts
+  // Global flag to prevent multiple simultaneous authentication attempts
   let isAuthInProgress = false;
-  let authPopupWindow = null;
-  let authTimeout = null;
 
-  // Function to clean up authentication state
-  function cleanupAuthState() {
-    isAuthInProgress = false;
-    if (authPopupWindow) {
-      try {
-        authPopupWindow.close();
-      } catch (e) {
-        // Ignore errors when closing popup
+  // Helper function to handle successful authentication
+  async function handleSuccessfulAuth(result) {
+    const user = result.user;
+    console.log("Authentication successful for user:", user.uid);
+    
+    // Initialize encryption with user ID
+    await initEncryption(user.uid);
+    
+    try {
+      const userData = await getUserData(user.uid);
+      if (userData) {
+        console.log("Existing user data found for:", user.uid);
+        // Store minimal user data
+        const safeUserData = {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          lastLogin: userData.lastLogin,
+          accountStatus: userData.accountStatus
+        };
+        
+        await secureStorage.setItem('userData', safeUserData);
+        secureStorage.setSecureCookie('auth_session', 'authenticated', 1);
+      } else {
+        console.log("Creating new user data for:", user.uid);
+        const newUserData = {
+          firstName: user.displayName ? user.displayName.split(' ')[0] : '',
+          lastName: user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '',
+          email: user.email,
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+          accountStatus: 'active',
+          securityLevel: 'standard'
+        };
+        
+        await storeUserData(user.uid, newUserData);
+        await secureStorage.setItem('userData', newUserData);
+        secureStorage.setSecureCookie('auth_session', 'authenticated', 1);
       }
-      authPopupWindow = null;
+    } catch (error) {
+      console.error("Error handling user data:", error);
     }
-    if (authTimeout) {
-      clearTimeout(authTimeout);
-      authTimeout = null;
-    }
+    
+    // Redirect to dashboard
+    window.location.href = "dashboard.html";
   }
 
-  // Listen for popup close events to clean up state
-  window.addEventListener('beforeunload', cleanupAuthState);
+  // Helper function to show error messages
+  function showError(message) {
+    // Remove any existing error message
+    const existingError = document.querySelector('.error-message');
+    if (existingError) existingError.remove();
+
+    // Create and insert error message
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.style.cssText = `
+      color: #ff3b30;
+      background: rgba(255, 59, 48, 0.1);
+      border-left: 3px solid #ff3b30;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    `;
+    errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    
+    const form = document.querySelector('.auth-form');
+    const loginButton = form.querySelector('button[type="submit"]');
+    form.insertBefore(errorDiv, loginButton.parentElement);
+
+    // Animate error message
+    errorDiv.style.animation = 'slideIn 0.3s ease-out';
+  }
+
+  // Helper function to get readable error messages
+  function getErrorMessage(error) {
+    const errorMessages = {
+      'auth/api-key-not-valid': 'Authentication configuration error. Please contact support.',
+      'auth/network-request-failed': 'Network error. Please check your internet connection and try again.',
+      'auth/popup-blocked': 'Sign-in popup was blocked. Please allow popups for this site and try again.',
+      'auth/popup-closed-by-user': 'Sign-in was cancelled. Please try again.',
+      'auth/cancelled-popup-request': 'Multiple sign-in attempts detected. Please try again.',
+      'auth/operation-not-allowed': 'Google authentication is not enabled. Please contact support.',
+      'auth/invalid-api-key': 'Invalid API key. Please contact support.',
+      'auth/app-deleted': 'Firebase app has been deleted. Please contact support.',
+      'auth/invalid-user-token': 'Your session has expired. Please sign in again.',
+      'auth/user-disabled': 'Your account has been disabled. Please contact support.',
+      'auth/user-token-expired': 'Your session has expired. Please sign in again.',
+      'auth/web-storage-unsupported': 'Your browser does not support web storage. Please enable cookies and try again.',
+      'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
+      'auth/unauthorized-domain': 'This domain is not authorized for authentication. Please contact support.'
+    };
+
+    return errorMessages[error.code] || `Authentication error: ${error.message}`;
+  }
   
   //submit button
 document.addEventListener('DOMContentLoaded', async function() {
-  // Check for redirect result first
-  if (shouldHandleRedirectResult()) {
-    try {
-      const result = await handleRedirectResult();
-      if (result) {
-        console.log("Handling redirect result:", result.user);
-        clearRedirectFlag();
-        // Redirect to dashboard
-        window.location.href = "dashboard.html";
-        return;
-      }
-    } catch (error) {
-      console.error("Error handling redirect result:", error);
-      clearRedirectFlag();
+  // Check for existing authentication
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      console.log("User already signed in:", user.uid);
+      window.location.href = "dashboard.html";
     }
-  }
+  });
+
+
     // Initialize Google login button
     const googleLogin = document.getElementById("google-login");
     if (!googleLogin) {
@@ -85,11 +147,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const originalGoogleText = googleLogin.innerHTML;
     
     googleLogin.addEventListener("click", async function(event) {
-        // Prevent default behavior and event bubbling
         event.preventDefault();
         event.stopPropagation();
         
-        console.log("Google login button clicked"); // Debug log
+        console.log("Google login button clicked");
         
         // Prevent multiple simultaneous login attempts
         if (googleLogin.disabled || isAuthInProgress) {
@@ -97,119 +158,47 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
         
-        // Clean up any existing auth state
-        cleanupAuthState();
-        
         isAuthInProgress = true;
         
+        // Show loading state
         googleLogin.disabled = true;
         googleLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in with Google...';
         googleLogin.style.opacity = '0.8';
         
-        // Add a timeout to automatically clean up if authentication hangs
-        authTimeout = setTimeout(() => {
-            console.log("Authentication timeout, cleaning up...");
-            cleanupAuthState();
-            googleLogin.disabled = false;
-            googleLogin.innerHTML = originalGoogleText;
-            googleLogin.style.opacity = '1';
-            showError("Authentication timed out. Please try again.");
-        }, 30000); // 30 second timeout
-        
-              try {
-          // Use improved Google Sign-In with auth helpers
-          await improvedGoogleSignIn(provider, {
-              useRedirectFallback: true,
-              onLoading: (isLoading) => {
-                  googleLogin.disabled = isLoading;
-                  if (isLoading) {
-                      googleLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in with Google...';
-                      googleLogin.style.opacity = '0.8';
-                  } else {
-                      googleLogin.innerHTML = originalGoogleText;
-                      googleLogin.style.opacity = '1';
-                  }
-              },
-              onSuccess: async (result) => {
-                                  console.log("Google sign-in successful");
-                  cleanupAuthState(); // Clean up successful auth
-                  
-                  const user = result.user;
-                  console.log("Google sign-in successful for user:", user.uid);
-                  
-                  // Initialize encryption with user ID - now just a compatibility function
-                  await initEncryption(user.uid);
-                  
-                  try {
-                      const userData = await getUserData(user.uid);
-                      if (userData) {
-                          console.log("Existing user data found for:", user.uid);
-                          // Store user data securely - UPDATED to use new approach
-                          // Only store minimal, non-sensitive user profile in session
-                          const safeUserData = {
-                              firstName: userData.firstName,
-                              lastName: userData.lastName,
-                              email: userData.email,
-                              lastLogin: userData.lastLogin,
-                              accountStatus: userData.accountStatus
-                          };
-                          
-                          await secureStorage.setItem('userData', safeUserData);
-                          
-                          // Set a secure auth cookie for persistent auth
-                          secureStorage.setSecureCookie('auth_session', 'authenticated', 1); // 1 day expiry
-                          
-                          // Redirect to dashboard immediately 
-                          window.location.href = "dashboard.html";
-                      } else {
-                          console.log("Creating new user data for:", user.uid);
-                          const newUserData = {
-                              firstName: user.displayName ? user.displayName.split(' ')[0] : '',
-                              lastName: user.displayName ? user.displayName.split(' ').slice(1).join(' ') : '',
-                              email: user.email,
-                              createdAt: new Date().toISOString(),
-                              lastLogin: new Date().toISOString(),
-                              accountStatus: 'active',
-                              securityLevel: 'standard'
-                          };
-                          
-                          await storeUserData(user.uid, newUserData);
-                          // Store user data securely - UPDATED
-                          await secureStorage.setItem('userData', newUserData);
-                          secureStorage.setSecureCookie('auth_session', 'authenticated', 1);
-                          
-                          // Redirect to dashboard immediately
-                          window.location.href = "dashboard.html";
-                      }
-                  } catch (error) {
-                      console.error("Error handling user data:", error);
-                      window.location.href = "dashboard.html";
-                  }
-              },
-              onError: (error) => {
-                  console.error("Google sign-in error:", error);
-                  
-                  cleanupAuthState(); // Clean up failed auth
-                  googleLogin.disabled = false;
-                  googleLogin.innerHTML = originalGoogleText;
-                  googleLogin.style.opacity = '1';
-                  
-                  // Only show error if user didn't cancel
-                  if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
-                      const errorMessage = getReadableAuthError(error);
-                      showError(errorMessage);
-                  } else {
-                      console.log("User cancelled authentication");
-                  }
-              }
-          });
+        try {
+            console.log("Attempting Google sign-in...");
+            const result = await signInWithPopup(auth, provider);
+            console.log("Google sign-in successful:", result.user.uid);
+            
+            // Handle successful authentication
+            await handleSuccessfulAuth(result);
+            
         } catch (error) {
-            console.error("Exception in click handler:", error);
-            cleanupAuthState();
+            console.error("Google sign-in error:", error);
+            
+            // Reset button state
             googleLogin.disabled = false;
             googleLogin.innerHTML = originalGoogleText;
             googleLogin.style.opacity = '1';
-            showError("Error during Google sign-in setup: " + error.message);
+            isAuthInProgress = false;
+            
+            // Handle different error types gracefully
+            if (error.code === 'auth/popup-closed-by-user') {
+                console.log("User cancelled sign-in");
+                // Don't show error for user cancellation
+            } else if (error.code === 'auth/cancelled-popup-request') {
+                console.log("Sign-in request cancelled");
+                // Don't show error for cancellation
+            } else if (error.code === 'auth/popup-blocked') {
+                showError("Your browser blocked the sign-in popup. Please allow popups for this site and try again.");
+            } else if (error.code === 'auth/network-request-failed') {
+                showError("Network error. Please check your internet connection and try again.");
+            } else if (error.code === 'auth/operation-not-allowed') {
+                showError("Google sign-in is not enabled. Please contact support.");
+            } else {
+                // Show a user-friendly error for other issues
+                showError("Sign-in failed. Please try again or contact support if the problem persists.");
+            }
         }
     });
 
@@ -230,8 +219,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Function to show error message
-    function showError(message) {
+    // Function to show error message (local version for form)
+    function showFormError(message) {
         // Remove any existing error message
         const existingError = document.querySelector('.error-message');
         if (existingError) existingError.remove();
@@ -270,7 +259,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Check if login is allowed (not rate limited)
         const loginStatus = await checkLoginStatus(emailInput.value);
         if (!loginStatus.allowed) {
-            showError(`For security reasons, this account has been temporarily locked. Please try again in ${loginStatus.remainingMinutes} minute(s).`);
+            showFormError(`For security reasons, this account has been temporarily locked. Please try again in ${loginStatus.remainingMinutes} minute(s).`);
             
             return;
         }
@@ -332,7 +321,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 };
 
                 const errorMessage = errorMessages[error.code] || "An error occurred during login. Please try again.";
-                showError(errorMessage);
+                showFormError(errorMessage);
                 
 
                 

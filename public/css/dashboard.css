@@ -632,38 +632,8 @@
     justify-content: center;
 }
 
-.header-nav-items {
-    display: flex;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-    gap: 1.5rem;
-}
-
-.header-nav-items li a {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    font-size: 0.95rem;
-    font-weight: 500;
-    padding: 0.5rem 0;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.header-nav-items li a:hover {
-    color: #fff;
-}
-
-.header-nav-items li a.active {
-    color: #10df6f;
-    position: relative;
-}
-
-.header-nav-items li a i {
-    font-size: 1rem;
-}
+/* Navigation styling moved to theme.css for modern pill buttons */
+/* Override removed to use theme.css pill navigation */
 
 /* User info styling */
 .user-info {
