@@ -1,45 +1,18 @@
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-import { firebaseConfig } from "./config.js";
 import { 
+    auth,
     getUserTransactions, 
     storeTransaction, 
     deleteTransaction,
-    getUserBankAccounts 
+    getUserBankAccounts,
+    getUserData,
+    updateTransaction
 } from "./firestoredb.js";
-import { initReceiptScanning } from "../scanReceipt/scan.js";
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-// Initialize receipt scanner
-let receiptScanner = null;
-
-// Handle scan transaction functionality
-async function handleScanTransaction() {
-    try {
-        if (!receiptScanner) {
-            receiptScanner = initReceiptScanning();
-        }
-        
-        if (!receiptScanner) {
-            throw new Error('Receipt scanner not available');
-        }
-
-        showToast('Starting receipt scan...', 'info');
-        await receiptScanner.startScan();
-        
-    } catch (error) {
-        console.error('❌ Scan error:', error);
-        showToast(error.message || 'Failed to start receipt scan', 'error');
-    }
-}
+let currentUser = null;
 
 // Initialize DOM elements
 const addTransactionBtn = document.getElementById('add-transaction-button');
 const addTransactionBtn2 = document.getElementById('add-transaction-btn');
-const scanTransactionBtn = document.getElementById('scan-transaction-button');
 const closeModalBtn = document.querySelector('.modal-close-btn');
 const cancelModalBtn = document.querySelector('.cancel-button');
 const modal = document.getElementById('add-transaction-modal');
@@ -94,11 +67,6 @@ function initializeEventListeners() {
         addTransactionBtn2.addEventListener('click', showModal);
     }
     
-    // Scan button
-    if (scanTransactionBtn) {
-        scanTransactionBtn.addEventListener('click', handleScanTransaction);
-    }
-    
     // Modal close buttons
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', hideModal);
@@ -139,7 +107,7 @@ function initializeEventListeners() {
                 const transactionData = {
                     type: formData.get('type'),
                     amount: parseFloat(formData.get('amount')),
-                    description: formData.get('description'),
+                    name: formData.get('description'),
                     category: formData.get('category'),
                     accountId: formData.get('account'),
                     date: formData.get('date'),
@@ -183,969 +151,898 @@ function generateTransactionId() {
     return 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Call initialization after DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize auth state listener
+console.log('🔐 Setting up auth state listener...');
+
+// Wait for auth state to be ready before proceeding
+async function initializeAuth() {
+    return new Promise((resolve, reject) => {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+            console.log('🔄 Auth state changed:', user ? `User ${user.uid} logged in` : 'No user');
+            unsubscribe();
+            resolve(user);
+        });
+
+        // Set a timeout to prevent infinite waiting
+        setTimeout(() => {
+            unsubscribe();
+            reject(new Error('Auth initialization timeout'));
+        }, 10000);
+    });
+}
+
+// Initialize the page
+async function initializePage() {
     console.log('🚀 DOM Content Loaded');
-    initializeEventListeners();
-    
-    // Initialize auth state listener
-    console.log('🔐 Setting up auth state listener...');
-    onAuthStateChanged(auth, user => {
-        console.log('🔄 Auth state changed:', user ? `User ${user.uid} logged in` : 'No user');
+    try {
+        // Wait for auth to be ready
+        const user = await initializeAuth();
         
         if (user) {
             currentUser = user;
             console.log('✅ Loading transactions for user:', user.uid);
-            loadTransactions(user.uid).catch(error => {
-                console.error('❌ Error loading transactions:', error);
-                showTransactionError('Failed to load transactions. Please try refreshing the page.');
-            });
+            await loadTransactions(user.uid);
             
             // Also load bank accounts
-            loadBankAccounts(user.uid).catch(error => {
-                console.error('❌ Error loading bank accounts:', error);
-                showAccountLoadError();
-            });
+            await loadBankAccounts(user.uid);
+            
+            // Initialize event listeners after auth is ready
+            initializeEventListeners();
         } else {
-            currentUser = null;
             console.log('❌ No authenticated user, redirecting to login...');
             window.location.href = 'login.html';
         }
-    });
-
-    // Initialize receipt scanner
-    receiptScanner = initReceiptScanning();
-
-    // Handle successful scan
-    const handleScanComplete = (scanData) => {
-        try {
-            console.log('📄 Scan completed:', scanData);
-            showModal();
-            populateFormWithScanData(scanData);
-            showToast('Receipt scanned successfully', 'success');
-        } catch (error) {
-            console.error('❌ Error processing scan data:', error);
-            showToast('Failed to process scanned receipt', 'error');
-        }
-    };
-
-    // Handle scan error
-    const handleScanError = (error) => {
-        console.error('❌ Scan error:', error);
-        showToast(error.message || 'Failed to scan receipt', 'error');
-    };
-
-    // Populate form with scanned data
-    function populateFormWithScanData(data) {
-        try {
-            const form = document.getElementById('add-transaction-form');
-            if (!form) {
-                throw new Error('Transaction form not found');
-            }
-
-            // Map scanned data to form fields
-            if (data.amount) {
-                const amountInput = form.querySelector('#transaction-amount');
-                if (amountInput) {
-                    amountInput.value = parseFloat(data.amount).toFixed(2);
-                }
-            }
-
-            if (data.description) {
-                const descriptionInput = form.querySelector('#transaction-description');
-                if (descriptionInput) {
-                    descriptionInput.value = data.description;
-                }
-            }
-
-            if (data.date) {
-                const dateInput = form.querySelector('#transaction-date');
-                if (dateInput) {
-                    const scanDate = new Date(data.date);
-                    dateInput.value = scanDate.toISOString().split('T')[0];
-                }
-            }
-
-            // Set transaction type to expense by default for receipts
-            const typeSelect = form.querySelector('#transaction-type');
-            if (typeSelect) {
-                typeSelect.value = 'expense';
-            }
-
-            // Try to categorize the transaction based on the description
-            if (data.description) {
-                const category = guessCategoryFromDescription(data.description);
-                const categorySelect = form.querySelector('#transaction-category');
-                if (categorySelect && category) {
-                    categorySelect.value = category;
-                }
-            }
-
-            // Add receipt details to notes
-            const notesInput = form.querySelector('#transaction-notes');
-            if (notesInput) {
-                const receiptDetails = [
-                    'Receipt Details:',
-                    `Date: ${data.date || 'Not found'}`,
-                    `Amount: ${data.amount || 'Not found'}`,
-                    `Description: ${data.description || 'Not found'}`,
-                    `Merchant: ${data.merchant || 'Not found'}`,
-                    'Note: This transaction was created from a scanned receipt.'
-                ].join('\n');
-                notesInput.value = receiptDetails;
-            }
-
-        } catch (error) {
-            console.error('❌ Error populating form with scan data:', error);
-            showToast('Error filling form with scanned data', 'error');
-        }
+    } catch (error) {
+        console.error('❌ Error during initialization:', error);
+        showGeneralError('Failed to initialize page. Please refresh and try again.');
     }
+}
 
-    // Helper function to guess category from description
-    function guessCategoryFromDescription(description) {
-        const lowerDesc = description.toLowerCase();
-        
-        // Basic category mapping
-        const categoryMatches = {
-            'food': ['restaurant', 'cafe', 'food', 'grocery', 'meal', 'dining'],
-            'transportation': ['taxi', 'uber', 'grab', 'fare', 'transport', 'gas', 'fuel'],
-            'shopping': ['mall', 'store', 'shop', 'retail', 'market'],
-            'utilities': ['electric', 'water', 'utility', 'bill', 'internet'],
-            'entertainment': ['movie', 'cinema', 'game', 'entertainment'],
-            'health': ['medical', 'doctor', 'pharmacy', 'medicine', 'health'],
-            'education': ['school', 'tuition', 'book', 'education'],
-            'other': []
-        };
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializePage);
 
-        for (const [category, keywords] of Object.entries(categoryMatches)) {
-            if (keywords.some(keyword => lowerDesc.includes(keyword))) {
-                return category;
-            }
-        }
-
-        return 'other';
+// Handle successful scan
+const handleScanComplete = (scanData) => {
+    try {
+        console.log('📄 Scan completed:', scanData);
+        showModal();
+        populateFormWithScanData(scanData);
+        showToast('Receipt scanned successfully', 'success');
+    } catch (error) {
+        console.error('❌ Error processing scan data:', error);
+        showToast('Failed to process scanned receipt', 'error');
     }
+};
 
-    // Global variable to store current user
-    let currentUser = null;
+// Handle scan error
+const handleScanError = (error) => {
+    console.error('❌ Scan error:', error);
+    showToast(error.message || 'Failed to scan receipt', 'error');
+};
 
-    async function initializeTransactionsModule(user) {
-        try {
-            if (!user || !user.uid) {
-                console.error('❌ Cannot initialize transactions module: Invalid user');
-                return;
-            }
-            
-            console.log('🚀 Initializing transactions module for user:', user.uid);
-            
-            // Ensure currentUser is set
-            currentUser = user;
-            
-            // Load data with error handling
-            await Promise.all([
-                loadTransactions(user.uid).catch(err => {
-                    console.error('❌ Failed to load transactions:', err);
-                    showTransactionError('Failed to load transactions');
-                }),
-                loadBankAccounts(user.uid).catch(err => {
-                    console.error('❌ Failed to load bank accounts:', err);
-                    showAccountLoadError();
-                })
-            ]);
-            
-            // Setup form submission handler
-            setupTransactionFormHandler(user);
-            
-            console.log('✅ Transactions module initialized successfully');
-            
-        } catch (error) {
-            console.error('❌ Failed to initialize transactions module:', error);
-            showGeneralError('Failed to initialize page');
-        }
-    }
-
-    function setupTransactionFormHandler(user) {
+async function initializeTransactionsModule(user) {
+    try {
         if (!user || !user.uid) {
-            console.error('❌ Cannot setup form handler: No valid user provided');
+            console.error('❌ Cannot initialize transactions module: Invalid user');
             return;
         }
         
-        console.log('🔧 Setting up form handler for user:', user.uid);
+        console.log('🚀 Initializing transactions module for user:', user.uid);
         
-        // Remove any existing event listeners to prevent duplicates
-        const existingHandler = addTransactionForm._submitHandler;
-        if (existingHandler) {
-            addTransactionForm.removeEventListener('submit', existingHandler);
-        }
+        // Ensure currentUser is set
+        currentUser = user;
         
-        // Create new handler and store reference
-        const submitHandler = (e) => {
-            console.log('📝 Form submitted, setup user:', user.uid);
-            console.log('📝 Current global user:', currentUser ? currentUser.uid : 'null');
-            console.log('📝 Auth current user:', auth.currentUser ? auth.currentUser.uid : 'null');
-            
-            // Use the most reliable user reference available
-            const userToUse = currentUser || auth.currentUser || user;
-            if (!userToUse || !userToUse.uid) {
-                console.error('❌ No authenticated user found in form handler');
-                alert('Please log in to add transactions');
-                return;
-            }
-            handleAddTransaction(e, userToUse.uid);
-        };
+        // Load data with error handling
+        await Promise.all([
+            loadTransactions(user.uid).catch(err => {
+                console.error('❌ Failed to load transactions:', err);
+                showTransactionError('Failed to load transactions');
+            }),
+            loadBankAccounts(user.uid).catch(err => {
+                console.error('❌ Failed to load bank accounts:', err);
+                showAccountLoadError();
+            })
+        ]);
         
-        // Store reference for potential cleanup
-        addTransactionForm._submitHandler = submitHandler;
-        addTransactionForm.addEventListener('submit', submitHandler);
+        // Setup form submission handler
+        setupTransactionFormHandler(user);
         
-        console.log('✅ Transaction form handler setup complete for user:', user.uid);
+        console.log('✅ Transactions module initialized successfully');
+        
+    } catch (error) {
+        console.error('❌ Failed to initialize transactions module:', error);
+        showGeneralError('Failed to initialize page');
     }
+}
 
-    async function loadBankAccounts(userId) {
-        console.log('🏦 Loading bank accounts for userId:', userId);
+function setupTransactionFormHandler(user) {
+    if (!user || !user.uid) {
+        console.error('❌ Cannot setup form handler: No valid user provided');
+        return;
+    }
+    
+    console.log('🔧 Setting up form handler for user:', user.uid);
+    
+    // Remove any existing event listeners to prevent duplicates
+    const existingHandler = addTransactionForm._submitHandler;
+    if (existingHandler) {
+        addTransactionForm.removeEventListener('submit', existingHandler);
+    }
+    
+    // Create new handler and store reference
+    const submitHandler = (e) => {
+        console.log('📝 Form submitted, setup user:', user.uid);
+        console.log('📝 Current global user:', currentUser ? currentUser.uid : 'null');
+        console.log('📝 Auth current user:', auth.currentUser ? auth.currentUser.uid : 'null');
         
-        const accountSelect = document.getElementById('transaction-account');
-        if (!accountSelect) {
-            console.error('❌ Account select element not found');
+        // Use the most reliable user reference available
+        const userToUse = currentUser || auth.currentUser || user;
+        if (!userToUse || !userToUse.uid) {
+            console.error('❌ No authenticated user found in form handler');
+            alert('Please log in to add transactions');
             return;
         }
-        
-        // Show loading state
-        accountSelect.innerHTML = '<option value="">-- Loading Accounts --</option>';
-        accountSelect.disabled = true;
-        
-        try {
-            if (!userId) {
-                throw new Error('No userId provided for loadBankAccounts');
-            }
-            
-            console.log('📞 Calling getUserBankAccounts from firestoredb...');
-            const accounts = await getUserBankAccounts(userId);
-            console.log('📊 Received accounts from firestoredb:', accounts?.length || 0);
-            
-            // Re-enable the select
-            accountSelect.disabled = false;
-            
-            // Always provide basic options first
-            accountSelect.innerHTML = `
-                <option value="">-- Select Account --</option>
-                <option value="no-account">💳 I don't have a bank account yet</option>
-                <option value="cash">💵 Cash</option>
-            `;
-            
-            if (accounts && accounts.length > 0) {
-                console.log('✅ Processing accounts for dropdown...');
-                
-                // Group accounts by category for better organization
-                const groupedAccounts = {
-                    'traditional-bank': [],
-                    'digital-wallet': [],
-                    'cash': [],
-                    'investment': [],
-                    'other': []
-                };
-                
-                accounts.forEach(acc => {
-                    const category = acc.category || 'other';
-                    if (groupedAccounts[category]) {
-                        groupedAccounts[category].push(acc);
-                    } else {
-                        groupedAccounts['other'].push(acc);
-                    }
-                });
-                
-                // Add accounts by category with proper formatting
-                const categories = [
-                    { key: 'traditional-bank', label: '🏦 Traditional Banks' },
-                    { key: 'digital-wallet', label: '📱 Digital Wallets' },
-                    { key: 'cash', label: '💵 Cash Accounts' },
-                    { key: 'investment', label: '📈 Investment Accounts' },
-                    { key: 'other', label: '📋 Other Accounts' }
-                ];
-                
-                categories.forEach(category => {
-                    const categoryAccounts = groupedAccounts[category.key];
-                    if (categoryAccounts.length > 0) {
-                        // Add category separator
-                        const separator = document.createElement('option');
-                        separator.disabled = true;
-                        separator.textContent = `--- ${category.label} ---`;
-                        separator.style.fontWeight = 'bold';
-                        separator.style.backgroundColor = 'rgba(26, 115, 232, 0.1)';
-                        accountSelect.appendChild(separator);
-                        
-                        // Add accounts in this category
-                        categoryAccounts.forEach(acc => {
-                            const option = document.createElement('option');
-                            option.value = acc.id;
-                            
-                            // Store account metadata for transaction processing
-                            option.dataset.accountName = acc.name;
-                            option.dataset.provider = acc.provider;
-                            option.dataset.balance = acc.balance;
-                            option.dataset.category = acc.category;
-                            
-                            // Format display text with consistent structure
-                            const displayName = acc.name || 'Unknown Account';
-                            const provider = acc.provider && acc.provider !== acc.name ? ` (${acc.provider})` : '';
-                            const cardNumber = acc.displayCardNumber || acc.cardNumber;
-                            const lastFour = cardNumber ? ` • ${cardNumber}` : '';
-                            const balance = ` • ₱${parseFloat(acc.balance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                            
-                            option.textContent = `${displayName}${provider}${lastFour}${balance}`;
-                            accountSelect.appendChild(option);
-                        });
-                    }
-                });
-                
-                // Add separator before action items
-                const actionSeparator = document.createElement('option');
-                actionSeparator.disabled = true;
-                actionSeparator.textContent = '―――――――――――――';
-                accountSelect.appendChild(actionSeparator);
-                
-                // Add link to add more accounts
-                const addAccountOption = document.createElement('option');
-                addAccountOption.value = 'add-account';
-                addAccountOption.textContent = '➕ Add New Account';
-                addAccountOption.style.color = 'var(--primary)';
-                addAccountOption.style.fontWeight = 'bold';
-                accountSelect.appendChild(addAccountOption);
-                
-                console.log('✅ Account dropdown populated successfully');
-            } else {
-                console.log('ℹ️ No accounts found, showing default options only');
-                
-                // Add helpful message when no accounts exist
-                const noAccountsOption = document.createElement('option');
-                noAccountsOption.disabled = true;
-                noAccountsOption.textContent = '-- No accounts added yet --';
-                noAccountsOption.style.color = 'rgba(255, 255, 255, 0.5)';
-                accountSelect.appendChild(noAccountsOption);
-                
-                const addAccountOption = document.createElement('option');
-                addAccountOption.value = 'add-account';
-                addAccountOption.textContent = '➕ Add Your First Account';
-                addAccountOption.style.color = 'var(--primary)';
-                addAccountOption.style.fontWeight = 'bold';
-                accountSelect.appendChild(addAccountOption);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error loading bank accounts:', error);
-            
-            // Re-enable the select and show error state
-            accountSelect.disabled = false;
-            accountSelect.innerHTML = `
-                <option value="">-- Error Loading Accounts --</option>
-                <option value="no-account">💳 I don't have a bank account yet</option>
-                <option value="cash">💵 Cash</option>
-                <option value="retry">🔄 Retry Loading Accounts</option>
-            `;
-            
-            // Log error details for debugging
-            console.error('❌ Account loading error details:', {
-                userId: userId,
-                errorMessage: error.message,
-                errorCode: error.code,
-                timestamp: new Date().toISOString()
-            });
-        }
+        handleAddTransaction(e, userToUse.uid);
+    };
+    
+    // Store reference for potential cleanup
+    addTransactionForm._submitHandler = submitHandler;
+    addTransactionForm.addEventListener('submit', submitHandler);
+    
+    console.log('✅ Transaction form handler setup complete for user:', user.uid);
+}
+
+async function loadBankAccounts(userId) {
+    console.log('🏦 Loading bank accounts for userId:', userId);
+    
+    const accountSelect = document.getElementById('transaction-account');
+    if (!accountSelect) {
+        console.error('❌ Account select element not found');
+        return;
     }
-
-    async function handleAddTransaction(e, userId) {
-        e.preventDefault();
-        const submitButton = e.target.querySelector('button[type="submit"]');
-        submitButton.disabled = true;
-        submitButton.textContent = 'Adding...';
-
-        try {
-            console.log('📝 Starting transaction submission...');
-            console.log('👤 Provided userId:', userId);
-            console.log('👤 Global currentUser:', currentUser ? currentUser.uid : 'null');
-            console.log('👤 Current user from auth:', auth.currentUser ? auth.currentUser.uid : 'null');
+    
+    // Show loading state
+    accountSelect.innerHTML = '<option value="">-- Loading Accounts --</option>';
+    accountSelect.disabled = true;
+    
+    try {
+        if (!userId) {
+            throw new Error('No userId provided for loadBankAccounts');
+        }
+        
+        console.log('📞 Calling getUserBankAccounts from firestoredb...');
+        const accounts = await getUserBankAccounts(userId);
+        console.log('📊 Received accounts from firestoredb:', accounts?.length || 0);
+        
+        // Re-enable the select
+        accountSelect.disabled = false;
+        
+        // Always provide basic options first
+        accountSelect.innerHTML = `
+            <option value="">-- Select Account --</option>
+            <option value="no-account">💳 I don't have a bank account yet</option>
+            <option value="cash">💵 Cash</option>
+        `;
+        
+        if (accounts && accounts.length > 0) {
+            console.log('✅ Processing accounts for dropdown...');
             
-            // Double check authentication state
-            if (!currentUser && !auth.currentUser) {
-                throw new Error('No authenticated user found. Please log in again.');
-            }
-            
-            if (!userId) {
-                throw new Error('No userId provided for transaction submission');
-            }
-            
-            const accountSelect = document.getElementById('transaction-account');
-            const selectedAccountId = accountSelect.value;
-            const selectedAccountText = accountSelect.selectedOptions[0].text;
-            
-            console.log('Form data before processing:', {
-                selectedAccountId,
-                selectedAccountText,
-                name: document.getElementById('transaction-name').value,
-                amount: document.getElementById('transaction-amount').value,
-                date: document.getElementById('transaction-date').value
-            });
-            
-            // Validate userId early - use current user as fallback
-            if (!userId) {
-                if (auth.currentUser) {
-                    userId = auth.currentUser.uid;
-                    console.log('🔄 Using current authenticated user as fallback:', userId);
-                } else {
-                    throw new Error('User not authenticated. Please log in and try again.');
-                }
-            }
-            
-            // Handle special account selections
-            if (selectedAccountId === 'add-account') {
-                // Redirect to accounts page
-                window.location.href = 'accounts.html';
-                return;
-            }
-            
-            // Determine account name based on selection
-            let accountName = selectedAccountText;
-            let accountProvider = '';
-            
-            if (selectedAccountId === 'no-account') {
-                accountName = 'No Bank Account';
-            } else if (selectedAccountId === 'cash') {
-                accountName = 'Cash';
-            } else if (selectedAccountId === 'error') {
-                accountName = 'Unknown Account';
-            } else if (selectedAccountId && selectedAccountId !== '') {
-                // Get account details from the selected option
-                const selectedOption = accountSelect.selectedOptions[0];
-                accountName = selectedOption.dataset.accountName || selectedAccountText;
-                accountProvider = selectedOption.dataset.provider || '';
-            }
-            
-            // Get and process form data
-            const rawAmount = parseFloat(document.getElementById('transaction-amount').value);
-            const transactionType = document.getElementById('transaction-type').value;
-            
-            // For expenses, make amount negative; for income, keep positive
-            const processedAmount = transactionType === 'expense' ? -Math.abs(rawAmount) : Math.abs(rawAmount);
-            
-            const transactionData = {
-                id: `txn_${Date.now()}`,
-                name: document.getElementById('transaction-name').value.trim(),
-                amount: processedAmount,
-                type: transactionType,
-                accountId: selectedAccountId,
-                accountName: accountName,
-                accountProvider: accountProvider,
-                date: document.getElementById('transaction-date').value,
-                category: document.getElementById('transaction-category').value,
-                channel: document.getElementById('transaction-channel').value,
-                notes: document.getElementById('transaction-notes').value.trim(),
-                createdAt: new Date().toISOString(),
-                source: 'web_app',
-                goalId: document.getElementById('transaction-goal').value || null
+            // Group accounts by category for better organization
+            const groupedAccounts = {
+                'traditional-bank': [],
+                'digital-wallet': [],
+                'cash': [],
+                'investment': [],
+                'other': []
             };
             
-            console.log('Transaction data prepared for submission:', transactionData);
-            
-            // Basic validation
-            if (!transactionData.name || !transactionData.date) {
-                alert("Please fill out the transaction name and date.");
-                throw new Error("Missing required fields: name or date");
-            }
-            
-            if (isNaN(rawAmount) || rawAmount <= 0) {
-                alert("Please enter a valid amount greater than 0.");
-                throw new Error("Invalid amount: must be a valid number greater than 0");
-            }
-            
-            // Validate account selection (empty string means no account selected)
-            if (!transactionData.accountId || transactionData.accountId === "") {
-                alert("Please select an account (Cash, No Bank Account, or a specific bank account).");
-                throw new Error("No account selected");
-            }
-            
-            console.log('✅ Validation passed, calling storeTransaction...');
-            console.log('UserId being used:', userId);
-            console.log('Current user object:', currentUser);
-            console.log('Auth current user:', auth.currentUser);
-            console.log('Transaction data to store:', transactionData);
-            const result = await storeTransaction(userId, transactionData);
-            console.log('📊 storeTransaction result:', result);
-            
-            if (result && result.success) {
-                console.log('✅ Transaction stored successfully:', result);
-                hideModal();
-                await loadTransactions(userId); // Refresh list
-                
-                // Show success message
-                if (typeof showToast === 'function') {
-                    showToast(`Transaction "${transactionData.name}" added successfully!`, 'success');
+            accounts.forEach(acc => {
+                const category = acc.category || 'other';
+                if (groupedAccounts[category]) {
+                    groupedAccounts[category].push(acc);
+                } else {
+                    groupedAccounts['other'].push(acc);
                 }
-                
-                // Log successful addition for client-side tracking
-                console.log('📊 CLIENT LOG - Transaction Added:', {
-                    transactionId: result.transactionId,
-                    transactionName: transactionData.name,
-                    amount: transactionData.amount,
-                    type: transactionData.type,
-                    accountId: transactionData.accountId,
-                    timestamp: result.timestamp,
-                    userId: userId
-                });
-
-                // If transaction is associated with a goal, update goal progress
-                if (transactionData.goalId) {
-                    const event = new CustomEvent('goalTransaction', {
-                        detail: {
-                            goalId: transactionData.goalId,
-                            amount: transactionData.type === 'expense' ? -transactionData.amount : transactionData.amount
-                        }
+            });
+            
+            // Add accounts by category with proper formatting
+            const categories = [
+                { key: 'traditional-bank', label: '🏦 Traditional Banks' },
+                { key: 'digital-wallet', label: '📱 Digital Wallets' },
+                { key: 'cash', label: '💵 Cash Accounts' },
+                { key: 'investment', label: '📈 Investment Accounts' },
+                { key: 'other', label: '📋 Other Accounts' }
+            ];
+            
+            categories.forEach(category => {
+                const categoryAccounts = groupedAccounts[category.key];
+                if (categoryAccounts.length > 0) {
+                    // Add category separator
+                    const separator = document.createElement('option');
+                    separator.disabled = true;
+                    separator.textContent = `--- ${category.label} ---`;
+                    separator.style.fontWeight = 'bold';
+                    separator.style.backgroundColor = 'rgba(26, 115, 232, 0.1)';
+                    accountSelect.appendChild(separator);
+                    
+                    // Add accounts in this category
+                    categoryAccounts.forEach(acc => {
+                        const option = document.createElement('option');
+                        option.value = acc.id;
+                        
+                        // Store account metadata for transaction processing
+                        option.dataset.accountName = acc.name;
+                        option.dataset.provider = acc.provider;
+                        option.dataset.balance = acc.balance;
+                        option.dataset.category = acc.category;
+                        
+                        // Format display text with consistent structure
+                        const displayName = acc.name || 'Unknown Account';
+                        const provider = acc.provider && acc.provider !== acc.name ? ` (${acc.provider})` : '';
+                        const cardNumber = acc.displayCardNumber || acc.cardNumber;
+                        const lastFour = cardNumber ? ` • ${cardNumber}` : '';
+                        const balance = ` • ₱${parseFloat(acc.balance || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        
+                        option.textContent = `${displayName}${provider}${lastFour}${balance}`;
+                        accountSelect.appendChild(option);
                     });
-                    window.dispatchEvent(event);
                 }
-            } else {
-                throw new Error("Invalid response from storeTransaction");
-            }
-        } catch (error) {
-            console.error("Error adding transaction:", error);
-            console.error("Error code:", error.code);
-            console.error("Error message:", error.message);
-            console.error("Error name:", error.name);
+            });
             
-            // Enhanced error message handling
-            let errorMessage = "Failed to add transaction. Please try again.";
+            // Add separator before action items
+            const actionSeparator = document.createElement('option');
+            actionSeparator.disabled = true;
+            actionSeparator.textContent = '―――――――――――――';
+            accountSelect.appendChild(actionSeparator);
             
-            if (error.message.includes('User not authenticated')) {
-                errorMessage = "Please log in to add transactions.";
-            } else if (error.message.includes('Authorization failed')) {
-                errorMessage = "Authentication error. Please log out and log back in.";
-            } else if (error.message.includes('Missing required fields') ||
-                error.message.includes('Invalid amount') ||
-                error.message.includes('No account selected')) {
-                errorMessage = error.message;
-            } else if (error.message.includes('Database error') ||
-                       error.message.includes('Failed to save to Firestore')) {
-                errorMessage = "Database error: " + error.message;
-            } else if (error.code === 'permission-denied') {
-                errorMessage = "Permission denied. Please check your login status.";
-            } else if (error.name === 'FirebaseError') {
-                errorMessage = `Firebase error: ${error.message}`;
-            } else if (error.message) {
-                errorMessage = error.message; // Show the specific error message
-            }
+            // Add link to add more accounts
+            const addAccountOption = document.createElement('option');
+            addAccountOption.value = 'add-account';
+            addAccountOption.textContent = '➕ Add New Account';
+            addAccountOption.style.color = 'var(--primary)';
+            addAccountOption.style.fontWeight = 'bold';
+            accountSelect.appendChild(addAccountOption);
             
-            alert(errorMessage);
-        } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Add Transaction';
+            console.log('✅ Account dropdown populated successfully');
+        } else {
+            console.log('ℹ️ No accounts found, showing default options only');
+            
+            // Add helpful message when no accounts exist
+            const noAccountsOption = document.createElement('option');
+            noAccountsOption.disabled = true;
+            noAccountsOption.textContent = '-- No accounts added yet --';
+            noAccountsOption.style.color = 'rgba(255, 255, 255, 0.5)';
+            accountSelect.appendChild(noAccountsOption);
+            
+            const addAccountOption = document.createElement('option');
+            addAccountOption.value = 'add-account';
+            addAccountOption.textContent = '➕ Add Your First Account';
+            addAccountOption.style.color = 'var(--primary)';
+            addAccountOption.style.fontWeight = 'bold';
+            accountSelect.appendChild(addAccountOption);
         }
+        
+    } catch (error) {
+        console.error('❌ Error loading bank accounts:', error);
+        
+        // Re-enable the select and show error state
+        accountSelect.disabled = false;
+        accountSelect.innerHTML = `
+            <option value="">-- Error Loading Accounts --</option>
+            <option value="no-account">💳 I don't have a bank account yet</option>
+            <option value="cash">💵 Cash</option>
+            <option value="retry">🔄 Retry Loading Accounts</option>
+        `;
+        
+        // Log error details for debugging
+        console.error('❌ Account loading error details:', {
+            userId: userId,
+            errorMessage: error.message,
+            errorCode: error.code,
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
+async function handleAddTransaction(e, userId) {
+    e.preventDefault();
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Adding...';
+
+    try {
+        console.log('📝 Starting transaction submission...');
+        console.log('👤 Provided userId:', userId);
+        console.log('👤 Global currentUser:', currentUser ? currentUser.uid : 'null');
+        console.log('👤 Current user from auth:', auth.currentUser ? auth.currentUser.uid : 'null');
+        
+        // Double check authentication state
+        if (!currentUser && !auth.currentUser) {
+            throw new Error('No authenticated user found. Please log in again.');
+        }
+        
+        if (!userId) {
+            throw new Error('No userId provided for transaction submission');
+        }
+        
+        const accountSelect = document.getElementById('transaction-account');
+        const selectedAccountId = accountSelect.value;
+        const selectedAccountText = accountSelect.selectedOptions[0].text;
+        
+        console.log('Form data before processing:', {
+            selectedAccountId,
+            selectedAccountText,
+            name: document.getElementById('transaction-name').value,
+            amount: document.getElementById('transaction-amount').value,
+            date: document.getElementById('transaction-date').value
+        });
+        
+        // Validate userId early - use current user as fallback
+        if (!userId) {
+            if (auth.currentUser) {
+                userId = auth.currentUser.uid;
+                console.log('🔄 Using current authenticated user as fallback:', userId);
+            } else {
+                throw new Error('User not authenticated. Please log in and try again.');
+            }
+        }
+        
+        // Handle special account selections
+        if (selectedAccountId === 'add-account') {
+            // Redirect to accounts page
+            window.location.href = 'accounts.html';
+            return;
+        }
+        
+        // Determine account name based on selection
+        let accountName = selectedAccountText;
+        let accountProvider = '';
+        
+        if (selectedAccountId === 'no-account') {
+            accountName = 'No Bank Account';
+        } else if (selectedAccountId === 'cash') {
+            accountName = 'Cash';
+        } else if (selectedAccountId === 'error') {
+            accountName = 'Unknown Account';
+        } else if (selectedAccountId && selectedAccountId !== '') {
+            // Get account details from the selected option
+            const selectedOption = accountSelect.selectedOptions[0];
+            accountName = selectedOption.dataset.accountName || selectedAccountText;
+            accountProvider = selectedOption.dataset.provider || '';
+        }
+        
+        // Get and process form data
+        const rawAmount = parseFloat(document.getElementById('transaction-amount').value);
+        const transactionType = document.getElementById('transaction-type').value;
+        
+        // For expenses, make amount negative; for income, keep positive
+        const processedAmount = transactionType === 'expense' ? -Math.abs(rawAmount) : Math.abs(rawAmount);
+        
+        const transactionData = {
+            id: `txn_${Date.now()}`,
+            name: document.getElementById('transaction-name').value.trim(),
+            amount: processedAmount,
+            type: transactionType,
+            accountId: selectedAccountId,
+            accountName: accountName,
+            accountProvider: accountProvider,
+            date: document.getElementById('transaction-date').value,
+            category: document.getElementById('transaction-category').value,
+            channel: document.getElementById('transaction-channel').value,
+            notes: document.getElementById('transaction-notes').value.trim(),
+            createdAt: new Date().toISOString(),
+            source: 'web_app',
+            goalId: document.getElementById('transaction-goal').value || null
+        };
+        
+        console.log('Transaction data prepared for submission:', transactionData);
+        
+        // Basic validation
+        if (!transactionData.name || !transactionData.date) {
+            alert("Please fill out the transaction name and date.");
+            throw new Error("Missing required fields: name or date");
+        }
+        
+        if (isNaN(rawAmount) || rawAmount <= 0) {
+            alert("Please enter a valid amount greater than 0.");
+            throw new Error("Invalid amount: must be a valid number greater than 0");
+        }
+        
+        // Validate account selection (empty string means no account selected)
+        if (!transactionData.accountId || transactionData.accountId === "") {
+            alert("Please select an account (Cash, No Bank Account, or a specific bank account).");
+            throw new Error("No account selected");
+        }
+        
+        console.log('✅ Validation passed, calling storeTransaction...');
+        console.log('UserId being used:', userId);
+        console.log('Current user object:', currentUser);
+        console.log('Auth current user:', auth.currentUser);
+        console.log('Transaction data to store:', transactionData);
+        const result = await storeTransaction(userId, transactionData);
+        console.log('📊 storeTransaction result:', result);
+        
+        if (result && result.success) {
+            console.log('✅ Transaction stored successfully:', result);
+            hideModal();
+            await loadTransactions(userId); // Refresh list
+            
+            // Show success message
+            if (typeof showToast === 'function') {
+                showToast(`Transaction "${transactionData.name}" added successfully!`, 'success');
+            }
+            
+            // Log successful addition for client-side tracking
+            console.log('📊 CLIENT LOG - Transaction Added:', {
+                transactionId: result.transactionId,
+                transactionName: transactionData.name,
+                amount: transactionData.amount,
+                type: transactionData.type,
+                accountId: transactionData.accountId,
+                timestamp: result.timestamp,
+                userId: userId
+            });
+
+            // If transaction is associated with a goal, update goal progress
+            if (transactionData.goalId) {
+                const event = new CustomEvent('goalTransaction', {
+                    detail: {
+                        goalId: transactionData.goalId,
+                        amount: transactionData.type === 'expense' ? -transactionData.amount : transactionData.amount
+                    }
+                });
+                window.dispatchEvent(event);
+            }
+        } else {
+            throw new Error("Invalid response from storeTransaction");
+        }
+    } catch (error) {
+        console.error("Error adding transaction:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+        console.error("Error name:", error.name);
+        
+        // Enhanced error message handling
+        let errorMessage = "Failed to add transaction. Please try again.";
+        
+        if (error.message.includes('User not authenticated')) {
+            errorMessage = "Please log in to add transactions.";
+        } else if (error.message.includes('Authorization failed')) {
+            errorMessage = "Authentication error. Please log out and log back in.";
+        } else if (error.message.includes('Missing required fields') ||
+            error.message.includes('Invalid amount') ||
+            error.message.includes('No account selected')) {
+            errorMessage = error.message;
+        } else if (error.message.includes('Database error') ||
+                   error.message.includes('Failed to save to Firestore')) {
+            errorMessage = "Database error: " + error.message;
+        } else if (error.code === 'permission-denied') {
+            errorMessage = "Permission denied. Please check your login status.";
+        } else if (error.name === 'FirebaseError') {
+            errorMessage = `Firebase error: ${error.message}`;
+        } else if (error.message) {
+            errorMessage = error.message; // Show the specific error message
+        }
+        
+        alert(errorMessage);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Add Transaction';
+    }
+}
+
+async function loadTransactions(userId) {
+    console.log('🔄 Starting loadTransactions function...');
+    const tableBody = document.getElementById('transactions-table-body');
+    const emptyState = document.getElementById('transactions-empty-state');
+    
+    if (!tableBody) {
+        console.error('❌ Could not find transactions table body');
+        return;
     }
 
-    async function loadTransactions(userId) {
-        console.log('🔄 Starting loadTransactions function...');
-        const tableBody = document.getElementById('transactions-table-body');
-        const emptyState = document.getElementById('transactions-empty-state');
+    console.log('📊 Setting loading state...');
+    // Show loading state
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading transactions...</p>
+            </td>
+        </tr>
+    `;
+    
+    if (emptyState) {
+        emptyState.style.display = 'none';
+    }
+
+    try {
+        if (!userId) {
+            console.error('❌ No user ID provided to loadTransactions');
+            throw new Error('No user ID provided');
+        }
+
+        console.log('🔍 Loading transactions for user:', userId);
+        const transactions = await getUserTransactions(userId);
+        console.log('📊 Received transactions:', transactions?.length || 0);
         
-        if (!tableBody) {
-            console.error('❌ Could not find transactions table body');
+        // Clear loading state
+        tableBody.innerHTML = '';
+        
+        if (!transactions || transactions.length === 0) {
+            console.log('ℹ️ No transactions found, showing empty state');
+            if (emptyState) {
+                emptyState.style.display = 'block';
+            }
             return;
         }
 
-        console.log('📊 Setting loading state...');
-        // Show loading state
+        // Sort transactions by date (newest first)
+        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        transactions.forEach(tx => {
+            const row = document.createElement('tr');
+            row.dataset.transactionId = tx.id;
+            
+            // Format date
+            const txDate = new Date(tx.date);
+            const formattedDate = txDate.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+
+            // Format amount with proper sign
+            const amount = tx.type === 'expense' ? -tx.amount : tx.amount;
+            const formattedAmount = new Intl.NumberFormat('en-PH', {
+                style: 'currency',
+                currency: 'PHP'
+            }).format(Math.abs(amount));
+
+            row.innerHTML = `
+                <td>${formattedDate}</td>
+                <td>${tx.description || 'No description'}</td>
+                <td>${tx.category || 'Uncategorized'}</td>
+                <td class="transaction-account-cell">
+                    <div class="account-name">${tx.accountName || 'N/A'}</div>
+                    ${tx.accountProvider ? `<div class="account-provider">${tx.accountProvider}</div>` : ''}
+                </td>
+                <td>
+                    <span class="transaction-type ${tx.type.toLowerCase()}">${
+                        tx.type.charAt(0).toUpperCase() + tx.type.slice(1)
+                    }</span>
+                </td>
+                <td class="amount ${tx.type.toLowerCase()}">${formattedAmount}</td>
+                <td class="actions">
+                    <button class="action-button edit-btn" data-id="${tx.id}" title="Edit transaction">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-button delete-btn" data-id="${tx.id}" title="Delete transaction">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+
+        // Add event listeners for action buttons
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const transactionId = e.currentTarget.dataset.id;
+                if (confirm('Are you sure you want to delete this transaction?')) {
+                    try {
+                        await deleteTransaction(userId, transactionId);
+                        // Optimistically remove from UI
+                        const row = document.querySelector(`tr[data-transaction-id="${transactionId}"]`);
+                        if (row) {
+                            row.remove();
+                            // Check if we need to show empty state
+                            if (tableBody.children.length === 0 && emptyState) {
+                                emptyState.style.display = 'block';
+                            }
+                        }
+                        showToast('Transaction deleted successfully', 'success');
+                    } catch (error) {
+                        console.error('❌ Failed to delete transaction:', error);
+                        showToast('Failed to delete transaction', 'error');
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const transactionId = e.currentTarget.dataset.id;
+                // Find the transaction data
+                const transaction = transactions.find(t => t.id === transactionId);
+                if (transaction) {
+                    showModal();
+                    populateFormWithTransaction(transaction);
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error('❌ Failed to load transactions:', error);
+        
+        let errorMessage = 'Failed to load transactions';
+        if (error.message.includes('User not authenticated')) {
+            errorMessage = 'Please log in to view transactions';
+        } else if (error.message.includes('permission-denied')) {
+            errorMessage = 'You do not have permission to view these transactions';
+        }
+        
         tableBody.innerHTML = `
             <tr>
-                <td colspan="7" class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading transactions...</p>
+                <td colspan="7" class="error-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>${errorMessage}</p>
+                    <button class="retry-button" onclick="location.reload()">
+                        <i class="fas fa-sync"></i> Retry
+                    </button>
                 </td>
             </tr>
         `;
+    }
+}
+
+// Helper function to populate form with transaction data
+function populateFormWithTransaction(transaction) {
+    const form = document.getElementById('add-transaction-form');
+    if (!form) return;
+
+    form.dataset.editMode = 'true';
+    form.dataset.transactionId = transaction.id;
+
+    // Populate form fields
+    form.querySelector('#transaction-type').value = transaction.type;
+    form.querySelector('#transaction-amount').value = transaction.amount;
+    form.querySelector('#transaction-description').value = transaction.description || '';
+    form.querySelector('#transaction-category').value = transaction.category || '';
+    form.querySelector('#transaction-account').value = transaction.accountId || '';
+    form.querySelector('#transaction-date').value = transaction.date.split('T')[0];
+    form.querySelector('#transaction-notes').value = transaction.notes || '';
+
+    // Update modal title and button text
+    const modalTitle = document.querySelector('.modal-header h2');
+    if (modalTitle) {
+        modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Transaction';
+    }
+
+    const submitButton = document.querySelector('.modal-actions .action-button');
+    if (submitButton) {
+        submitButton.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+    }
+}
+
+// Set default date to today in the modal form
+document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+
+// Error handling functions
+function showTransactionError(message) {
+    const tableBody = document.getElementById('transactions-table-body');
+    const loadingState = document.getElementById('transactions-loading-state');
+    const emptyState = document.getElementById('transactions-empty-state');
+    
+    if (loadingState) loadingState.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
+    
+    if (tableBody) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--secondary); padding: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                    <br>${message}
+                    <br><button onclick="location.reload()" style="margin-top: 1rem;" class="secondary-button">
+                        <i class="fas fa-refresh"></i> Retry
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function showAccountLoadError() {
+    const accountSelect = document.getElementById('transaction-account');
+    if (accountSelect) {
+        accountSelect.innerHTML = `
+            <option value="">-- Failed to load accounts --</option>
+            <option value="no-account">💳 I don't have a bank account yet</option>
+            <option value="cash">💵 Cash</option>
+            <option value="retry">🔄 Retry loading accounts</option>
+        `;
         
-        if (emptyState) {
-            emptyState.style.display = 'none';
-        }
-
-        try {
-            if (!userId) {
-                console.error('❌ No user ID provided to loadTransactions');
-                throw new Error('No user ID provided');
+        // Add retry functionality
+        accountSelect.addEventListener('change', async (e) => {
+            if (e.target.value === 'retry' && currentUser) {
+                console.log('🔄 Retrying account load...');
+                await loadBankAccounts(currentUser.uid);
             }
-
-            console.log('🔍 Loading transactions for user:', userId);
-            const transactions = await getUserTransactions(userId);
-            console.log('📊 Received transactions:', transactions?.length || 0);
-            
-            // Clear loading state
-            tableBody.innerHTML = '';
-            
-            if (!transactions || transactions.length === 0) {
-                console.log('ℹ️ No transactions found, showing empty state');
-                if (emptyState) {
-                    emptyState.style.display = 'block';
-                }
-                return;
-            }
-
-            // Sort transactions by date (newest first)
-            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            transactions.forEach(tx => {
-                const row = document.createElement('tr');
-                row.dataset.transactionId = tx.id;
-                
-                // Format date
-                const txDate = new Date(tx.date);
-                const formattedDate = txDate.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                });
-
-                // Format amount with proper sign
-                const amount = tx.type === 'expense' ? -tx.amount : tx.amount;
-                const formattedAmount = new Intl.NumberFormat('en-PH', {
-                    style: 'currency',
-                    currency: 'PHP'
-                }).format(Math.abs(amount));
-
-                row.innerHTML = `
-                    <td>${formattedDate}</td>
-                    <td>${tx.description || 'No description'}</td>
-                    <td>${tx.category || 'Uncategorized'}</td>
-                    <td class="transaction-account-cell">
-                        <div class="account-name">${tx.accountName || 'N/A'}</div>
-                        ${tx.accountProvider ? `<div class="account-provider">${tx.accountProvider}</div>` : ''}
-                    </td>
-                    <td>
-                        <span class="transaction-type ${tx.type.toLowerCase()}">${
-                            tx.type.charAt(0).toUpperCase() + tx.type.slice(1)
-                        }</span>
-                    </td>
-                    <td class="amount ${tx.type.toLowerCase()}">${formattedAmount}</td>
-                    <td class="actions">
-                        <button class="action-button edit-btn" data-id="${tx.id}" title="Edit transaction">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="action-button delete-btn" data-id="${tx.id}" title="Delete transaction">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(row);
-            });
-
-            // Add event listeners for action buttons
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    const transactionId = e.currentTarget.dataset.id;
-                    if (confirm('Are you sure you want to delete this transaction?')) {
-                        try {
-                            await deleteTransaction(userId, transactionId);
-                            // Optimistically remove from UI
-                            const row = document.querySelector(`tr[data-transaction-id="${transactionId}"]`);
-                            if (row) {
-                                row.remove();
-                                // Check if we need to show empty state
-                                if (tableBody.children.length === 0 && emptyState) {
-                                    emptyState.style.display = 'block';
-                                }
-                            }
-                            showToast('Transaction deleted successfully', 'success');
-                        } catch (error) {
-                            console.error('❌ Failed to delete transaction:', error);
-                            showToast('Failed to delete transaction', 'error');
-                        }
-                    }
-                });
-            });
-
-            document.querySelectorAll('.edit-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const transactionId = e.currentTarget.dataset.id;
-                    // Find the transaction data
-                    const transaction = transactions.find(t => t.id === transactionId);
-                    if (transaction) {
-                        showModal();
-                        populateFormWithTransaction(transaction);
-                    }
-                });
-            });
-
-        } catch (error) {
-            console.error('❌ Failed to load transactions:', error);
-            
-            let errorMessage = 'Failed to load transactions';
-            if (error.message.includes('User not authenticated')) {
-                errorMessage = 'Please log in to view transactions';
-            } else if (error.message.includes('permission-denied')) {
-                errorMessage = 'You do not have permission to view these transactions';
-            }
-            
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="error-state">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <p>${errorMessage}</p>
-                        <button class="retry-button" onclick="location.reload()">
-                            <i class="fas fa-sync"></i> Retry
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }
+        });
     }
+}
 
-    // Helper function to populate form with transaction data
-    function populateFormWithTransaction(transaction) {
-        const form = document.getElementById('add-transaction-form');
-        if (!form) return;
-
-        form.dataset.editMode = 'true';
-        form.dataset.transactionId = transaction.id;
-
-        // Populate form fields
-        form.querySelector('#transaction-type').value = transaction.type;
-        form.querySelector('#transaction-amount').value = transaction.amount;
-        form.querySelector('#transaction-description').value = transaction.description || '';
-        form.querySelector('#transaction-category').value = transaction.category || '';
-        form.querySelector('#transaction-account').value = transaction.accountId || '';
-        form.querySelector('#transaction-date').value = transaction.date.split('T')[0];
-        form.querySelector('#transaction-notes').value = transaction.notes || '';
-
-        // Update modal title and button text
-        const modalTitle = document.querySelector('.modal-header h2');
-        if (modalTitle) {
-            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Transaction';
-        }
-
-        const submitButton = document.querySelector('.modal-actions .action-button');
-        if (submitButton) {
-            submitButton.innerHTML = '<i class="fas fa-save"></i> Save Changes';
-        }
+function showGeneralError(message) {
+    console.error('❌ General error:', message);
+    // Could show a toast notification or other UI feedback
+    if (typeof showToast === 'function') {
+        showToast(message, 'error');
+    } else {
+        alert('⚠️ ' + message);
     }
+}
 
-    // Set default date to today in the modal form
-    document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
-
-    // Error handling functions
-    function showTransactionError(message) {
-        const tableBody = document.getElementById('transactions-table-body');
-        const loadingState = document.getElementById('transactions-loading-state');
-        const emptyState = document.getElementById('transactions-empty-state');
-        
-        if (loadingState) loadingState.style.display = 'none';
-        if (emptyState) emptyState.style.display = 'none';
-        
-        if (tableBody) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; color: var(--secondary); padding: 2rem;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
-                        <br>${message}
-                        <br><button onclick="location.reload()" style="margin-top: 1rem;" class="secondary-button">
-                            <i class="fas fa-refresh"></i> Retry
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }
+// Function to refresh account dropdown (called from accounts page)
+async function refreshTransactionAccounts() {
+    if (currentUser) {
+        console.log('🔄 Refreshing transaction accounts dropdown');
+        await loadBankAccounts(currentUser.uid);
     }
+}
 
-    function showAccountLoadError() {
-        const accountSelect = document.getElementById('transaction-account');
-        if (accountSelect) {
-            accountSelect.innerHTML = `
-                <option value="">-- Failed to load accounts --</option>
-                <option value="no-account">💳 I don't have a bank account yet</option>
-                <option value="cash">💵 Cash</option>
-                <option value="retry">🔄 Retry loading accounts</option>
-            `;
-            
-            // Add retry functionality
-            accountSelect.addEventListener('change', async (e) => {
-                if (e.target.value === 'retry' && currentUser) {
-                    console.log('🔄 Retrying account load...');
-                    await loadBankAccounts(currentUser.uid);
-                }
-            });
-        }
-    }
+// Cross-page communication system
+function setupCrossPageCommunication() {
+    // Listen for account update events from accounts page
+    document.addEventListener('accountUpdated', (event) => {
+        const { action, accountData } = event.detail;
+        console.log('📡 Received account update event:', action, accountData);
+        handleAccountUpdate(action, accountData);
+    });
 
-    function showGeneralError(message) {
-        console.error('❌ General error:', message);
-        // Could show a toast notification or other UI feedback
-        if (typeof showToast === 'function') {
-            showToast(message, 'error');
-        } else {
-            alert('⚠️ ' + message);
-        }
-    }
-
-    // Function to refresh account dropdown (called from accounts page)
-    window.refreshTransactionAccounts = async function() {
-        if (currentUser) {
-            console.log('🔄 Refreshing transaction accounts dropdown');
-            await loadBankAccounts(currentUser.uid);
-        }
-    };
-
-    // Cross-page communication system
-    function setupCrossPageCommunication() {
-        // Listen for account update events from accounts page
-        document.addEventListener('accountUpdated', (event) => {
-            const { action, accountData } = event.detail;
-            console.log('📡 Received account update event:', action, accountData);
+    // Listen for BroadcastChannel messages from other tabs
+    if (window.BroadcastChannel) {
+        const channel = new BroadcastChannel('account-updates');
+        channel.addEventListener('message', (event) => {
+            const { action, accountData } = event.data;
+            console.log('📡 Received account update from other tab:', action, accountData);
             handleAccountUpdate(action, accountData);
         });
-
-        // Listen for BroadcastChannel messages from other tabs
-        if (window.BroadcastChannel) {
-            const channel = new BroadcastChannel('account-updates');
-            channel.addEventListener('message', (event) => {
-                const { action, accountData } = event.data;
-                console.log('📡 Received account update from other tab:', action, accountData);
-                handleAccountUpdate(action, accountData);
-            });
-        }
-
-        // Check for pending account updates in sessionStorage
-        checkPendingAccountUpdates();
     }
 
-    function handleAccountUpdate(action, accountData) {
-        if (!currentUser) return;
+    // Check for pending account updates in sessionStorage
+    checkPendingAccountUpdates();
+}
 
-        console.log('🔄 Handling account update:', action);
+function handleAccountUpdate(action, accountData) {
+    if (!currentUser) return;
+
+    console.log('🔄 Handling account update:', action);
+    
+    // Refresh accounts dropdown when accounts are modified
+    loadBankAccounts(currentUser.uid).catch(err => {
+        console.error('❌ Failed to refresh accounts after update:', err);
+    });
+
+    // Show notification based on action
+    const messages = {
+        added: `Account "${accountData.name}" was added successfully`,
+        updated: `Account "${accountData.name}" was updated`,
+        deleted: `Account "${accountData.name}" was deleted`
+    };
+
+    const message = messages[action];
+    if (message && typeof showToast === 'function') {
+        showToast(message, 'info', 3000);
+    }
+}
+
+function checkPendingAccountUpdates() {
+    try {
+        const updates = JSON.parse(sessionStorage.getItem('accountUpdates') || '[]');
+        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
         
-        // Refresh accounts dropdown when accounts are modified
-        loadBankAccounts(currentUser.uid).catch(err => {
-            console.error('❌ Failed to refresh accounts after update:', err);
-        });
-
-        // Show notification based on action
-        const messages = {
-            added: `Account "${accountData.name}" was added successfully`,
-            updated: `Account "${accountData.name}" was updated`,
-            deleted: `Account "${accountData.name}" was deleted`
-        };
-
-        const message = messages[action];
-        if (message && typeof showToast === 'function') {
-            showToast(message, 'info', 3000);
-        }
-    }
-
-    function checkPendingAccountUpdates() {
-        try {
-            const updates = JSON.parse(sessionStorage.getItem('accountUpdates') || '[]');
-            const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-            
-            // Process recent updates
-            updates.forEach(update => {
-                const updateTime = new Date(update.timestamp).getTime();
-                if (updateTime > fiveMinutesAgo) {
-                    console.log('📬 Processing pending account update:', update.action);
-                    handleAccountUpdate(update.action, update.accountData);
-                }
-            });
-
-            // Clean up old updates
-            const recentUpdates = updates.filter(update => {
-                const updateTime = new Date(update.timestamp).getTime();
-                return updateTime > fiveMinutesAgo;
-            });
-
-            if (recentUpdates.length !== updates.length) {
-                sessionStorage.setItem('accountUpdates', JSON.stringify(recentUpdates));
+        // Process recent updates
+        updates.forEach(update => {
+            const updateTime = new Date(update.timestamp).getTime();
+            if (updateTime > fiveMinutesAgo) {
+                console.log('📬 Processing pending account update:', update.action);
+                handleAccountUpdate(update.action, update.accountData);
             }
-        } catch (error) {
-            console.error('❌ Error checking pending account updates:', error);
-        }
-    }
-
-    // Initialize cross-page communication
-    setupCrossPageCommunication();
-
-    // Simple toast notification function if not available
-    function showToast(message, type = 'info', duration = 5000) {
-        console.log(`🍞 TOAST [${type.toUpperCase()}]: ${message}`);
-        
-        // You could implement a simple toast here or use existing system
-        const toastElement = document.createElement('div');
-        toastElement.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--glass-bg);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(10px);
-            z-index: 10000;
-            font-size: 0.9rem;
-            max-width: 300px;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-        `;
-        toastElement.textContent = message;
-        
-        document.body.appendChild(toastElement);
-        
-        // Animate in
-        requestAnimationFrame(() => {
-            toastElement.style.opacity = '1';
-            toastElement.style.transform = 'translateX(0)';
         });
-        
-        // Auto remove
+
+        // Clean up old updates
+        const recentUpdates = updates.filter(update => {
+            const updateTime = new Date(update.timestamp).getTime();
+            return updateTime > fiveMinutesAgo;
+        });
+
+        if (recentUpdates.length !== updates.length) {
+            sessionStorage.setItem('accountUpdates', JSON.stringify(recentUpdates));
+        }
+    } catch (error) {
+        console.error('❌ Error checking pending account updates:', error);
+    }
+}
+
+// Initialize cross-page communication
+setupCrossPageCommunication();
+
+// Simple toast notification function if not available
+function showToast(message, type = 'info', duration = 5000) {
+    console.log(`🍞 TOAST [${type.toUpperCase()}]: ${message}`);
+    
+    // You could implement a simple toast here or use existing system
+    const toastElement = document.createElement('div');
+    toastElement.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--glass-bg);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(10px);
+        z-index: 10000;
+        font-size: 0.9rem;
+        max-width: 300px;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    `;
+    toastElement.textContent = message;
+    
+    document.body.appendChild(toastElement);
+    
+    // Animate in
+    requestAnimationFrame(() => {
+        toastElement.style.opacity = '1';
+        toastElement.style.transform = 'translateX(0)';
+    });
+    
+    // Auto remove
+    setTimeout(() => {
+        toastElement.style.opacity = '0';
+        toastElement.style.transform = 'translateX(100%)';
         setTimeout(() => {
-            toastElement.style.opacity = '0';
-            toastElement.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (toastElement.parentNode) {
-                    toastElement.parentNode.removeChild(toastElement);
-                }
-            }, 300);
-        }, duration);
-    }
+            if (toastElement.parentNode) {
+                toastElement.parentNode.removeChild(toastElement);
+            }
+        }, 300);
+    }, duration);
+}
 
-    async function loadGoals(userId) {
-        try {
-            const userData = await getUserData(userId);
-            return userData.goals || {};
-        } catch (error) {
-            console.error('Error loading goals:', error);
-            return {};
-        }
+async function loadGoals(userId) {
+    try {
+        const userData = await getUserData(userId);
+        return userData.goals || {};
+    } catch (error) {
+        console.error('Error loading goals:', error);
+        return {};
     }
+}
 
-    async function populateGoalSelect(userId) {
-        const goalSelect = document.getElementById('transaction-goal');
-        if (!goalSelect) return;
+async function populateGoalSelect(userId) {
+    const goalSelect = document.getElementById('transaction-goal');
+    if (!goalSelect) return;
 
-        try {
-            const goals = await loadGoals(userId);
-            
-            // Clear existing options
-            goalSelect.innerHTML = '<option value="">No specific goal</option>';
-            
-            // Add options for each active goal
-            Object.entries(goals).forEach(([goalId, goal]) => {
-                if (goal.status === 'active') {
-                    const option = document.createElement('option');
-                    option.value = goalId;
-                    option.textContent = goal.name;
-                    goalSelect.appendChild(option);
-                }
-            });
-        } catch (error) {
-            console.error('Error populating goal select:', error);
-        }
+    try {
+        const goals = await loadGoals(userId);
+        
+        // Clear existing options
+        goalSelect.innerHTML = '<option value="">No specific goal</option>';
+        
+        // Add options for each active goal
+        Object.entries(goals).forEach(([goalId, goal]) => {
+            if (goal.status === 'active') {
+                const option = document.createElement('option');
+                option.value = goalId;
+                option.textContent = goal.name;
+                goalSelect.appendChild(option);
+            }
+        });
+    } catch (error) {
+        console.error('Error populating goal select:', error);
     }
-});
+}
+
+// Export functions that need to be accessed from other modules
+export {
+    refreshTransactionAccounts,
+    handleAccountUpdate,
+    showToast
+};
 

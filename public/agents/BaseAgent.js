@@ -1344,44 +1344,48 @@ export class BaseAgent {
      * @param {Object} context - Additional context for the API call
      */
     async callGeminiForReasoning(prompt, context = {}) {
-        if (!this.geminiApiKey) {
-            console.warn('No Gemini API key provided, using fallback reasoning');
-            return this.getFallbackResponse(prompt, context);
-        }
+        try {
+            if (!this.geminiApiKey) {
+                throw new Error("Gemini API key not configured");
+            }
 
-        const operation = async () => {
             const enhancedPrompt = this.buildEnhancedPrompt(prompt, context);
+            const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
             
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
+            const requestBody = {
+                contents: [{
+                    parts: [{
+                        text: enhancedPrompt
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                    maxOutputTokens: 1024,
+                }
+            };
+
+            const response = await fetch(`${apiUrl}?key=${this.geminiApiKey}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: enhancedPrompt
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 1024
-                    }
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
+                const errorData = await response.json();
+                throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
             }
 
             const data = await response.json();
-            return this.parseAIResponse(data);
-        };
+            return data.candidates[0].content.parts[0].text;
 
-        return this.retryWithExponentialBackoff(operation);
+        } catch (error) {
+            console.error("Error calling Gemini API:", error);
+            return this.getFallbackResponse(prompt, context);
+        }
     }
 
     /**
@@ -1950,80 +1954,6 @@ export class BaseAgent {
     async formulateConclusion(steps) { return 'conclusion_formulated'; }
     calculateOverallConfidence(steps) { return 0.7; }
     getStepWeight(stepType) { return 1.0; }
-
-    /**
-     * Standardized Gemini API call method for all agents
-     * @param {string} prompt - The prompt to send to Gemini
-     * @param {Object} options - Additional options for the API call
-     * @returns {Promise<Object>} - The parsed response from Gemini
-     */
-    async callGeminiAI(prompt, options = {}) {
-        if (!this.geminiApiKey) {
-            throw new Error('Gemini API key not configured');
-        }
-
-        // Rate limiting check
-        const now = Date.now();
-        if (now - this.lastApiCall < 1000) { // Minimum 1 second between calls
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        // Update rate limiting state
-        this.lastApiCall = now;
-        this.apiCallCount++;
-
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }],
-                    ...options
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Gemini API error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return this.processGeminiResponse(data);
-        } catch (error) {
-            console.error(`${this.agentType} Gemini API call failed:`, error);
-            throw error;
-        }
-    }
-
-    /**
-     * Process and validate Gemini API response
-     * @param {Object} data - Raw response from Gemini API
-     * @returns {Object} - Processed and validated response
-     */
-    processGeminiResponse(data) {
-        if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-            throw new Error('Invalid response format from Gemini API');
-        }
-
-        const response = data.candidates[0].content.parts[0].text;
-
-        // Try to parse JSON if the response looks like JSON
-        if (response.trim().startsWith('{') || response.trim().startsWith('[')) {
-            try {
-                return JSON.parse(response);
-            } catch (e) {
-                // If JSON parsing fails, return the raw text
-                return response;
-            }
-        }
-
-        return response;
-    }
 
     // Add error tracking methods
     trackError(error, type = 'api') {

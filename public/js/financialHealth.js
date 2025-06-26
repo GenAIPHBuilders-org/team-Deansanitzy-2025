@@ -160,64 +160,102 @@ async function processFinancialData(userData) {
     }
 }
 
+// Add this helper function for delay
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Add this helper function for API calls with retry
+async function callGeminiAPI(prompt, retries = 3, baseDelay = 1000) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 2048,
+                    }
+                })
+            });
+
+            if (response.status === 429) {
+                const waitTime = baseDelay * Math.pow(2, attempt);
+                console.log(`Rate limit hit, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
+                await delay(waitTime);
+                continue;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Gemini API error:', errorData);
+                throw new Error(`Gemini API error: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            if (attempt === retries - 1) throw error;
+            const waitTime = baseDelay * Math.pow(2, attempt);
+            console.log(`API call failed, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
+            await delay(waitTime);
+        }
+    }
+    throw new Error('All retries failed');
+}
+
 async function analyzeFinancialHealth(userData) {
     if (!GEMINI_API_KEY) {
-        console.error('Gemini API key not configured');
+        console.log('Gemini API key not configured, using offline analysis');
         return enhancedOfflineAnalysis(userData);
     }
 
     try {
         const prompt = generateFinancialPrompt(userData);
         
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 2048,
-                }
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Gemini API error:', errorData);
-            throw new Error(`Gemini API error: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-            throw new Error('Invalid response format from Gemini');
-        }
-
-        const aiResponse = data.candidates[0].content.parts[0].text;
-        
+        // Use the new retry mechanism
         try {
-            // Parse JSON response
-            const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                const analysis = JSON.parse(jsonMatch[0]);
-                return enhanceAIAnalysis(analysis, userData);
-            } else {
-                throw new Error('Invalid JSON response from Gemini');
+            const data = await callGeminiAPI(prompt);
+            
+            if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+                console.log('Invalid Gemini API response format, falling back to offline analysis');
+                return enhancedOfflineAnalysis(userData);
             }
-        } catch (parseError) {
-            console.error('Failed to parse Gemini response:', parseError);
-            throw new Error('Failed to parse AI analysis');
+
+            const aiResponse = data.candidates[0].content.parts[0].text;
+            
+            try {
+                // Parse JSON response
+                const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const analysis = JSON.parse(jsonMatch[0]);
+                    return enhanceAIAnalysis(analysis, userData);
+                } else {
+                    console.log('Invalid JSON in Gemini response, falling back to offline analysis');
+                    return enhancedOfflineAnalysis(userData);
+                }
+            } catch (parseError) {
+                console.error('Failed to parse Gemini response:', parseError);
+                console.log('Falling back to offline analysis');
+                return enhancedOfflineAnalysis(userData);
+            }
+        } catch (apiError) {
+            console.error('All API retries failed:', apiError);
+            console.log('Falling back to offline analysis after all retries failed');
+            return enhancedOfflineAnalysis(userData);
         }
     } catch (error) {
         console.error('Failed to get AI analysis:', error);
+        console.log('Falling back to offline analysis due to error');
         return enhancedOfflineAnalysis(userData);
     }
 }
@@ -697,21 +735,27 @@ function enhancedOfflineAnalysis(userData) {
                 type: "strength",
                 title: "Strong Savings Rate",
                 description: `You're saving ${savingsRate.toFixed(1)}% of your income, which is above the target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%`,
-                priority: "high"
+                priority: "high",
+                impact: "Maintaining this savings rate will help build long-term wealth",
+                trend: "stable"
             });
         } else if (savingsRate > 0) {
             insights.push({
                 type: "opportunity",
                 title: "Room for Savings Growth",
                 description: `Your current savings rate is ${savingsRate.toFixed(1)}%. Try to reach the target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%`,
-                priority: "medium"
+                priority: "medium",
+                impact: "Increasing savings will improve financial security",
+                trend: "improving"
             });
         } else {
             insights.push({
                 type: "weakness",
                 title: "Negative Savings Rate",
                 description: "Your expenses exceed your income. Focus on reducing expenses or increasing income.",
-                priority: "high"
+                priority: "high",
+                impact: "This situation is unsustainable and needs immediate attention",
+                trend: "declining"
             });
         }
 
@@ -721,7 +765,9 @@ function enhancedOfflineAnalysis(userData) {
                 type: "threat",
                 title: "Emergency Fund Below Target",
                 description: `Your emergency fund covers ${emergencyFundMonths.toFixed(1)} months of expenses. Aim for ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months.`,
-                priority: "high"
+                priority: "high",
+                impact: "A stronger emergency fund will provide better financial security",
+                trend: "stable"
             });
         }
 
@@ -734,7 +780,13 @@ function enhancedOfflineAnalysis(userData) {
                 title: "Increase Savings Rate",
                 description: `Set up automatic transfers to a savings account for ${Math.min(20, FINANCIAL_HEALTH_CONFIG.savingsRateTarget - savingsRate).toFixed(0)}% of your income`,
                 impact: "high",
-                timeframe: "immediate"
+                timeframe: "immediate",
+                difficulty: "moderate",
+                expectedOutcome: "Improved financial security and wealth building",
+                alternativeSolutions: [
+                    "Reduce discretionary spending",
+                    "Find additional income sources"
+                ]
             });
         }
 
@@ -744,7 +796,13 @@ function enhancedOfflineAnalysis(userData) {
                 title: "Build Emergency Fund",
                 description: `Allocate extra funds to your emergency savings until you reach ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months of expenses`,
                 impact: "high",
-                timeframe: "short_term"
+                timeframe: "short_term",
+                difficulty: "moderate",
+                expectedOutcome: "Better protection against unexpected expenses",
+                alternativeSolutions: [
+                    "Set up automatic monthly transfers",
+                    "Use windfalls for emergency fund"
+                ]
             });
         }
 
@@ -754,7 +812,13 @@ function enhancedOfflineAnalysis(userData) {
                 title: "Reduce Expenses",
                 description: `Review your monthly expenses and identify areas to cut back to bring your expense ratio below ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%`,
                 impact: "high",
-                timeframe: "immediate"
+                timeframe: "immediate",
+                difficulty: "challenging",
+                expectedOutcome: "Improved cash flow and ability to save",
+                alternativeSolutions: [
+                    "Create a detailed budget",
+                    "Negotiate bills and subscriptions"
+                ]
             });
         }
 
@@ -769,14 +833,69 @@ function enhancedOfflineAnalysis(userData) {
                 savingsRate: parseFloat(savingsRate.toFixed(1)),
                 debtToIncome: 0, // Not calculated in offline mode
                 expenseRatio: parseFloat(expenseRatio.toFixed(1)),
-                emergencyFundMonths: parseFloat(emergencyFundMonths.toFixed(1))
+                emergencyFundMonths: parseFloat(emergencyFundMonths.toFixed(1)),
+                investmentAllocation: 0, // Not calculated in offline mode
+                discretionarySpending: 0, // Not calculated in offline mode
+                basicNecessitiesRatio: 0, // Not calculated in offline mode
+                financialSustainability: 0 // Not calculated in offline mode
             },
             insights,
-            recommendations
+            recommendations,
+            riskAssessment: {
+                shortTerm: [
+                    "Insufficient emergency fund coverage",
+                    "High expense ratio"
+                ],
+                longTerm: [
+                    "Retirement savings may be delayed",
+                    "Limited investment growth"
+                ],
+                mitigationStrategies: [
+                    "Build emergency fund systematically",
+                    "Review and optimize monthly expenses",
+                    "Set up automatic savings transfers"
+                ]
+            }
         };
     } catch (error) {
         console.error('Error in offline analysis:', error);
-        throw error;
+        // Return a minimal valid structure if there's an error
+        return {
+            healthScore: 50,
+            summary: "Unable to calculate detailed metrics. Please try again later.",
+            metrics: {
+                savingsRate: 0,
+                debtToIncome: 0,
+                expenseRatio: 0,
+                emergencyFundMonths: 0,
+                investmentAllocation: 0,
+                discretionarySpending: 0,
+                basicNecessitiesRatio: 0,
+                financialSustainability: 0
+            },
+            insights: [{
+                type: "warning",
+                title: "Analysis Limited",
+                description: "Unable to perform complete analysis at this time",
+                priority: "high",
+                impact: "Please try again later",
+                trend: "stable"
+            }],
+            recommendations: [{
+                title: "Retry Analysis",
+                description: "Please refresh the page to try the analysis again",
+                impact: "high",
+                timeframe: "immediate",
+                difficulty: "easy",
+                expectedOutcome: "Complete financial analysis",
+                alternativeSolutions: ["Contact support if the issue persists"]
+            }],
+            riskAssessment: {
+                shortTerm: ["Analysis currently limited"],
+                longTerm: ["Unable to assess long-term risks"],
+                mitigationStrategies: ["Retry analysis later"]
+            }
+        };
     }
 }
 

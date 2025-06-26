@@ -321,7 +321,7 @@ function displayTelegramKey(keyData) {
                 <li>Open Telegram and search for <strong>@KitakitaAIBot</strong></li>
                 <li>Start a conversation with the bot by sending <code>/start</code></li>
                 <li>Click "🔗 Connect Account" or send <code>/connect [your-key]</code></li>
-                <li>Enjoy scanning receipts and managing your finances through Telegram!</li>
+                <li>Enjoy managing your finances through Telegram!</li>
             `;
         }
         

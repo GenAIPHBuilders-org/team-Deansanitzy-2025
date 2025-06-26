@@ -18,35 +18,57 @@
         /* Enhanced autonomous features styles */
         .welcome-banner {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
-            padding: 2rem;
-            border-radius: 1rem;
-            margin-bottom: 2rem;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            margin-bottom: 2.5rem;
             color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.1)"/></svg>') no-repeat center right;
+            opacity: 0.6;
         }
 
         .welcome-banner h1 {
-            font-size: 2rem;
+            font-size: 2.5rem;
             margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         .welcome-banner .tagline {
-            font-size: 1.1rem;
-            opacity: 0.9;
+            font-size: 1.2rem;
+            opacity: 0.95;
+            max-width: 80%;
+            line-height: 1.6;
         }
 
         .card-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 2.5rem;
         }
 
         .theme-card {
             background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 1.2rem;
+            padding: 2rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.15);
         }
 
         .wide-card {
@@ -56,29 +78,159 @@
         .card-header {
             display: flex;
             align-items: center;
-            margin-bottom: 1rem;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1rem;
         }
 
         .card-header h2 {
-            font-size: 1.25rem;
+            font-size: 1.4rem;
             margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--heading-color);
         }
 
         .card-header i {
-            margin-right: 0.5rem;
             color: var(--accent-color);
+            font-size: 1.6rem;
+        }
+
+        .card-header .card-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .card-header .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .card-header .btn-icon:hover {
+            color: var(--accent-color);
+            background: var(--hover-bg);
         }
 
         .loading-goals {
             text-align: center;
-            padding: 2rem;
+            padding: 3rem;
             color: var(--text-muted);
+            background: var(--card-bg-secondary);
+            border-radius: 1rem;
+            margin: 1rem 0;
         }
 
         .loading-goals i {
-            font-size: 1.5rem;
+            font-size: 2rem;
             margin-bottom: 1rem;
             color: var(--accent-color);
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-item {
+            background: var(--card-bg-secondary);
+            padding: 1.2rem;
+            border-radius: 1rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin: 0.5rem 0;
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            height: 300px;
+            position: relative;
+        }
+
+        .recommendations-list {
+            list-style: none;
+            padding: 0;
+            margin: 1.5rem 0;
+        }
+
+        .recommendation-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 0.8rem;
+            background: var(--card-bg-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .recommendation-item i {
+            color: var(--accent-color);
+            font-size: 1.2rem;
+            padding-top: 0.2rem;
+        }
+
+        .recommendation-content {
+            flex: 1;
+        }
+
+        .recommendation-title {
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: var(--heading-color);
+        }
+
+        .recommendation-desc {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 0.8rem;
+            background: var(--card-bg-secondary);
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+        }
+
+        .alert-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
         }
 
         @keyframes spin {
@@ -87,6 +239,26 @@
 
         .fa-spin {
             animation: spin 1s linear infinite;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .welcome-banner {
+                padding: 2rem;
+            }
+
+            .welcome-banner h1 {
+                font-size: 2rem;
+            }
+
+            .welcome-banner .tagline {
+                font-size: 1rem;
+                max-width: 100%;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -115,8 +287,8 @@
         <main class="main-content">
             <!-- Enhanced Hero Section -->
             <div class="welcome-banner">
-                <h1><i class="fas fa-robot"></i> Autonomous Ipon Coach AI</h1>
-                <p class="tagline">Your autonomous Filipino financial AI agent that continuously monitors, analyzes, and optimizes your finances without manual intervention. Features real-time pattern detection, automated budget adjustments, and proactive financial interventions.</p>
+                <h1><i class="fas fa-robot"></i> Ipon Coach AI</h1>
+                <p class="tagline">Your intelligent Filipino financial companion that provides personalized insights, smart budgeting recommendations, and proactive savings strategies. Let's work together to achieve your financial goals!</p>
             </div>
 
             <!-- AI Dashboard Content -->
@@ -140,64 +312,140 @@
                 <div id="content-loaded" style="display: none;">
                     <!-- Smart AI Features Grid -->
                     <div class="card-grid">
-                        <!-- Smart Transaction Categorization -->
-                        <div class="theme-card" id="categorization-card">
+                        <!-- Financial Overview Card -->
+                        <div class="theme-card wide-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-tags"></i> Smart Categorization</h2>
+                                <h2><i class="fas fa-chart-line"></i> Financial Overview</h2>
+                                <div class="card-actions">
+                                    <button class="btn-icon" title="Refresh"><i class="fas fa-sync-alt"></i></button>
+                                    <button class="btn-icon" title="More options"><i class="fas fa-ellipsis-v"></i></button>
+                                </div>
                             </div>
-                            <div class="card-content" id="categorization-content">
-                                <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Analyzing your transactions...
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-value">₱25,000</div>
+                                    <div class="metric-label">Monthly Savings</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value">65%</div>
+                                    <div class="metric-label">Savings Goal Progress</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value">₱8,500</div>
+                                    <div class="metric-label">Potential Savings</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-value">18%</div>
+                                    <div class="metric-label">Savings Rate</div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="savingsChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Smart Transaction Analysis -->
+                        <div class="theme-card">
+                            <div class="card-header">
+                                <h2><i class="fas fa-tags"></i> Smart Analysis</h2>
+                                <div class="card-actions">
+                                    <button class="btn-icon" title="View all"><i class="fas fa-expand"></i></button>
+                                </div>
+                            </div>
+                            <div class="recommendations-list" id="categorization-content">
+                                <div class="recommendation-item">
+                                    <i class="fas fa-lightbulb"></i>
+                                    <div class="recommendation-content">
+                                        <div class="recommendation-title">Recurring Expenses Pattern</div>
+                                        <div class="recommendation-desc">Your monthly subscription services total ₱2,500. Consider reviewing these subscriptions to identify potential savings.</div>
+                                    </div>
+                                </div>
+                                <div class="recommendation-item">
+                                    <i class="fas fa-chart-pie"></i>
+                                    <div class="recommendation-content">
+                                        <div class="recommendation-title">Category Optimization</div>
+                                        <div class="recommendation-desc">Food delivery expenses increased by 25% this month. Consider meal planning to reduce costs.</div>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="recommendations-list" id="overspending-content">
+                                <div class="recommendation-item">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <div class="recommendation-content">
+                                        <div class="recommendation-title">Spending Alert</div>
+                                        <div class="recommendation-desc">Your entertainment spending is 40% higher than usual this month.</div>
+                                    </div>
+                                </div>
+                                <div class="recommendation-item">
+                                    <i class="fas fa-chart-line"></i>
+                                    <div class="recommendation-content">
+                                        <div class="recommendation-title">Trend Analysis</div>
+                                        <div class="recommendation-desc">Weekend dining expenses show an upward trend. Consider setting a weekend dining budget.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Overspending Detection -->
-                        <div class="theme-card" id="overspending-card">
+                        <!-- Smart Budget Recommendations -->
+                        <div class="theme-card">
                             <div class="card-header">
-                                <h2><i class="fas fa-exclamation-triangle"></i> Spending Patterns</h2>
+                                <h2><i class="fas fa-piggy-bank"></i> Budget Insights</h2>
+                                <div class="card-actions">
+                                    <button class="btn-icon" title="Customize"><i class="fas fa-sliders-h"></i></button>
+                                </div>
+
                             </div>
-                            <div class="card-content" id="overspending-content">
-                                <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Detecting spending patterns...
+                            <div class="recommendations-list" id="budget-content">
+                                <div class="recommendation-item">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <div class="recommendation-content">
+                                        <div class="recommendation-title">50-30-20 Rule Analysis</div>
+                                        <div class="recommendation-desc">Your current split: 60% needs, 25% wants, 15% savings. Adjust discretionary spending to reach the ideal ratio.</div>
+                                    </div>
+                                </div>
+                                <div class="recommendation-item">
+                                    <i class="fas fa-coins"></i>
+                                    <div class="recommendation-content">
+                                        <div class="recommendation-title">Emergency Fund</div>
+                                        <div class="recommendation-desc">Current: 3 months coverage. Aim for 6 months by saving ₱5,000 monthly.</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Smart Budget Suggestions -->
-                        <div class="theme-card wide-card" id="budget-card">
-                            <div class="card-header">
-                                <h2><i class="fas fa-chart-pie"></i> Budget Recommendations</h2>
-                            </div>
-                            <div class="card-content" id="budget-content">
-                                <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Creating personalized budget...
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Spending Alerts -->
-                        <div class="theme-card" id="alerts-card">
+                        <!-- Smart Alerts -->
+                        <div class="theme-card">
                             <div class="card-header">
                                 <h2><i class="fas fa-bell"></i> Smart Alerts</h2>
+                                <div class="card-actions">
+                                    <button class="btn-icon" title="Settings"><i class="fas fa-cog"></i></button>
+                                </div>
                             </div>
-                            <div class="card-content" id="alerts-content">
-                                <div class="loading-goals">
-                                    <i class="fas fa-cog fa-spin"></i> Setting up smart alerts...
+                            <div class="alerts-list" id="alerts-content">
+                                <div class="alert-item">
+                                    <i class="fas fa-exclamation-circle alert-icon"></i>
+                                    <div class="alert-content">
+                                        <div class="alert-title">Bill Payment Due</div>
+                                        <div class="alert-desc">Electricity bill (₱2,500) due in 3 days</div>
+                                        <div class="alert-meta">Priority: High • Due: March 15</div>
+                                    </div>
+                                </div>
+                                <div class="alert-item">
+                                    <i class="fas fa-info-circle alert-icon"></i>
+                                    <div class="alert-content">
+                                        <div class="alert-title">Savings Milestone</div>
+                                        <div class="alert-desc">You're ₱1,000 away from your vacation fund goal!</div>
+                                        <div class="alert-meta">Goal Progress: 95%</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
-
-
                 </div>
             </section>
         </main>
     </div>
-
-
 
     <!-- Enhanced JavaScript Module -->
     <script type="module" src="iponCoach.js"></script>

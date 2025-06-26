@@ -10,8 +10,18 @@
     <link rel="stylesheet" href="../css/chatbot.css">
     <link rel="stylesheet" href="css/transactions.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-storage.js"></script>
+    
+    <!-- App Scripts -->
+    <script type="module" src="../js/config.js"></script>
+    <script type="module" src="../js/firestoredb.js"></script>
     <script type="module" src="../js/transactions.js" defer></script>
-    <script type="module" src="../scanReceipt/scan.js" defer></script>
+    
     <style>
         .account-name {
             font-weight: 600;
@@ -194,10 +204,7 @@
             <div class="page-header">
                 <h1>Transaction History</h1>
                 <div class="header-actions">
-                    <button id="scan-transaction-button" class="secondary-button" title="Scan Receipt">
-                        <i class="fas fa-camera"></i> Scan
-                    </button>
-                    <button id="add-transaction-button" class="primary-button">
+                    <button id="add-transaction-button" class="primary-button" title="Add Transaction">
                         <i class="fas fa-plus"></i> Add Transaction
                     </button>
                 </div>

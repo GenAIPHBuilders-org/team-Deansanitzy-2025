@@ -1506,17 +1506,30 @@ async function updateBalanceSummary() {
     }
     console.log('User authenticated:', user.uid);
 
-    // Get transactions first - this is our primary source of balance calculation
-    console.log('Fetching transactions...');
-    const transactions = await getUserTransactions(user.uid);
-    console.log('Transactions fetched:', transactions ? transactions.length : 0, transactions);
+    // Get both transactions and accounts
+    console.log('Fetching transactions and accounts...');
+    const [transactions, accounts] = await Promise.all([
+      getUserTransactions(user.uid),
+      getUserBankAccounts(user.uid)
+    ]);
+    console.log('Data fetched:', {
+      transactionsCount: transactions ? transactions.length : 0,
+      accountsCount: accounts ? accounts.length : 0
+    });
     
+    // Calculate total balance from accounts
+    let currentBalance = 0;
+    if (accounts && accounts.length > 0) {
+      currentBalance = accounts.reduce((sum, account) => sum + parseFloat(account.balance || 0), 0);
+      console.log('Calculated current balance from accounts:', currentBalance);
+    }
+
+    // Calculate income and expenses from transactions for other displays
     let totalIncome = 0;
     let totalExpenses = 0;
-    let currentBalance = 0;  // This will be our main balance (income - expenses)
     
     if (transactions && transactions.length > 0) {
-      console.log('Processing transactions for balance calculation:');
+      console.log('Processing transactions for income/expense calculation:');
       transactions.forEach((transaction, index) => {
         const amount = parseFloat(transaction.amount || 0);
         console.log(`Transaction ${index + 1}:`, {
@@ -1528,35 +1541,27 @@ async function updateBalanceSummary() {
         
         if (!isNaN(amount)) {
           if (transaction.type === 'income') {
-            // Income amounts - always use absolute value to ensure positive
-            const incomeAmount = Math.abs(amount);
-            totalIncome += incomeAmount;
-            console.log(`  -> Added ${incomeAmount} to income, total income now: ${totalIncome}`);
+            totalIncome += Math.abs(amount);
+            console.log(`  -> Added ${Math.abs(amount)} to income, total income now: ${totalIncome}`);
           } else if (transaction.type === 'expense') {
-            // Expense amounts - always use absolute value for display
-            const expenseAmount = Math.abs(amount);
-            totalExpenses += expenseAmount;
-            console.log(`  -> Added ${expenseAmount} to expenses, total expenses now: ${totalExpenses}`);
+            totalExpenses += Math.abs(amount);
+            console.log(`  -> Added ${Math.abs(amount)} to expenses, total expenses now: ${totalExpenses}`);
           }
         }
       });
-      
-      // Calculate current balance as income minus expenses (same as transactions page)
-      currentBalance = totalIncome - totalExpenses;
-      console.log('Calculated current balance (income - expenses):', currentBalance);
     } else {
-      console.log('No transactions found, balance will be 0');
+      console.log('No transactions found');
     }
 
-    // Get bank cards for account count (but not for balance calculation)
+    // Get bank cards for account count
     const bankCards = document.querySelectorAll('.bank-card:not(.add-card)');
     const accountCount = bankCards.length;
     console.log('Found bank cards for count:', accountCount);
     
     console.log('Final totals:', { 
-      totalIncome, 
-      totalExpenses, 
       currentBalance,
+      totalIncome, 
+      totalExpenses,
       accountCount 
     });
 

@@ -16,8 +16,8 @@ export const firebaseConfig = {
 export const OFFLINE_MODE = false;
 
 // Initialize API key - Replace this with your actual Gemini API key
-export const GEMINI_API_KEY = 'AIzaSyCxJe2AbtK6hzGyDE4rfk50jBaoE63Rdvg';
-export const GEMINI_MODEL = 'gemini-1.5-flash';
+export const GEMINI_API_KEY = 'AIzaSyC2OxnjdS9mb-dlypkbQ36EQ72LHX5ZwdI';
+export const GEMINI_MODEL = 'gemini-pro';
 
 // Helper function to check API configuration
 export function isConfigured() {
@@ -50,11 +50,37 @@ export const DEBUG_MODE = true;
 export const ENABLE_LOGGING = true;
 
 // Feature Flags
-export const FEATURES = {
-    AI_INSIGHTS: true,
-    REAL_TIME_UPDATES: true,
-    TRANSACTION_SCANNING: true,
-    ADVANCED_ANALYTICS: true
+const featureFlags = {
+    DARK_MODE: true,
+    NOTIFICATIONS: true,
+    ANALYTICS: true,
+    EXPORT: true,
+    IMPORT: true,
+    BUDGET_TRACKING: true,
+    GOALS: true,
+    INVESTMENTS: true,
+    REPORTS: true,
+    CATEGORIES: true,
+    TAGS: true,
+    SEARCH: true,
+    FILTERS: true,
+    SORTING: true,
+    PAGINATION: true,
+    CHARTS: true,
+    INSIGHTS: true,
+    FORECASTING: true,
+    REMINDERS: true,
+    SHARING: true,
+    COLLABORATION: true,
+    BACKUP: true,
+    SYNC: true,
+    OFFLINE: true,
+    SECURITY: true,
+    PRIVACY: true,
+    SUPPORT: true,
+    HELP: true,
+    FEEDBACK: true,
+    UPDATES: true
 };
 
 // API Configuration

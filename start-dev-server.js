@@ -26,7 +26,15 @@ function extractEmailFromToken(token) {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+
+// Configure static file serving with proper MIME types
+app.use(express.static('public', {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css');
+        }
+    }
+}));
 
 // Development authentication middleware 
 const devAuth = (req, res, next) => {
@@ -193,7 +201,7 @@ app.post('/api/user/:userId/regenerate-telegram-key', devAuth, (req, res) => {
 
 
 
-// Get user's transactions (including Telegram scanned ones)
+// Get user's transactions
 app.get('/api/user/:userId/transactions', devAuth, (req, res) => {
     const { userId } = req.params;
     

@@ -87,6 +87,7 @@ async function initializeApp(user) {
         console.error("Initialization failed:", error);
         setUIState('empty');
     }
+
 }
 
 // Add refresh functionality
