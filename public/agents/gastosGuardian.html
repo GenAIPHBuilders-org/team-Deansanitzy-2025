@@ -16,138 +16,72 @@
 </head>
 
 <body>
-    <!-- Light Effects from theme -->
-    <div class="light light-1"></div>
-    <div class="light light-2"></div>
-    <div class="light light-3"></div>
-
     <div class="dashboard-layout">
-        <!-- Enhanced Header -->
+        <!-- Header -->
         <header class="header">
             <div class="logo">
                 <a href="../pages/dashboard.html" class="logo-text">Kita-kita</a>
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="../pages/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                    <li><a href="#" class="active"><i class="fas fa-brain"></i> Gastos Guardian AI</a></li>
+                    <li><a href="../pages/dashboard.html">Dashboard</a></li>
+                    <li><a href="../pages/transactions.html">Transactions</a></li>
+                    <li><a href="../pages/accounts.html">Accounts</a></li>
+                    <li><a href="../pages/profile.html">Profile</a></li>
+                    <li><a href="#" id="logout-link">Logout</a></li>
                 </ul>
             </nav>
         </header>
 
         <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Enhanced Hero Section -->
-            <div class="welcome-banner">
-                <h1><i class="fas fa-brain"></i> Gastos Guardian AI</h1>
-                <p class="tagline">Your Autonomous Financial Forecasting Agent</p>
-                <div class="ai-status" id="ai-status">
-                    <span class="status-indicator"></span>
-                    <span class="status-text">Initializing AI Systems...</span>
-                </div>
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1>Gastos Guardian AI</h1>
+                <p>Your autonomous financial forecasting agent.</p>
             </div>
 
             <!-- Guardian Dashboard Content -->
             <section id="guardian-dashboard">
                 <!-- Loading State -->
-                <div id="loading-state" class="loading-container">
-                    <div class="ai-loading">
-                        <div class="neural-network">
-                            <div class="node"></div>
-                            <div class="node"></div>
-                            <div class="node"></div>
-                            <div class="connection"></div>
-                            <div class="connection"></div>
-                        </div>
-                        <p id="loading-message">Guardian AI is analyzing your financial patterns...</p>
-                        <div class="loading-progress">
-                            <div class="progress-bar" id="progress-bar"></div>
-                        </div>
-                    </div>
+                <div id="loading-state" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Guardian AI is analyzing your financial patterns...</p>
                 </div>
 
                 <!-- Empty State -->
-                <div id="empty-state" class="hidden empty-container">
-                    <div class="empty-state-content">
-                        <i class="fas fa-robot" style="font-size: 4rem; color: rgba(255, 255, 255, 0.3); margin-bottom: 1.5rem;"></i>
-                        <h3>Guardian AI Ready to Help</h3>
-                        <p>Get started with Guardian AI! You can begin using basic features immediately and unlock more advanced capabilities as you add data:</p>
-                        <div class="requirements-grid">
-                            <div class="requirement-item">
-                                <i class="fas fa-university"></i>
-                                <span>Connect your bank accounts</span>
-                            </div>
-                            <div class="requirement-item">
-                                <i class="fas fa-chart-line"></i>
-                                <span>Add some transactions (optional)</span>
-                            </div>
-                            <div class="requirement-item">
-                                <i class="fas fa-brain"></i>
-                                <span>Start using AI insights immediately</span>
-                            </div>
-                        </div>
-                        <div class="action-buttons">
-                            <button onclick="window.location.href='../pages/accounts.html'" class="btn btn-primary">
-                                <i class="fas fa-university"></i> Add Accounts
-                            </button>
-                            <button onclick="window.location.href='../pages/transactions.html'" class="btn btn-secondary">
-                                <i class="fas fa-plus"></i> Add Transactions
-                            </button>
-                            <button onclick="window.refreshGastosGuardian && window.refreshGastosGuardian()" class="btn btn-secondary">
-                                <i class="fas fa-sync-alt"></i> Refresh Data
-                            </button>
-                        </div>
-                    </div>
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <i class="fas fa-robot"></i>
+                    <h3>Guardian AI is ready to help</h3>
+                    <p>Connect your accounts and add transactions to get started.</p>
+                    <a href="../pages/accounts.html" class="primary-button">
+                        <i class="fas fa-university"></i> Add Accounts
+                    </a>
                 </div>
 
                 <!-- Main Content -->
-                <div id="content-state" class="hidden">
-                    <!-- AI Insights Header -->
-                    <div class="ai-insights-header">
-                        <div class="insight-summary">
-                            <h2><i class="fas fa-brain"></i> Financial Analysis</h2>
-                            <div class="forecast-confidence">
-                                <span>Analysis Confidence: </span>
-                                <div class="confidence-meter">
-                                    <div class="confidence-fill" id="confidence-fill"></div>
-                                </div>
-                                <span id="confidence-percentage">--</span>
-                            </div>
-                        </div>
-                        <div class="quick-actions">
-                            <button onclick="window.refreshGastosGuardian()" class="action-btn" id="refresh-data-btn" title="Refresh financial data">
-                                <i class="fas fa-sync-alt"></i> Refresh
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="guardian-grid">
+                <div id="content-state" style="display: none;">
+                    <div class="content-grid">
                         <!-- Expense Analysis Card -->
-                        <div class="card forecast-card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-chart-line"></i> Expense Analysis</h3>
-                            </div>
-                            <div class="card-content">
+                        <div class="dashboard-card chart-card">
+                            <h3><i class="fas fa-chart-line"></i> Expense Analysis</h3>
+                            <div class="chart-container">
                                 <canvas id="expense-chart"></canvas>
                             </div>
                         </div>
 
                         <!-- Spending Leaks Card -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-search"></i> Spending Leaks</h3>
-                            </div>
-                            <div class="card-content" id="spending-leaks-content">
+                        <div class="dashboard-card">
+                            <h3><i class="fas fa-search-dollar"></i> Spending Leaks</h3>
+                            <div class="analysis-content" id="spending-leaks-content">
                                 <p>Analyzing your spending patterns...</p>
                             </div>
                         </div>
 
                         <!-- Tipid Tips Card -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-lightbulb"></i> Tipid Tips</h3>
-                            </div>
-                            <div class="card-content" id="tipid-tips-content">
+                        <div class="dashboard-card">
+                            <h3><i class="fas fa-lightbulb"></i> Tipid Tips</h3>
+                            <div class="analysis-content" id="tipid-tips-content">
                                 <p>Generating personalized tips...</p>
                             </div>
                         </div>
@@ -157,34 +91,25 @@
         </main>
     </div>
 
-    <!-- Scenario Analysis Modal -->
-    <div id="scenario-modal" class="modal-overlay hidden">
-        <div class="modal-content scenario-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-flask"></i> Scenario Analysis Results</h3>
-                <button class="close-modal" id="close-scenario-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="scenario-comparison">
-                    <div class="comparison-chart">
-                        <canvas id="scenario-comparison-chart"></canvas>
-                    </div>
-                    <div class="scenario-impact" id="scenario-impact">
-                        <!-- Detailed impact analysis will be shown here -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="save-scenario-btn">Save Scenario</button>
-                <button class="btn btn-primary" id="apply-scenario-btn">Apply to Budget</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Enhanced JavaScript Module -->
     <script type="module" src="gastosGuardian.js"></script>
+    <script type="module">
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+        
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const auth = getAuth();
+                signOut(auth).then(() => {
+                    window.location.href = '../pages/login.html';
+                }).catch((error) => {
+                    console.error('Sign out error:', error);
+                    alert('Error signing out.');
+                });
+            });
+        }
+    </script>
     
     <!-- Fallback for browsers that don't support modules -->
     <script nomodule>

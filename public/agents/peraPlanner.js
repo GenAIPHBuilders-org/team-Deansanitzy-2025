@@ -15,11 +15,24 @@
  * @license MIT
  */
 
-import { GEMINI_API_KEY, GEMINI_MODEL, isConfigured } from "../js/config.js";
+import { GEMINI_API_KEY, GEMINI_MODEL, isConfigured, firebaseConfig } from "../js/config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-import { getUserData, getUserTransactions, getUserBankAccounts, storeUserData, updateUserGoals } from "../js/firestoredb.js";
+import { getUserData, getUserTransactions, getUserBankAccounts, storeUserData, updateFinancialProfile } from "../js/firestoredb.js";
 import { BaseAgent } from "./BaseAgent.js";
 import { callGeminiAI } from "../js/agentCommon.js";
+
+// Initialize Firebase if it hasn't been initialized yet
+let app;
+try {
+    app = initializeApp(firebaseConfig);
+} catch (error) {
+    if (error.code !== 'app/duplicate-app') {
+        console.error('Firebase initialization error:', error);
+        throw error;
+    }
+}
+const auth = getAuth(app);
 
 // Constants for financial planning
 const FINANCIAL_CONSTANTS = {
@@ -63,7 +76,6 @@ class PeraPlannerAI extends BaseAgent {
      */
     async initialize() {
         try {
-            const auth = getAuth();
             const user = auth.currentUser;
             
             if (!user) {
@@ -171,7 +183,6 @@ class PeraPlannerAI extends BaseAgent {
      */
     async setGoal(goalId, goalData) {
         try {
-            const auth = getAuth();
             const user = auth.currentUser;
             
             if (!user) throw new Error('User not authenticated');
@@ -190,7 +201,7 @@ class PeraPlannerAI extends BaseAgent {
             });
             
             // Update goals in database
-            await updateUserGoals(user.uid, Object.fromEntries(this.goals));
+            await updateFinancialProfile(user.uid, { goals: Object.fromEntries(this.goals) });
             
             // Update projections and check progress
             await Promise.all([
@@ -794,27 +805,36 @@ const peraPlannerAI = new PeraPlannerAI();
 
 // Initialize the app when the DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-    const auth = getAuth();
-    
-    // Listen for auth state changes
-    auth.onAuthStateChanged(async (user) => {
-        if (user) {
-            await initializeApp(user);
-        } else {
-            window.location.href = '/pages/login.html';
-        }
-    });
+    try {
+        console.log('Starting initialization...');
+        
+        // Listen for auth state changes
+        auth.onAuthStateChanged(async (user) => {
+            console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+            if (user) {
+                await initializePeraPlanner(user);
+            } else {
+                console.log('No user found, redirecting to login...');
+                window.location.href = '/pages/login.html';
+            }
+        });
+    } catch (error) {
+        console.error('Error during initialization:', error);
+        setUIState('error');
+    }
 });
 
 /**
- * Initialize the application
+ * Initialize the Pera Planner application
  */
-async function initializeApp(user) {
+async function initializePeraPlanner(user) {
     try {
+        console.log('Initializing Pera Planner for user:', user.uid);
         setUIState('loading');
         
         // Initialize the AI agent
         const success = await peraPlannerAI.initialize();
+        console.log('AI initialization result:', success);
         
         if (!success) {
             throw new Error('Failed to initialize Pera Planner');
@@ -822,16 +842,18 @@ async function initializeApp(user) {
         
         // Check if we have enough data
         if (!peraPlannerAI.userTransactions?.length) {
+            console.log('No transactions found, showing empty state');
             setUIState('empty');
             return;
         }
         
         // Display the insights and recommendations
+        console.log('Displaying insights and recommendations');
         await displayInsightsAndRecommendations();
         
         setUIState('content');
     } catch (error) {
-        console.error('Failed to initialize app:', error);
+        console.error('Failed to initialize Pera Planner:', error);
         setUIState('empty');
     }
 }

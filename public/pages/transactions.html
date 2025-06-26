@@ -1,332 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#060e21">
+    <meta name="theme-color" content="#0d1117">
     <title>Transactions - Kita-kita Banking</title>
-    <link rel="stylesheet" href="../css/theme.css">
-    <link rel="stylesheet" href="../css/chatbot.css">
-    <link rel="stylesheet" href="css/transactions.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Firebase SDK -->
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-storage.js"></script>
-    
-    <!-- App Scripts -->
-    <script type="module" src="../js/config.js"></script>
-    <script type="module" src="../js/firestoredb.js"></script>
-    <script type="module" src="../js/transactions.js" defer></script>
-    
-    <style>
-        .account-name {
-            font-weight: 600;
-            color: white;
-        }
-        
-        .account-provider {
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.6);
-            margin-top: 0.1rem;
-        }
-        
-        .transaction-account-cell {
-            max-width: 150px;
-        }
-        
-        /* Better account dropdown styling */
-        #transaction-account option[disabled] {
-            color: var(--primary-green);
-            font-weight: bold;
-            background: rgba(26, 115, 232, 0.1);
-        }
-        
-        #transaction-account option[value="add-account"] {
-            color: var(--primary-green);
-            font-weight: bold;
-        }
-
-        /* Modal styling */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: var(--background);
-            padding: 2rem;
-            border-radius: 8px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        /* Toast notifications */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 1rem;
-            border-radius: 8px;
-            background: var(--background);
-            color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transform: translateY(100%);
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 2000;
-        }
-
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .toast i {
-            font-size: 1.2rem;
-        }
-
-        .toast-success {
-            border-left: 4px solid var(--success);
-        }
-
-        .toast-error {
-            border-left: 4px solid var(--error);
-        }
-
-        .toast-info {
-            border-left: 4px solid var(--primary);
-        }
-
-        /* Loading state */
-        .loading-state {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .loading-spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: var(--primary);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Filter panel */
-        .filter-panel {
-            position: fixed;
-            top: 0;
-            right: -100%;
-            width: 300px;
-            height: 100vh;
-            background: var(--background);
-            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
-            transition: right 0.3s ease;
-            z-index: 1500;
-        }
-
-        .filter-panel.show {
-            right: 0;
-        }
-
-        .filter-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .close-filter {
-            background: none;
-            border: none;
-            color: var(--text);
-            cursor: pointer;
-            font-size: 1.2rem;
-        }
-
-        .close-filter:hover {
-            color: var(--primary);
-        }
-    </style>
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="css/transactions.css">
 </head>
-
 <body>
-    <!-- Light Effects -->
-    <div class="light light-1"></div>
-    <div class="light light-2"></div>
-    <div class="light light-3"></div>
-
-    <div class="dashboard-layout">
-        <!-- Enhanced Header Navigation -->
+    <div class="page-layout">
+        <!-- Header -->
         <header class="header">
             <div class="logo">
-                <i class="fas fa-coins" style="color: var(--primary); font-size: 1.5rem;"></i>
-                <span class="logo-text">Kita-kita</span>
+                <a href="dashboard.html" class="logo-text">Kita-kita</a>
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                    <li><a href="transactions.html" class="active"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
-                    <li><a href="accounts.html"><i class="fas fa-wallet"></i> Accounts</a></li>
-                    <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
-                    <li><a href="../index.html"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="transactions.html" class="active">Transactions</a></li>
+                    <li><a href="accounts.html">Accounts</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                    <li><a href="#" id="logout-link">Logout</a></li>
                 </ul>
             </nav>
         </header>
 
-        <!-- Main Content Area -->
+        <!-- Main Content -->
         <main class="main-content">
             <div class="page-header">
-                <h1>Transaction History</h1>
-                <div class="header-actions">
-                    <button id="add-transaction-button" class="primary-button" title="Add Transaction">
-                        <i class="fas fa-plus"></i> Add Transaction
-                    </button>
-                </div>
+                <h1>Transactions</h1>
+                <button id="add-transaction-button" class="primary-button">
+                    <i class="fas fa-plus"></i> Add Transaction
+                </button>
             </div>
-            
+
             <div class="transactions-container">
-                <div class="transactions-table">
-                    <div class="table-header">
-                        <h2>Recent Transactions</h2>
-                        <div class="header-actions">
-                            <button id="add-transaction-btn" class="action-button">
-                                <i class="fas fa-plus"></i> Add Transaction
-                            </button>
-                            <button id="filter-button" class="filter-button">
-                                <i class="fas fa-filter"></i> Filter
-                            </button>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th>Category</th>
-                                    <th>Account</th>
-                                    <th>Type</th>
-                                    <th>Amount</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transactions-table-body">
-                                <!-- Loading State -->
-                                <tr>
-                                    <td colspan="7" class="loading-state">
-                                        <div class="loading-spinner"></div>
-                                        <p>Loading transactions...</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                            <th>Account</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-table-body">
+                        <!-- JS will populate this -->
+                    </tbody>
+                </table>
+                <div id="loading-state" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading transactions...</p>
                 </div>
-                <div id="transactions-empty-state" class="empty-state-container" style="display: none;">
-                    <i class="fas fa-file-invoice-dollar empty-state-icon"></i>
-                    <h3>No transactions yet</h3>
-                    <p>Start tracking your financial journey! You can add transactions even without a bank account - just select "Cash" or "I don't have a bank account yet" when adding your first transaction.</p>
-                    <p><strong>💡 Tip:</strong> Track your cash expenses to build good financial habits!</p>
+                <div id="transactions-empty-state" class="empty-state" style="display: none;">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <h3>No Transactions Found</h3>
+                    <p>Add your first transaction to see it here.</p>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Add Transaction Modal -->
+    <!-- Add/Edit Transaction Modal -->
     <div id="add-transaction-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-plus-circle"></i> Add Transaction</h2>
-                <button class="modal-close-btn">
-                    <i class="fas fa-times"></i>
-                </button>
+                <h2 id="modal-title">Add Transaction</h2>
+                <button class="modal-close-btn">&times;</button>
             </div>
-            <div class="modal-body">
-                <form id="add-transaction-form">
+            <form id="add-transaction-form">
+                <input type="hidden" id="transaction-id" name="id">
+                <div class="form-row">
                     <div class="form-group">
                         <label for="transaction-type">Type</label>
                         <select id="transaction-type" name="type" required>
-                            <option value="income">Income</option>
                             <option value="expense">Expense</option>
+                            <option value="income">Income</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="transaction-amount">Amount</label>
-                        <div class="currency-input-container">
-                            <span class="currency-symbol">₱</span>
-                            <input type="number" id="transaction-amount" name="amount" step="0.01" min="0" required>
-                        </div>
+                        <input type="number" id="transaction-amount" name="amount" placeholder="0.00" required>
                     </div>
-                    <div class="form-group">
-                        <label for="transaction-description">Description</label>
-                        <input type="text" id="transaction-description" name="description" required>
-                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="transaction-description">Description</label>
+                    <input type="text" id="transaction-description" name="description" placeholder="e.g., Coffee with friends" required>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label for="transaction-category">Category</label>
-                        <select id="transaction-category" name="category" required>
-                            <option value="">Select a category</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="transaction-account">Account</label>
-                        <select id="transaction-account" name="account" required>
-                            <option value="">Select an account</option>
-                        </select>
+                        <select id="transaction-category" name="category" required></select>
                     </div>
                     <div class="form-group">
                         <label for="transaction-date">Date</label>
                         <input type="date" id="transaction-date" name="date" required>
                     </div>
-                    <div class="form-group">
-                        <label for="transaction-notes">Notes (Optional)</label>
-                        <textarea id="transaction-notes" name="notes" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-actions">
-                <button class="cancel-button">Cancel</button>
-                <button type="submit" form="add-transaction-form" class="action-button">
-                    <i class="fas fa-plus"></i> Add Transaction
-                </button>
-            </div>
+                </div>
+                <div class="form-group">
+                    <label for="transaction-account">Account</label>
+                    <select id="transaction-account" name="account" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="transaction-notes">Notes (Optional)</label>
+                    <textarea id="transaction-notes" name="notes" rows="3" placeholder="Any extra details..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="cancel-button">Cancel</button>
+                    <button type="submit" class="primary-button" id="form-submit-button">Add Transaction</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Filter Panel -->
-    <div id="filter-panel" class="filter-panel">
-        <div class="filter-header">
-            <h3>Filter Transactions</h3>
-            <button id="close-filter" class="close-filter">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    </div>
+    <!-- Firebase SDK -->
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/11.5.0/firebase-storage.js"></script>
+
+    <!-- App Scripts -->
+    <script type="module" src="../js/config.js"></script>
+    <script type="module" src="../js/firestoredb.js"></script>
+    <script type="module" src="../js/transactions.js" defer></script>
+    <script type="module">
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+        
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const auth = getAuth();
+                signOut(auth).then(() => {
+                    window.location.href = 'login.html';
+                }).catch((error) => {
+                    console.error('Sign out error:', error);
+                    alert('Error signing out.');
+                });
+            });
+        }
+    </script>
 </body>
 </html>
 

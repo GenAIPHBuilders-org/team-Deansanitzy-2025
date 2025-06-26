@@ -4,56 +4,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#060e21">
+    <meta name="theme-color" content="#0d1117">
     <title>My Accounts - Kita-kita Banking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/theme.css">
-    <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/accounts.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="../js/accounts.js" defer></script>
-    <script>
-        // Debug logging for add account button
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🔧 DEBUG: accounts.html DOM loaded');
-            
-            // Add debug listener to the add account button
-            const addAccountBtn = document.getElementById('add-account-button');
-            if (addAccountBtn) {
-                console.log('✅ DEBUG: Add account button found');
-                addAccountBtn.addEventListener('click', () => {
-                    console.log('🎯 DEBUG: Add account button clicked');
-                });
-            } else {
-                console.error('❌ DEBUG: Add account button NOT found');
-            }
-        });
-    </script>
-
 </head>
 
 <body>
-    <!-- Light Effects -->
-    <div class="light light-1"></div>
-    <div class="light light-2"></div>
-    <div class="light light-3"></div>
-
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <div class="dashboard-layout">
-        <!-- Enhanced Header Navigation -->
+    <div class="page-layout">
+        <!-- Header -->
         <header class="header">
             <div class="logo">
-                <i class="fas fa-coins" style="color: var(--primary); font-size: 1.5rem;"></i>
-                <span class="logo-text">Kita-kita</span>
+                <a href="dashboard.html" class="logo-text">Kita-kita</a>
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-                    <li><a href="transactions.html"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
-                    <li><a href="accounts.html" class="active"><i class="fas fa-wallet"></i> Accounts</a></li>
-                    <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
-                    <li><a href="../index.html"><i class="fas fa-home"></i> Home</a></li>
+                    <li><a href="dashboard.html">Dashboard</a></li>
+                    <li><a href="transactions.html">Transactions</a></li>
+                    <li><a href="accounts.html" class="active">Accounts</a></li>
+                    <li><a href="profile.html">Profile</a></li>
+                    <li><a href="#" id="logout-link">Logout</a></li>
                 </ul>
             </nav>
         </header>
@@ -62,12 +38,10 @@
         <main class="main-content">
             <!-- Page Header -->
             <div class="page-header">
-                <h1><i class="fas fa-wallet"></i> My Accounts & Wallets</h1>
-                <div class="header-actions">
-                    <button id="add-account-button" class="primary-button">
-                        <i class="fas fa-plus"></i> Add Account
-                    </button>
-                </div>
+                <h1>My Accounts</h1>
+                <button id="add-account-button" class="primary-button">
+                    <i class="fas fa-plus"></i> Add Account
+                </button>
             </div>
 
             <!-- Account Summary Cards -->
@@ -121,7 +95,7 @@
             </div>
 
             <!-- Accounts Container -->
-            <div class="accounts-container theme-card">
+            <div class="accounts-container">
                 <div class="accounts-grid" id="accounts-grid">
                     <!-- Account cards will be dynamically loaded here -->
                 </div>
@@ -160,7 +134,7 @@
                         <h3>Unable to load accounts</h3>
                         <p class="empty-state-subtitle">Please check your connection and try again</p>
                         <button class="primary-button" onclick="location.reload()">
-                            <i class="fas fa-refresh"></i> Retry
+                            <i class="fas fa-sync-alt"></i> Retry
                         </button>
                     </div>
                 </div>
@@ -174,7 +148,7 @@
             <div class="modal-header">
                 <h2><i class="fas fa-plus-circle"></i> Add New Account</h2>
                 <button class="modal-close-btn" id="close-add-account" aria-label="Close modal">
-                    <i class="fas fa-times"></i>
+                    &times;
                 </button>
             </div>
             
@@ -407,5 +381,22 @@
             </form>
         </div>
     </div>
+    <script type="module">
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+        
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const auth = getAuth();
+                signOut(auth).then(() => {
+                    window.location.href = 'login.html';
+                }).catch((error) => {
+                    console.error('Sign out error:', error);
+                    alert('Error signing out.');
+                });
+            });
+        }
+    </script>
 </body>
 </html>

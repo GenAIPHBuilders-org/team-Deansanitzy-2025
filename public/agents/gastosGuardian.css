@@ -1,15 +1,209 @@
 /* Gastos Guardian AI - Smart Financial Forecasting Styles */
 
-#guardian-dashboard .container {
-    max-width: 1400px;
+/*-Body & Layout--------------------------------------------------*/
+body {
+    background-color: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-.tagline {
-    color: var(--text-secondary);
-    font-size: 1.3rem;
-    max-width: 700px;
-    margin: 0.5rem auto 1rem;
-    font-weight: 400;
+.dashboard-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/*-Header----------------------------------------------------------*/
+.header {
+    background: #161b22;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #f0f6fc;
+    text-decoration: none;
+}
+
+.header-nav-items {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 1.5rem;
+}
+
+.header-nav-items a {
+    color: #8b949e;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease-in-out;
+}
+
+.header-nav-items a:hover,
+.header-nav-items a.active {
+    color: #f0f6fc;
+}
+
+/*-Page Header-----------------------------------------------------*/
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #f0f6fc;
+    margin: 0 0 0.25rem 0;
+}
+
+.page-header p {
+    font-size: 1rem;
+    color: #8b949e;
+    margin: 0;
+}
+
+/*-Loading & Empty States------------------------------------------*/
+.loading-state,
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    margin: 2rem 0;
+    color: #8b949e;
+}
+
+.loading-state p {
+    margin-top: 1rem;
+    color: #f0f6fc;
+    font-size: 1.25rem;
+}
+.empty-state h3 {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    color: #f0f6fc;
+    font-size: 1.25rem;
+}
+
+.empty-state p {
+    margin-bottom: 1.5rem;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #30363d;
+    border-top-color: #2ea043;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+    color: #2ea043;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/*-Content Grid & Cards--------------------------------------------*/
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.dashboard-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-card.chart-card {
+    grid-column: 1 / -1; /* Make chart card span full width */
+}
+
+.dashboard-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #f0f6fc;
+    margin: 0 0 1.5rem 0;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dashboard-card h3 i {
+    color: #2ea043;
+}
+
+.chart-container {
+    height: 300px;
+    position: relative;
+    flex-grow: 1;
+}
+
+.analysis-content {
+    color: #c9d1d9;
+}
+
+.analysis-content p {
+    margin: 0;
+}
+
+/*-Primary Button--------------------------------------------------*/
+.primary-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #2ea043;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+    border: 1px solid #2ea043;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.primary-button:hover {
+    background-color: #38c156;
+}
+
+/*- Responsive -------------------------------------------------*/
+@media (max-width: 768px) {
+    .header, .main-content {
+        padding: 1.5rem;
+    }
 }
 
 /* AI Status Indicator */

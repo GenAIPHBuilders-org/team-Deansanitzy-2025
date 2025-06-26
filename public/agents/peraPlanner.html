@@ -3,243 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Pera Planner - Your AI-powered Filipino financial planning assistant. Get personalized guidance for achieving your financial goals.">
-    <meta name="keywords" content="financial planning, Filipino finance, AI advisor, personal finance, savings goals">
-    <title>Pera Planner - Smart Financial Planning for Filipinos</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Main theme stylesheet -->
+    <title>Pera Planner - Kita-kita</title>
     <link rel="stylesheet" href="../css/theme.css">
-    <!-- Page-specific stylesheet -->
+    <link rel="stylesheet" href="../pages/css/dashboard.css">
     <link rel="stylesheet" href="peraPlanner.css">
 </head>
-
 <body>
-    <!-- Light Effects from theme -->
-    <div class="light light-1"></div>
-    <div class="light light-2"></div>
-    <div class="light light-3"></div>
-
     <div class="dashboard-layout">
-        <!-- Enhanced Header -->
         <header class="header">
             <div class="logo">
                 <a href="../pages/dashboard.html" class="logo-text">Kita-kita</a>
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="../pages/dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                    <li><a href="#" class="active"><i class="fas fa-map-marked-alt"></i> Pera Planner</a></li>
+                    <li><a href="../pages/dashboard.html">Dashboard</a></li>
+                    <li><a href="../pages/transactions.html">Transactions</a></li>
+                    <li><a href="../pages/accounts.html">Accounts</a></li>
+                    <li><a href="../pages/profile.html">Profile</a></li>
+                    <li><a href="#" id="logout-link">Logout</a></li>
                 </ul>
             </nav>
         </header>
 
-        <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Enhanced Hero Section with Value Proposition -->
-            <div class="welcome-banner">
-                <h1><i class="fas fa-map-marked-alt"></i> Pera Planner</h1>
-                <p class="tagline">Your AI-powered financial planning assistant, designed specifically for Filipino financial goals and challenges.</p>
-                <div class="value-props">
-                    <div class="value-prop">
-                        <i class="fas fa-brain"></i>
-                        <span>Smart AI Analysis</span>
-                    </div>
-                    <div class="value-prop">
-                        <i class="fas fa-shield-alt"></i>
-                        <span>Privacy Protected</span>
-                    </div>
-                    <div class="value-prop">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Personalized Growth</span>
+            <div class="page-content">
+                <div class="welcome-banner">
+                    <div class="welcome-content">
+                        <h1>Pera Planner</h1>
+                        <p>Your AI-powered financial planning assistant.</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Planner Dashboard Content -->
-            <section id="planner-dashboard">
-                <!-- Loading State with Progress Indication -->
-                <div id="loading-state" class="loading-container">
+                <div id="loading-state" class="state-container">
                     <div class="loading-spinner"></div>
-                    <h3>Analyzing Your Financial Data</h3>
-                    <p class="loading-message">Our AI is processing your information to create personalized recommendations.</p>
-                    <div class="loading-progress">
-                        <div class="progress-step">
-                            <i class="fas fa-user-shield"></i>
-                            <span>Securing Your Data...</span>
-                        </div>
-                        <div class="progress-step">
-                            <i class="fas fa-calculator"></i>
-                            <span>Analyzing Patterns...</span>
-                        </div>
-                        <div class="progress-step">
-                            <i class="fas fa-lightbulb"></i>
-                            <span>Generating Insights...</span>
-                        </div>
-                    </div>
+                    <p>Building your financial plan...</p>
                 </div>
 
-                <!-- Empty State with Clear Value Proposition -->
-                <div id="empty-state" class="hidden empty-container">
-                    <div class="empty-content">
-                        <span class="empty-icon">🎯</span>
-                        <h2>Start Your Journey to Financial Success</h2>
-                        <p>Let our AI help you achieve your financial goals with personalized guidance tailored to the Filipino context.</p>
-                        <div class="empty-steps">
-                            <div class="empty-step">
-                                <i class="fas fa-wallet"></i>
-                                <div class="step-content">
-                                    <h3>Connect Your Accounts</h3>
-                                    <p>Securely link your accounts for a complete financial picture. Your data stays private and protected.</p>
-                                </div>
-                            </div>
-                            <div class="empty-step">
-                                <i class="fas fa-chart-bar"></i>
-                                <div class="step-content">
-                                    <h3>Track Your Progress</h3>
-                                    <p>Monitor your spending, savings, and investment progress with smart insights.</p>
-                                </div>
-                            </div>
-                            <div class="empty-step">
-                                <i class="fas fa-rocket"></i>
-                                <div class="step-content">
-                                    <h3>Achieve Your Goals</h3>
-                                    <p>Get AI-powered recommendations to reach your financial targets faster.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="empty-actions">
-                            <a href="../pages/accounts.html" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Start Your Journey
-                            </a>
-                            <a href="../pages/learn.html" class="btn btn-secondary">
-                                <i class="fas fa-book"></i> Learn More
-                            </a>
-                        </div>
-                    </div>
+                <div id="empty-state" class="state-container" style="display: none;">
+                    <p>No data available to create a financial plan. Please link accounts or add transactions.</p>
                 </div>
 
-                <!-- Main Content with Enhanced Sections -->
-                <div id="content-state" class="hidden">
-                    <div class="planner-grid">
-                        <!-- Data Quality Indicator -->
-                        <div id="data-quality" class="data-quality-indicator">
-                            <h2><i class="fas fa-chart-pie"></i> Financial Health Score</h2>
-                        </div>
-
-                        <!-- Financial Overview with Context -->
-                        <div id="financial-overview" class="overview-section">
-                            <h2><i class="fas fa-chart-pie"></i> Your Financial Snapshot</h2>
-                            <div class="overview-content">
-                                <div class="overview-cards">
-                                    <div class="overview-card">
-                                        <h3>Total Assets</h3>
-                                        <div class="amount" id="total-balance">₱0.00</div>
-                                    </div>
-                                    <div class="overview-card">
-                                        <h3>Monthly Income</h3>
-                                        <div class="amount" id="monthly-income">₱0.00</div>
-                                    </div>
-                                    <div class="overview-card">
-                                        <h3>Monthly Expenses</h3>
-                                        <div class="amount" id="monthly-expenses">₱0.00</div>
-                                    </div>
-                                    <div class="overview-card">
-                                        <h3>Savings Rate</h3>
-                                        <div class="amount" id="savings-rate">0%</div>
-                                    </div>
-                                </div>
+                <div id="content-state" class="grid-container" style="display: none;">
+                    <div class="grid-item card" id="financial-overview">
+                        <h3>Financial Snapshot</h3>
+                        <div class="overview-cards">
+                            <div class="overview-card">
+                                <h4>Total Assets</h4>
+                                <p id="total-balance">₱0.00</p>
                             </div>
-                        </div>
-
-                        <!-- Smart Goals Section -->
-                        <div id="financial-goals" class="goals-section">
-                            <h2><i class="fas fa-bullseye"></i> Smart Financial Goals</h2>
-                            <div class="goals-content">
-                                <button id="add-goal-btn" class="btn btn-primary">
-                                    <i class="fas fa-plus"></i> Set New Goal
-                                </button>
-                                <div id="goals-list" class="goals-list">
-                                    <!-- Goals dynamically added here -->
-                                </div>
+                            <div class="overview-card">
+                                <h4>Monthly Income</h4>
+                                <p id="monthly-income">₱0.00</p>
                             </div>
-                        </div>
-
-                        <!-- AI Insights Section -->
-                        <div id="ai-insights" class="insights-section">
-                            <h2><i class="fas fa-robot"></i> AI-Powered Insights</h2>
-                            <div class="insights-content">
-                                <!-- Insights dynamically added here -->
+                            <div class="overview-card">
+                                <h4>Monthly Expenses</h4>
+                                <p id="monthly-expenses">₱0.00</p>
                             </div>
-                        </div>
-
-                        <!-- Financial Education -->
-                        <div id="financial-education" class="education-section">
-                            <h2><i class="fas fa-graduation-cap"></i> Learn & Grow</h2>
-                            <div class="education-content">
-                                <!-- Educational content dynamically added here -->
+                            <div class="overview-card">
+                                <h4>Savings Rate</h4>
+                                <p id="savings-rate">0%</p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Footer with Trust Indicators -->
-        <footer class="footer">
-            <div class="trust-indicators">
-                <div class="trust-item">
-                    <i class="fas fa-lock"></i>
-                    <span>Bank-level Security</span>
-                </div>
-                <div class="trust-item">
-                    <i class="fas fa-user-shield"></i>
-                    <span>Privacy First</span>
-                </div>
-                <div class="trust-item">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Data-Driven Insights</span>
+                    <div class="grid-item card" id="financial-goals">
+                        <h3>Your Financial Goals</h3>
+                        <button id="add-goal-btn" class="btn">Set New Goal</button>
+                        <div id="goals-list" class="goals-list">
+                            <!-- Goals will be rendered here by peraPlanner.js -->
+                        </div>
+                    </div>
+                    <div class="grid-item card" id="ai-insights">
+                        <h3>AI-Powered Insights</h3>
+                        <div id="insights-content">
+                            <!-- AI insights will be rendered here -->
+                        </div>
+                    </div>
+                     <div class="grid-item card" id="financial-health">
+                        <h3>Financial Health Score</h3>
+                        <canvas id="health-score-chart"></canvas>
+                        <p id="health-score-summary"></p>
+                    </div>
                 </div>
             </div>
-        </footer>
+        </main>
     </div>
 
-    <!-- Enhanced JavaScript Module -->
-    <script type="module" src="peraPlanner.js"></script>
-    
-    <!-- Accessibility Enhancement -->
-    <div id="accessibility-controls" class="accessibility-panel hidden">
-        <!-- Accessibility controls added here -->
+    <!-- Modal for adding/editing goals -->
+    <div id="goal-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3>Set a New Financial Goal</h3>
+            <form id="goal-form">
+                <input type="hidden" id="goal-id">
+                <div class="form-group">
+                    <label for="goal-name">Goal Name</label>
+                    <input type="text" id="goal-name" placeholder="e.g., Emergency Fund" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-target">Target Amount</label>
+                    <input type="number" id="goal-target" placeholder="e.g., 50000" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-deadline">Target Date</label>
+                    <input type="date" id="goal-deadline" required>
+                </div>
+                <button type="submit" class="btn">Save Goal</button>
+            </form>
+        </div>
     </div>
 
-    <!-- Fallback for browsers that don't support modules -->
-    <script nomodule>
-        alert('Please update your browser to use all features of Pera Planner.');
+
+    <script type="module">
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
+        
+        const logoutLink = document.getElementById('logout-link');
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                const auth = getAuth();
+                signOut(auth).then(() => {
+                    window.location.href = '../pages/login.html';
+                }).catch((error) => {
+                    console.error('Sign out error:', error);
+                    alert('Error signing out.');
+                });
+            });
+        }
     </script>
-
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="loading-container">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h2>Analyzing Your Financial Data</h2>
-            <p>Please wait while we process your information...</p>
-        </div>
-    </div>
-
-    <!-- Error Message -->
-    <div id="error-message" class="error-container" style="display: none;">
-        <div class="error-content">
-            <h2>Oops! Something went wrong</h2>
-            <p>We encountered an error while loading your financial data. Please try refreshing the page or contact support if the problem persists.</p>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div id="content" class="main-container" style="display: none;">
-        <!-- Your existing content here -->
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="peraPlanner.js"></script>
 </body>
 </html>
 

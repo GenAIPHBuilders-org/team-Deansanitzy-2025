@@ -169,7 +169,7 @@ function delay(ms) {
 async function callGeminiAPI(prompt, retries = 3, baseDelay = 1000) {
     for (let attempt = 0; attempt < retries; attempt++) {
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

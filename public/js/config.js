@@ -17,7 +17,7 @@ export const OFFLINE_MODE = false;
 
 // Initialize API key - Replace this with your actual Gemini API key
 export const GEMINI_API_KEY = 'AIzaSyC2OxnjdS9mb-dlypkbQ36EQ72LHX5ZwdI';
-export const GEMINI_MODEL = 'gemini-pro';
+export const GEMINI_MODEL = 'gemini-1.5-flash-latest';
 
 // Helper function to check API configuration
 export function isConfigured() {

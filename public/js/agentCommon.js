@@ -91,7 +91,7 @@ export async function callGeminiAI(prompt, options = {}) {
         throw error;
     }
     
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     
     const body = {
         contents: [{ parts: [{ text: prompt }] }],

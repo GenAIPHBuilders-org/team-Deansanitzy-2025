@@ -134,20 +134,18 @@ class SmartIponCoachAI extends BaseAgent {
             loadingState: document.getElementById('loading-state'),
             contentLoaded: document.getElementById('content-loaded'),
             emptyState: document.getElementById('empty-state'),
-            monthlyValue: document.getElementById('monthly-savings'),
-            savingsRate: document.getElementById('savings-rate'),
+            // Financial Overview
+            monthlySavings: document.getElementById('monthly-savings'),
+            savingsGoalProgress: document.getElementById('savings-goal-progress'),
             potentialSavings: document.getElementById('potential-savings'),
-            emergencyFund: document.getElementById('emergency-fund'),
-            spendingPatterns: document.getElementById('spending-patterns'),
-            categoryAnalysis: document.getElementById('category-analysis'),
-            trendInsights: document.getElementById('trend-insights'),
-            budgetStats: document.getElementById('budget-stats'),
-            budgetCategories: document.getElementById('budget-categories'),
-            budgetRecommendations: document.getElementById('budget-recommendations'),
+            savingsRate: document.getElementById('savings-rate'),
+            // Smart Analysis
+            categorizationContent: document.getElementById('categorization-content'),
+            overspendingContent: document.getElementById('overspending-content'),
+            // Budget Insights
+            budgetContent: document.getElementById('budget-content'),
+            // Smart Alerts
             alertsContent: document.getElementById('alerts-content'),
-            savingsGoals: document.getElementById('savings-goals'),
-            financialHealthScore: document.getElementById('financial-health-score'),
-            financialHealthFactors: document.getElementById('financial-health-factors')
         };
 
         // Validate elements
@@ -182,7 +180,7 @@ class SmartIponCoachAI extends BaseAgent {
         });
 
         // Refresh data
-        const refreshButton = document.querySelector('.refresh-data');
+        const refreshButton = document.querySelector('.btn-icon[title="Refresh"]');
         if (refreshButton) {
             refreshButton.addEventListener('click', () => this.refreshData());
         }
@@ -202,7 +200,10 @@ class SmartIponCoachAI extends BaseAgent {
 
     // Update UI with financial data
     updateFinancialOverview() {
-        if (!this.userTransactions?.length) return;
+        if (!this.userTransactions || !this.userAccounts) return;
+
+        const savingsAnalysis = this.analyzeSavingsPotential();
+        const budgetAnalysis = this.analyzeBudget();
 
         // Calculate monthly values
         const currentDate = new Date();
@@ -225,36 +226,19 @@ class SmartIponCoachAI extends BaseAgent {
         const monthlySavings = monthlyIncome - monthlyExpenses;
         const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome * 100) : 0;
 
-        // Calculate emergency fund
-        const monthlyExpenseAvg = monthlyExpenses || 0;
-        const totalSavings = this.userAccounts
-            ?.filter(a => a.category === 'savings')
-            .reduce((sum, a) => sum + a.balance, 0) || 0;
-        const emergencyFundRatio = monthlyExpenseAvg > 0 ? (totalSavings / (monthlyExpenseAvg * 6) * 100) : 0;
-
         // Update UI elements
-        if (this.elements.monthlyValue) {
-            this.elements.monthlyValue.textContent = `₱${monthlySavings.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-            const trend = document.createElement('div');
-            trend.className = `metric-trend ${monthlySavings > 0 ? 'positive' : 'negative'}`;
-            trend.textContent = `${monthlySavings > 0 ? '+' : ''}${monthlySavings.toLocaleString('en-PH', { minimumFractionDigits: 2 })} from last month`;
-            this.elements.monthlyValue.parentNode.appendChild(trend);
+        if (this.elements.monthlySavings) {
+            this.elements.monthlySavings.textContent = `₱${monthlySavings.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
         }
-
         if (this.elements.savingsRate) {
             this.elements.savingsRate.textContent = `${savingsRate.toFixed(1)}%`;
-            const trend = document.createElement('div');
-            trend.className = `metric-trend ${savingsRate >= 20 ? 'positive' : 'negative'}`;
-            trend.textContent = `${savingsRate >= 20 ? '+' : '-'}${Math.abs(savingsRate - 20).toFixed(1)}% from target`;
-            this.elements.savingsRate.parentNode.appendChild(trend);
         }
-
-        if (this.elements.emergencyFund) {
-            this.elements.emergencyFund.textContent = `${emergencyFundRatio.toFixed(1)}%`;
-            const trend = document.createElement('div');
-            trend.className = `metric-trend ${emergencyFundRatio >= 100 ? 'positive' : 'neutral'}`;
-            trend.textContent = `of 6-month goal`;
-            this.elements.emergencyFund.parentNode.appendChild(trend);
+        if (this.elements.potentialSavings) {
+            this.elements.potentialSavings.textContent = `₱${savingsAnalysis.potentialSavings.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+        }
+        if (this.elements.savingsGoalProgress) {
+            // Placeholder for actual goal progress
+            this.elements.savingsGoalProgress.textContent = 'N/A';
         }
 
         // Initialize savings chart
@@ -438,73 +422,11 @@ class SmartIponCoachAI extends BaseAgent {
 
             // Initialize chart first
             this.initializeSavingsChart();
+            this.updateFinancialOverview();
+            this.updateSmartAnalysisUI();
+            this.updateBudgetInsightsUI();
+            this.updateSmartAlertsUI();
 
-            const features = [
-                {
-                    name: 'Transaction Categorization',
-                    func: async () => {
-                        const prompt = "Analyze and categorize these transactions with Filipino context...";
-                        const result = await this.callGeminiForReasoning(prompt, { transactions: this.userTransactions });
-                        return this.processGeminiResponse(result);
-                    },
-                    fallback: () => this.fallbackCategorization(this.userTransactions),
-                    updateUI: (data) => this.updateCategorizationUI(data)
-                },
-                {
-                    name: 'Spending Pattern Detection',
-                    func: async () => {
-                        const prompt = "Detect spending patterns and potential issues...";
-                        const result = await this.callGeminiForReasoning(prompt, { transactions: this.userTransactions });
-                        return this.processGeminiResponse(result);
-                    },
-                    fallback: () => this.fallbackPatternDetection(this.calculateMonthlySpending()),
-                    updateUI: (data) => this.updateOverspendingUI(data)
-                },
-                {
-                    name: 'Budget Recommendations',
-                    func: async () => {
-                        const prompt = "Generate personalized budget recommendations...";
-                        const result = await this.callGeminiForReasoning(prompt, { 
-                            transactions: this.userTransactions,
-                            accounts: this.userAccounts 
-                        });
-                        return this.processGeminiResponse(result);
-                    },
-                    fallback: () => this.fallbackBudgetRecommendations(this.getFinancialSummary()),
-                    updateUI: (data) => this.updateBudgetUI(data)
-                },
-                {
-                    name: 'Smart Alerts',
-                    func: async () => {
-                        const prompt = "Generate relevant financial alerts and notifications...";
-                        const result = await this.callGeminiForReasoning(prompt, {
-                            transactions: this.userTransactions,
-                            accounts: this.userAccounts
-                        });
-                        return this.processGeminiResponse(result);
-                    },
-                    fallback: async () => await this.generateSmartAlerts(),
-                    updateUI: (data) => this.updateAlertsUI(data)
-                }
-            ];
-
-            // Process features
-            for (const feature of features) {
-                try {
-                    console.log(`Processing ${feature.name}...`);
-                    let data;
-                    try {
-                        data = await feature.func();
-                    } catch (error) {
-                        console.warn(`Failed to process ${feature.name} with AI, using fallback:`, error);
-                        data = await feature.fallback();
-                    }
-                    feature.updateUI(data);
-                } catch (error) {
-                    console.error(`Error in ${feature.name}:`, error);
-                    // Continue with other features even if one fails
-                }
-            }
         } catch (error) {
             console.error("Error in runSmartAnalysis:", error);
             throw error;
@@ -512,6 +434,147 @@ class SmartIponCoachAI extends BaseAgent {
     }
 
     // UI update methods
+    updateSmartAnalysisUI() {
+        if (this.elements.categorizationContent) {
+            this.elements.categorizationContent.innerHTML = this.renderCategorization();
+        }
+        if (this.elements.overspendingContent) {
+            this.elements.overspendingContent.innerHTML = this.renderTransactionPatterns();
+        }
+    }
+
+    renderCategorization() {
+        let content = '';
+        this.categorizedTransactions.forEach((transactions, category) => {
+            const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+            content += `
+                <div class="recommendation-item">
+                    <i class="fas ${this.getCategoryIcon(category)}"></i>
+                    <div class="recommendation-content">
+                        <div class="recommendation-title">${this.formatCategoryName(category)}</div>
+                        <div class="recommendation-desc">Spent ₱${total.toLocaleString('en-PH')} across ${transactions.length} transactions.</div>
+                    </div>
+                </div>
+            `;
+        });
+        return content || '<div class="recommendation-item"><div class="recommendation-content"><div class="recommendation-desc">No transaction categories to show.</div></div></div>';
+    }
+
+    renderTransactionPatterns() {
+        const patterns = this.analyzeTransactionPatterns();
+        let content = '';
+
+        // Outlier spending
+        patterns.amount.forEach((stats, category) => {
+            if (stats.outliers.length > 0) {
+                content += `
+                    <div class="recommendation-item">
+                        <i class="fas fa-search-dollar"></i>
+                        <div class="recommendation-content">
+                            <div class="recommendation-title">Unusual Spending in ${this.formatCategoryName(category)}</div>
+                            <div class="recommendation-desc">We noticed some unusually high spending: ₱${stats.outliers.map(o => o.toLocaleString('en-PH')).join(', ')}.</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // High frequency
+        patterns.frequency.forEach((count, key) => {
+            if (count > 5) { // Arbitrary threshold for "high frequency"
+                const [category, day] = key.split('-');
+                const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                content += `
+                     <div class="recommendation-item">
+                        <i class="fas fa-redo-alt"></i>
+                        <div class="recommendation-content">
+                            <div class="recommendation-title">Frequent Spending</div>
+                            <div class="recommendation-desc">You made ${count} purchases for ${this.formatCategoryName(category)} on ${dayNames[day]}s.</div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        return content || '<div class="recommendation-item"><div class="recommendation-content"><div class="recommendation-desc">No specific spending patterns detected.</div></div></div>';
+    }
+    
+    updateBudgetInsightsUI() {
+        if (!this.elements.budgetContent) return;
+        
+        const budget = this.analyzeBudget();
+        let content = '';
+
+        // Budget breakdown
+        content += `
+            <div class="recommendation-item">
+                <i class="fas fa-chart-pie"></i>
+                <div class="recommendation-content">
+                    <div class="recommendation-title">Your Budget Breakdown</div>
+                    ${Object.entries(budget.actual).map(([category, data]) => `
+                        <div class="recommendation-desc">${this.formatCategoryName(category)}: ₱${data.amount.toLocaleString('en-PH')} (${(data.ratio * 100).toFixed(1)}%)</div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // Suggestions
+        if(budget.suggestions.length > 0) {
+            content += budget.suggestions.map(suggestion => `
+                <div class="recommendation-item">
+                    <i class="fas fa-lightbulb"></i>
+                    <div class="recommendation-content">
+                        <div class="recommendation-title">${suggestion.title}</div>
+                        ${suggestion.tips.map(tip => `<div class="recommendation-desc">- ${tip}</div>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        this.elements.budgetContent.innerHTML = content;
+    }
+
+    updateSmartAlertsUI() {
+        if (!this.elements.alertsContent) return;
+
+        const budget = this.analyzeBudget();
+        let alerts = '';
+
+        // Low balance alerts
+        this.userAccounts.forEach(account => {
+            if (account.balance < 1000) { // Threshold for low balance
+                alerts += this.renderAlert('Low Balance', `Your account "${account.name}" is running low at ₱${account.balance.toLocaleString('en-PH')}.`, 'high');
+            }
+        });
+
+        // Budget warnings
+        budget.warnings.forEach(warning => {
+            alerts += this.renderAlert('Overspending Alert', warning.message, warning.severity);
+        });
+        
+        // Savings opportunities
+        const savings = this.analyzeSavingsPotential();
+        if (savings.potentialSavings > 0) {
+            alerts += this.renderAlert('Savings Opportunity', `You have a potential to save an extra ₱${savings.potentialSavings.toLocaleString('en-PH')} this month!`, 'medium', 'fa-info-circle');
+        }
+
+        this.elements.alertsContent.innerHTML = alerts || this.renderAlert('All Clear!', 'No urgent alerts for you right now.', 'low', 'fa-check-circle');
+    }
+
+    renderAlert(title, desc, priority, icon = 'fa-exclamation-circle') {
+        const priorityClasses = { high: 'severity-high', medium: 'severity-medium', low: 'severity-low' };
+        return `
+            <div class="alert-item ${priorityClasses[priority]}">
+                <i class="fas ${icon} alert-icon"></i>
+                <div class="alert-content">
+                    <div class="alert-title">${title}</div>
+                    <div class="alert-desc">${desc}</div>
+                    <div class="alert-meta">Priority: ${priority.charAt(0).toUpperCase() + priority.slice(1)}</div>
+                </div>
+            </div>
+        `;
+    }
+
     updateOverspendingUI(data) {
         if (!this.elements.spendingPatterns) return;
 
@@ -540,95 +603,6 @@ class SmartIponCoachAI extends BaseAgent {
         });
 
         this.elements.spendingPatterns.innerHTML = content.join('') || 'No spending patterns to analyze';
-    }
-
-    updateBudgetUI(data) {
-        if (!this.elements.budgetContent) return;
-
-        // Calculate total income and expenses
-        const totals = this.userTransactions.reduce((acc, transaction) => {
-            if (transaction.type === 'income') {
-                acc.income += transaction.amount;
-            } else {
-                acc.expenses += Math.abs(transaction.amount);
-            }
-            return acc;
-        }, { income: 0, expenses: 0 });
-
-        // Calculate savings rate
-        const savingsRate = totals.income > 0 ? 
-            ((totals.income - totals.expenses) / totals.income * 100).toFixed(1) : 0;
-
-        const content = `
-            <div class="recommendation-item">
-                <i class="fas fa-piggy-bank"></i>
-                <div class="recommendation-content">
-                    <div class="recommendation-title">Financial Summary</div>
-                    <div class="recommendation-desc">
-                        Total Income: ₱${totals.income.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        <br>Total Expenses: ₱${totals.expenses.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        <br>Savings Rate: ${savingsRate}%
-                    </div>
-                </div>
-            </div>
-            <div class="recommendation-item">
-                <i class="fas fa-chart-pie"></i>
-                <div class="recommendation-content">
-                    <div class="recommendation-title">Budget Recommendation</div>
-                    <div class="recommendation-desc">
-                        Based on the 50/30/20 rule:
-                        <br>Needs (50%): ₱${(totals.income * 0.5).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        <br>Wants (30%): ₱${(totals.income * 0.3).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        <br>Savings (20%): ₱${(totals.income * 0.2).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                    </div>
-                </div>
-            </div>
-        `;
-
-        this.elements.budgetContent.innerHTML = content;
-    }
-
-    updateAlertsUI(data) {
-        if (!this.elements.alertsContent) return;
-
-        const alerts = [];
-
-        // Check for low balance alerts
-        this.userAccounts.forEach(account => {
-            if (account.balance < 1000) {
-                alerts.push(`
-                    <div class="alert-item severity-high">
-                        <i class="fas fa-exclamation-circle alert-icon"></i>
-                        <div class="alert-content">
-                            <div class="alert-title">Low Balance Alert</div>
-                            <div class="alert-desc">Account "${account.name}" has a low balance of ₱${account.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
-                            <div class="alert-meta">Priority: High</div>
-                        </div>
-                    </div>
-                `);
-            }
-        });
-
-        // Check for unusual spending
-        this.spendingPatterns.forEach((pattern, key) => {
-            const [month, category] = key.split('-');
-            const avgPerTransaction = pattern.total / pattern.count;
-            
-            if (avgPerTransaction > 5000) {
-                alerts.push(`
-                    <div class="alert-item severity-medium">
-                        <i class="fas fa-chart-line alert-icon"></i>
-                        <div class="alert-content">
-                            <div class="alert-title">High Spending Alert</div>
-                            <div class="alert-desc">High average spending of ₱${avgPerTransaction.toLocaleString('en-PH', { minimumFractionDigits: 2 })} per transaction in ${category}</div>
-                            <div class="alert-meta">Priority: Medium</div>
-                        </div>
-                    </div>
-                `);
-            }
-        });
-
-        this.elements.alertsContent.innerHTML = alerts.join('') || 'No alerts at this time';
     }
 
     // UI state management
@@ -664,6 +638,11 @@ class SmartIponCoachAI extends BaseAgent {
     async runBasicAnalysis() {
         // Implement basic analysis logic
         console.log("Running basic analysis without AI...");
+        this.processTransactions();
+        this.updateFinancialOverview();
+        this.updateSmartAnalysisUI();
+        this.updateBudgetInsightsUI();
+        this.updateSmartAlertsUI();
     }
 
     // Load user's financial data
@@ -727,8 +706,15 @@ class SmartIponCoachAI extends BaseAgent {
         const description = transaction.name.toLowerCase();
         
         // Check against Filipino category keywords
-        for (const [category, keywords] of Object.entries(this.filipinoCategories)) {
-            if (keywords.keywords.some(keyword => description.includes(keyword))) {
+        for (const category in this.filipinoCategories) {
+            const config = this.filipinoCategories[category];
+            if (config.keywords.some(keyword => description.includes(keyword))) {
+                // Check subcategories for more specific classification
+                for (const subcategory in config.subcategories) {
+                    if (config.subcategories[subcategory].some(keyword => description.includes(keyword))) {
+                        return subcategory;
+                    }
+                }
                 return category;
             }
         }
@@ -974,6 +960,11 @@ class SmartIponCoachAI extends BaseAgent {
 
         // Calculate actual spending by category
         this.categorizedTransactions.forEach((transactions, category) => {
+            // Skip non-expense categories like income and savings
+            if (category === 'income' || category === 'savings' || (this.filipinoCategories[category] && this.filipinoCategories[category].budgetRatio === 0)) {
+                return;
+            }
+            
             const total = transactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
             const ratio = totalIncome > 0 ? total / totalIncome : 0;
             budget.actual[category] = {

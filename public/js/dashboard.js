@@ -26,6 +26,7 @@ const auth = getAuth(app);
 document.addEventListener('DOMContentLoaded', function () {
   // Initialize page navigation
   initializeNavigation();
+  initializeAgentCardNavigation();
 
   // Check if user is logged in
   onAuthStateChanged(auth, async (user) => {
@@ -155,6 +156,18 @@ function initializeNavigation() {
       }
     });
   });
+}
+
+function initializeAgentCardNavigation() {
+    const agentCards = document.querySelectorAll('.ai-agent-card');
+    agentCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const agent = card.getAttribute('data-agent');
+            if (agent) {
+                window.location.href = `../agents/${agent}.html`;
+            }
+        });
+    });
 }
 
 async function updateUserInterface(user) {
