@@ -86,16 +86,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function initializeNavigation() {
   const navLinks = document.querySelectorAll('.header-nav-items a');
+  const headerNav = document.querySelector('.header-nav');
+  const menuToggle = document.getElementById('menu-toggle');
   const pages = document.querySelectorAll('.page-content');
 
+  // Set initial active page
+  const defaultPage = document.getElementById('overview-page');
+  if (defaultPage) {
+    defaultPage.style.display = 'block';
+  }
+
   // Initialize mobile menu toggle
-  const menuToggle = document.getElementById('menu-toggle');
-  const headerMenu = document.querySelector('.header-menu');
-
-  if (menuToggle && headerMenu) {
+  if (menuToggle && headerNav) {
     menuToggle.addEventListener('click', () => {
-      headerMenu.classList.toggle('active');
-
+      headerNav.classList.toggle('active');
+      
       // Toggle icon between bars and times
       const icon = menuToggle.querySelector('i');
       if (icon.classList.contains('fa-bars')) {
@@ -105,21 +110,18 @@ function initializeNavigation() {
       }
     });
 
-    // Close mobile menu when clicking on a link
-    navLinks.forEach(link => {
-      link.addEventListener('click', () => {
-        headerMenu.classList.remove('active');
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!headerNav.contains(e.target) && !menuToggle.contains(e.target) && headerNav.classList.contains('active')) {
+        headerNav.classList.remove('active');
         menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
-      });
+      }
     });
-  } else {
-    console.warn('Mobile menu toggle elements not found - skipping mobile menu initialization');
   }
 
-  // Handle page navigation only for links with data-page attribute
+  // Handle page navigation
   navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
-      // Skip links without data-page attribute (external links)
       const pageId = link.getAttribute('data-page');
       if (!pageId) return;
       
@@ -132,10 +134,25 @@ function initializeNavigation() {
       link.classList.add('active');
 
       // Hide all pages
-      pages.forEach(page => page.style.display = 'none');
+      pages.forEach(page => {
+        if (page) {
+          page.style.display = 'none';
+        }
+      });
 
       // Show selected page
-      document.getElementById(`${pageId}-page`).style.display = 'block';
+      const selectedPage = document.getElementById(`${pageId}-page`);
+      if (selectedPage) {
+        selectedPage.style.display = 'block';
+      }
+
+      // Close mobile menu if open
+      if (headerNav && headerNav.classList.contains('active')) {
+        headerNav.classList.remove('active');
+        if (menuToggle) {
+          menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
+        }
+      }
     });
   });
 }
@@ -235,21 +252,23 @@ async function updateUserInterface(user) {
 
 // Initialize dashboard functionality
 async function initializeDashboard() {
-  // Check authentication state before proceeding
-  const user = auth.currentUser;
-  if (!user) {
-    console.error('User not authenticated');
-    return;
-  }
-
-  // Initialize core components
-  initializeSpendingChart();
-  initializeBankSection();
-  initializeTransactionHistory();
-  initializeBankModalToggles(); // Not async anymore
-  
-  // Initialize financial health section
-  refreshFinancialHealth();
+    try {
+        // Initialize spending chart
+        initializeSpendingChart();
+        
+        // Load transaction data for the chart
+        await loadTransactionData();
+        
+        // Initialize financial health section
+        refreshFinancialHealth();
+        
+        // Initialize chatbot
+        if (typeof initializeChatbot === 'function') {
+            initializeChatbot();
+        }
+    } catch (error) {
+        console.error('Error initializing dashboard:', error);
+    }
 }
 
 function initializeSpendingChart() {
@@ -606,188 +625,7 @@ function initializeBankModalToggles() {
   }
 }
 
-// Update the initializeBankSection function
-async function initializeBankSection() {
-  try {
-    const user = auth.currentUser;
-    if (!user) {
-      console.error('No user logged in');
-      return;
-    }
-
-    // Get bank accounts from Firestore
-    const accounts = await getUserBankAccounts(user.uid);
-    console.log('Loaded accounts from Firestore:', accounts);
-
-    // Update localStorage with the latest data from Firestore
-    if (accounts && accounts.length > 0) {
-      localStorage.setItem('bankAccounts', JSON.stringify(accounts));
-    }
-
-    // Update UI elements
-    const bankCardsGrid = document.querySelector('.bank-cards-grid');
-    const emptyStateContainer = document.querySelector('.empty-state-container');
-
-    if (!accounts || accounts.length === 0) {
-      if (emptyStateContainer) emptyStateContainer.style.display = 'block';
-      if (bankCardsGrid) bankCardsGrid.style.display = 'none';
-    } else {
-      if (emptyStateContainer) emptyStateContainer.style.display = 'none';
-      if (bankCardsGrid) bankCardsGrid.style.display = 'grid';
-    }
-
-    // Initialize form toggles
-    initializeInputFormatting();
-    initializeBankModalToggles();
-
-    // Render bank cards
-    await renderBankCards();
-
-  } catch (error) {
-    console.error('Error initializing bank section:', error);
-  }
-}
-
-function initializeInputFormatting() {
-  // Format card number input
-  const cardInput = document.getElementById('card-number');
-  if (cardInput) {
-    cardInput.addEventListener('input', (e) => {
-      let value = e.target.value.replace(/\D/g, '');
-      e.target.value = value;
-    });
-  }
-}
-
-async function renderBankCards() {
-  try {
-    const user = auth.currentUser;
-    if (!user) {
-      console.error('No user logged in');
-      return;
-    }
-
-    const bankCardsGrid = document.querySelector('.bank-cards-grid');
-    const bankAccounts = await getUserBankAccounts(user.uid);
-
-    // Currency symbols mapping
-    const currencySymbols = {
-      'PHP': '₱'
-    };
-
-    let cardsHTML = bankAccounts.map(account => {
-      const isEwallet = account.accountType === 'ewallet';
-      const currencySymbol = currencySymbols[account.currency] || '₱';
-
-      return `
-                <div class="bank-card ${isEwallet ? 'ewallet-card' : ''}" data-id="${account.id}">
-                    <div class="card-type">
-                        <i class="fas ${isEwallet ? 'fa-wallet' : 'fa-credit-card'}"></i>
-                        <span>${account.currency}</span>
-                    </div>
-                    <h3>${account.accountName}</h3>
-                    <div class="card-number">${isEwallet ? 'Account ID: ' : ''}**** **** **** ${account.cardNumber.slice(-4)}</div>
-                    <div class="card-name">${account.cardName}</div>
-                    <div class="balance">₱${account.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    <button class="delete-account-btn" data-id="${account.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `;
-    }).join('');
-
-    // Add the "Add New Account" card
-    cardsHTML += `
-            <div class="bank-card add-card" id="add-card-button">
-                <div class="add-card-content">
-                    <i class="fas fa-plus"></i>
-                    <p>Add New Account</p>
-                </div>
-            </div>
-        `;
-
-    bankCardsGrid.innerHTML = cardsHTML;
-    bankCardsGrid.style.display = 'grid';
-
-    // Add event listeners
-    const addCardButton = document.getElementById('add-card-button');
-    if (addCardButton) {
-      addCardButton.addEventListener('click', () => {
-        const modal = document.getElementById('add-bank-modal');
-        if (modal) {
-          modal.style.display = 'block';
-        }
-      });
-    }
-
-    // Add event listeners for delete buttons
-    document.querySelectorAll('.delete-account-btn').forEach(button => {
-      button.addEventListener('click', async (e) => {
-        e.stopPropagation(); // Prevent event bubbling
-        const accountId = button.dataset.id;
-        if (confirm('Are you sure you want to delete this account?')) {
-          try {
-            await deleteAccount(accountId);
-            alert('Account deleted successfully');
-          } catch (error) {
-            console.error('Error in delete handler:', error);
-            alert('Failed to delete account. Please try again.');
-          }
-        }
-      });
-    });
-
-    // Update summary
-    updateBalanceSummary();
-  } catch (error) {
-    console.error('Error rendering bank cards:', error);
-  }
-}
-
-function showSecurityModal(accountId) {
-  const securityModal = document.getElementById('security-modal');
-  securityModal.style.display = 'block';
-
-  document.getElementById('verify-button').onclick = async function () {
-    const password = document.getElementById('security-password').value;
-    const cardId = document.getElementById('security-modal').dataset.cardId;
-
-    try {
-      // Verify password with Firebase Auth
-      const user = auth.currentUser;
-      const credential = EmailAuthProvider.credential(user.email, password);
-      await reauthenticateWithCredential(user, credential);
-
-      // If successful, show the details
-      const bankCard = document.querySelector(`.bank-card[data-id="${cardId}"]`);
-      // Show full card details here
-      // You can implement the details display logic
-
-      document.getElementById('security-modal').style.display = 'none';
-      document.getElementById('security-password').value = '';
-    } catch (error) {
-      alert('Invalid password. Please try again.');
-    }
-  };
-
-  document.getElementById('cancel-verification').onclick = () => {
-    securityModal.style.display = 'none';
-    document.getElementById('security-password').value = '';
-  };
-}
-
-function showAccountDetails(accountId) {
-  const bankAccounts = JSON.parse(localStorage.getItem('bankAccounts')) || [];
-  const account = bankAccounts.find(acc => acc.id === parseInt(accountId));
-
-  if (account) {
-    alert(`
-Full Card Number: ${account.cardNumber}
-Account Name: ${account.cardName}
-Balance: ₱${parseFloat(account.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        `);
-  }
-}
+// Bank-related functions have been removed as they are now handled in accounts.html
 
 // Add this CSS to fix the grid layout
 document.head.insertAdjacentHTML('beforeend', `

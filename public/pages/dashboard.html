@@ -117,15 +117,16 @@
             margin: 0;
             padding: 0;
             width: 100%;
-            overflow-x: hidden;
+            height: 100%;
             font-family: 'Poppins', sans-serif;
             background-color: #060e21;
+            overflow-x: hidden;
         }
         
         body {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            min-height: 100vh;
         }
         
         .dashboard-layout {
@@ -133,8 +134,7 @@
             flex-direction: column;
             min-height: 100vh;
             width: 100%;
-            max-width: 100vw;
-            overflow-x: hidden;
+            position: relative;
         }
         
         .main-content {
@@ -142,12 +142,14 @@
             width: 100%;
             max-width: 1400px;
             margin: 0 auto;
-            padding: 1rem 2rem;
+            padding: 2rem;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
+            overflow-y: auto;
+            position: relative;
         }
         
         .page-content {
@@ -159,14 +161,37 @@
             align-items: center;
         }
         
-        /* Hide content until fully loaded to prevent shift */
-        .main-content {
-            opacity: 0;
-            transition: opacity 0.3s ease;
+        /* Loading State */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
         }
-        
-        .main-content.loaded {
-            opacity: 1;
+
+        .loading-state .pulse-loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(16, 223, 111, 0.3);
+            border-top-color: var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .loading-state p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
         }
     </style>
     
@@ -226,9 +251,31 @@
         }
 
         .welcome-content p {
-            margin: 0;
+            margin: 0 0 1rem 0;
             color: rgba(255, 255, 255, 0.7);
             font-size: clamp(0.9rem, 2vw, 1.1rem);
+        }
+
+        .welcome-balance {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .welcome-balance .balance-label {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-balance .balance-value {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            color: var(--primary-green);
+            text-shadow: 0 2px 4px rgba(16, 223, 111, 0.2);
         }
 
         /* AI Agents Section - Responsive Grid */
@@ -483,18 +530,18 @@
         .dashboard-card {
             background: rgba(30, 40, 60, 0.6);
             border-radius: 15px;
-            padding: 0;
+            padding: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s ease;
             width: 100%;
             max-width: 1200px;
             overflow: hidden;
-            margin: 0 auto;
+            margin: 0 auto 2rem auto;
         }
 
         .dashboard-card h2 {
-            margin: 0;
-            padding: 1.5rem 1.5rem 0 1.5rem;
+            margin: 0 0 1.5rem 0;
+            padding: 0;
             font-size: 1.3rem;
             color: rgba(255, 255, 255, 0.9);
             display: flex;
@@ -509,36 +556,6 @@
 
         .financial-health-content {
             width: 100%;
-        }
-
-        /* Loading State Styles */
-        .loading-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 3rem 2rem;
-            text-align: center;
-        }
-
-        .pulse-loader {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(16, 223, 111, 0.3);
-            border-radius: 50%;
-            border-top-color: #10df6f;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-
-        .loading-state p {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1rem;
-            margin: 0;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
         }
 
         /* Enhanced Responsive Design for Different Screen Sizes */
@@ -927,6 +944,72 @@
             border: 1px solid var(--glass-border);
             box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
         }
+
+        /* Spending Chart Styles */
+        .spending-chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: rgba(20, 30, 50, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .spending-chart-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .chart-loading-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+        }
+
+        .chart-loading-state.active {
+            display: block;
+        }
+
+        .chart-loading-state .pulse-loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(16, 223, 111, 0.3);
+            border-top-color: var(--primary-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        .chart-loading-state p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Recent Transactions Widget Styles - REMOVE START */
+        .card-header,
+        .view-all-link,
+        .transactions-container,
+        .transactions-list,
+        .transaction-item,
+        .transaction-icon,
+        .transaction-details,
+        .transaction-title,
+        .transaction-meta,
+        .transaction-amount,
+        .no-transactions-message,
+        .primary-button {
+            display: none;
+        }
+        /* Recent Transactions Widget Styles - REMOVE END */
     </style>
 </head>
 
@@ -940,22 +1023,20 @@
         <!-- Enhanced Header Navigation -->
         <header class="header">
             <div class="logo">
-                <i class="fas fa-coins" style="color: var(--primary-green); font-size: 1.5rem;"></i>
+                <i class="fas fa-coins" style="color: var(--primary); font-size: 1.5rem;"></i>
                 <span class="logo-text">Kita-kita</span>
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="dashboard.html" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="dashboard.html" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                     <li><a href="transactions.html"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
                     <li><a href="accounts.html"><i class="fas fa-wallet"></i> Accounts</a></li>
                     <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
                     <li><a href="../index.html"><i class="fas fa-home"></i> Home</a></li>
-                    <li><a href="#" id="logout-button" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
                 </ul>
             </nav>
         </header>
-
-        <!-- Main Content Area -->
+        <!-- Main Content -->
         <main class="main-content">
             <script>
                 // Immediately show content to prevent any flash
@@ -968,6 +1049,10 @@
                     <div class="welcome-content">
                         <h1>Welcome, <span id="welcomeUsername">Loading...</span>!</h1>
                         <p>Your financial dashboard is ready.</p>
+                        <div class="welcome-balance">
+                            <span class="balance-label">Total Balance:</span>
+                            <span id="welcome-balance-amount" class="balance-value">₱0.00</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1098,6 +1183,18 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Spending Overview Widget -->
+                    <div class="dashboard-card">
+                        <h2><i class="fas fa-chart-pie"></i> Spending Overview</h2>
+                        <div class="spending-chart-container">
+                            <canvas id="spendingChart"></canvas>
+                            <div class="chart-loading-state">
+                                <div class="pulse-loader"></div>
+                                <p>Loading spending data...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1172,31 +1269,12 @@
             // Logout button handler
             const logoutButton = document.getElementById('logout-button');
             if (logoutButton) {
-                logoutButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    console.log('🔐 Logout button clicked');
-                    
-                    // Clear storage
-                    if (typeof secureStorage !== 'undefined' && secureStorage.clearAll) {
-                        secureStorage.clearAll();
-                    }
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    
-                    // Sign out from Firebase
-                    if (window.auth) {
-                        import("https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js")
-                            .then(({ signOut }) => {
-                                signOut(window.auth).then(() => {
-                                    console.log('✅ Firebase logout successful');
-                                    window.location.href = "login.html";
-                                }).catch((error) => {
-                                    console.error('❌ Firebase logout error:', error);
-                                    window.location.href = "login.html";
-                                });
-                            });
-                    } else {
-                        console.log('⚠️ Firebase not available, redirecting to login');
+                logoutButton.addEventListener('click', async function() {
+                    try {
+                        await window.auth.signOut();
+                        window.location.href = "login.html";
+                    } catch (error) {
+                        console.error('Logout error:', error);
                         window.location.href = "login.html";
                     }
                 });
