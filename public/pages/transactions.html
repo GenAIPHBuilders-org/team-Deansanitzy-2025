@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#060e21">
     <title>Transactions - Kita-kita Banking</title>
     <link rel="stylesheet" href="../css/theme.css">
-    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/chatbot.css">
     <link rel="stylesheet" href="css/transactions.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script type="module" src="../js/transactions.js" defer></script>
@@ -40,7 +40,128 @@
             font-weight: bold;
         }
 
-        /* Remove conflicting styles - using theme.css navigation styling */
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--background);
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 8px;
+            background: var(--background);
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast i {
+            font-size: 1.2rem;
+        }
+
+        .toast-success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast-error {
+            border-left: 4px solid var(--error);
+        }
+
+        .toast-info {
+            border-left: 4px solid var(--primary);
+        }
+
+        /* Loading state */
+        .loading-state {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Filter panel */
+        .filter-panel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 300px;
+            height: 100vh;
+            background: var(--background);
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1500;
+        }
+
+        .filter-panel.show {
+            right: 0;
+        }
+
+        .filter-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-filter {
+            background: none;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        .close-filter:hover {
+            color: var(--primary);
+        }
     </style>
 </head>
 
@@ -54,12 +175,12 @@
         <!-- Enhanced Header Navigation -->
         <header class="header">
             <div class="logo">
-                <i class="fas fa-coins" style="color: var(--primary-green); font-size: 1.5rem;"></i>
+                <i class="fas fa-coins" style="color: var(--primary); font-size: 1.5rem;"></i>
                 <span class="logo-text">Kita-kita</span>
             </div>
             <nav class="header-nav">
                 <ul class="header-nav-items">
-                    <li><a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
                     <li><a href="transactions.html" class="active"><i class="fas fa-exchange-alt"></i> Transactions</a></li>
                     <li><a href="accounts.html"><i class="fas fa-wallet"></i> Accounts</a></li>
                     <li><a href="profile.html"><i class="fas fa-user"></i> Profile</a></li>
@@ -83,31 +204,48 @@
             </div>
             
             <div class="transactions-container">
-                <table class="transactions-table">
-                    <thead>
-                        <tr>
-                            <th>Transaction</th>
-                            <th>Amount</th>
-                            <th>Type</th>
-                            <th>Date</th>
-                            <th>Account</th>
-                            <th>Category</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="transactions-table-body">
-                        <!-- Transactions will be dynamically loaded here -->
-                    </tbody>
-                </table>
+                <div class="transactions-table">
+                    <div class="table-header">
+                        <h2>Recent Transactions</h2>
+                        <div class="header-actions">
+                            <button id="add-transaction-btn" class="action-button">
+                                <i class="fas fa-plus"></i> Add Transaction
+                            </button>
+                            <button id="filter-button" class="filter-button">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                    <th>Account</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-table-body">
+                                <!-- Loading State -->
+                                <tr>
+                                    <td colspan="7" class="loading-state">
+                                        <div class="loading-spinner"></div>
+                                        <p>Loading transactions...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <div id="transactions-empty-state" class="empty-state-container" style="display: none;">
                     <i class="fas fa-file-invoice-dollar empty-state-icon"></i>
                     <h3>No transactions yet</h3>
                     <p>Start tracking your financial journey! You can add transactions even without a bank account - just select "Cash" or "I don't have a bank account yet" when adding your first transaction.</p>
                     <p><strong>💡 Tip:</strong> Track your cash expenses to build good financial habits!</p>
-                </div>
-                 <div id="transactions-loading-state" class="loading-state-container">
-                    <div class="loading-spinner"></div>
-                    <p>Loading transactions...</p>
                 </div>
             </div>
         </main>
@@ -115,85 +253,71 @@
 
     <!-- Add Transaction Modal -->
     <div id="add-transaction-modal" class="modal">
-        <div class="modal-content wider-modal">
+        <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-plus-circle"></i> Add New Transaction</h2>
-                <button class="modal-close-btn" id="close-add-transaction">×</button>
+                <h2><i class="fas fa-plus-circle"></i> Add Transaction</h2>
+                <button class="modal-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <form id="add-transaction-form">
-                <div class="form-group">
-                    <label for="transaction-name">Transaction Name</label>
-                    <input type="text" id="transaction-name" placeholder="e.g., Groceries, Salary" required>
-                </div>
-                <div class="form-row">
+            <div class="modal-body">
+                <form id="add-transaction-form">
+                    <div class="form-group">
+                        <label for="transaction-type">Type</label>
+                        <select id="transaction-type" name="type" required>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="transaction-amount">Amount</label>
                         <div class="currency-input-container">
-                            <span>₱</span>
-                            <input type="number" id="transaction-amount" step="0.01" placeholder="0.00" required>
+                            <span class="currency-symbol">₱</span>
+                            <input type="number" id="transaction-amount" name="amount" step="0.01" min="0" required>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="transaction-type">Type</label>
-                        <select id="transaction-type" required>
-                            <option value="expense">Expense</option>
-                            <option value="income">Income</option>
+                        <label for="transaction-description">Description</label>
+                        <input type="text" id="transaction-description" name="description" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="transaction-category">Category</label>
+                        <select id="transaction-category" name="category" required>
+                            <option value="">Select a category</option>
                         </select>
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label for="transaction-account">Account</label>
-                        <select id="transaction-account" required>
-                            <option value="">-- Select Account --</option>
+                        <select id="transaction-account" name="account" required>
+                            <option value="">Select an account</option>
                         </select>
-                        <small class="form-help-text">
-                            <i class="fas fa-info-circle"></i>
-                            Don't have a bank account? No problem! You can still track your cash transactions.
-                        </small>
                     </div>
                     <div class="form-group">
                         <label for="transaction-date">Date</label>
-                        <input type="date" id="transaction-date" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="transaction-category">Category</label>
-                        <select id="transaction-category" required>
-                            <option value="food">Food & Drink</option>
-                            <option value="shopping">Shopping</option>
-                            <option value="bills">Bills & Utilities</option>
-                            <option value="transportation">Transportation</option>
-                            <option value="entertainment">Entertainment</option>
-                            <option value="health">Health</option>
-                            <option value="housing">Housing</option>
-                            <option value="education">Education</option>
-                            <option value="income">Income</option>
-                            <option value="other">Other</option>
-                        </select>
+                        <input type="date" id="transaction-date" name="date" required>
                     </div>
                     <div class="form-group">
-                        <label for="transaction-channel">Channel</label>
-                        <select id="transaction-channel" required>
-                            <option value="online">Online</option>
-                            <option value="in-store">In Store</option>
-                            <option value="transfer">Bank Transfer</option>
-                            <option value="mobile">Mobile App</option>
-                            <option value="atm">ATM</option>
-                            <option value="other">Other</option>
-                        </select>
+                        <label for="transaction-notes">Notes (Optional)</label>
+                        <textarea id="transaction-notes" name="notes" rows="3"></textarea>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="transaction-notes">Notes (Optional)</label>
-                    <textarea id="transaction-notes" rows="2" placeholder="Add a short note..."></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button type="submit" class="action-button">Add Transaction</button>
-                    <button type="button" class="cancel-button" id="cancel-add-transaction">Cancel</button>
-                </div>
-            </form>
+                </form>
+            </div>
+            <div class="modal-actions">
+                <button class="cancel-button">Cancel</button>
+                <button type="submit" form="add-transaction-form" class="action-button">
+                    <i class="fas fa-plus"></i> Add Transaction
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="filter-panel" class="filter-panel">
+        <div class="filter-header">
+            <h3>Filter Transactions</h3>
+            <button id="close-filter" class="close-filter">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     </div>
 </body>

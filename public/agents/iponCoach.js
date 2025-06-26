@@ -5,7 +5,16 @@
 
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { BaseAgent } from "./BaseAgent.js";
-import { GEMINI_API_KEY, GEMINI_MODEL } from "../js/config.js";
+import { GEMINI_API_KEY, GEMINI_MODEL, OFFLINE_MODE, configStatus } from "../js/config.js";
+
+// Add rate limiting configuration
+const API_CONFIG = {
+    MAX_RETRIES: 3,
+    RETRY_DELAY: 1000,
+    RATE_LIMIT_WINDOW: 60000, // 1 minute
+    MAX_REQUESTS_PER_WINDOW: 10,
+    BACKOFF_MULTIPLIER: 1.5
+};
 
 class SmartIponCoachAI extends BaseAgent {
     constructor() {
@@ -13,12 +22,18 @@ class SmartIponCoachAI extends BaseAgent {
             autonomyLevel: 'high',
             planningHorizon: 'long_term',
             learningRate: 0.4,
-            riskTolerance: 'adaptive'
+            riskTolerance: 'adaptive',
+            geminiApiKey: GEMINI_API_KEY,
+            geminiModel: GEMINI_MODEL,
+            offlineMode: OFFLINE_MODE
         });
         
         // AI Configuration
-        this.geminiApiKey = GEMINI_API_KEY || 'AIzaSyCdyWLIr2dJmtPJ8eBXdj7nYNNz3cjMfFo';
-        this.geminiModel = GEMINI_MODEL || 'gemini-1.5-flash';
+        this.offlineMode = OFFLINE_MODE;
+        
+        // Batch processing configuration
+        this.BATCH_SIZE = 10;
+        this.CONCURRENT_REQUESTS = 3;
         
         // Smart Features State
         this.categorizedTransactions = new Map();
@@ -38,6 +53,11 @@ class SmartIponCoachAI extends BaseAgent {
             'education': ['tuition', 'school', 'books', 'supplies'],
             'remittance': ['padala', 'family', 'pamilya', 'utang', 'loan']
         };
+        
+        // Add rate limiting state
+        this.requestCount = 0;
+        this.lastRequestTime = 0;
+        this.requestQueue = [];
         
         this.initializeElements();
         this.initializeEventListeners();
@@ -75,7 +95,13 @@ class SmartIponCoachAI extends BaseAgent {
             console.log("🧠 Starting Smart Ipon Coach AI...");
             this.showLoadingState();
             
-            // Wait for authentication
+            // Check if config is properly loaded
+            if (!this.geminiApiKey && !this.offlineMode) {
+                console.warn("No API key configured - switching to offline mode");
+                this.offlineMode = true;
+            }
+            
+            // Wait for user authentication
             await this.waitForAuth();
             
             if (!this.currentUser) {
@@ -83,35 +109,23 @@ class SmartIponCoachAI extends BaseAgent {
                 return;
             }
 
-            // Initialize BaseAgent and load data
-            try {
-                await this.waitForInitialization();
-                if (this.initialized) {
-                    await this.loadUserFinancialData();
-                }
-            } catch (error) {
-                console.warn("BaseAgent initialization failed, loading data manually:", error);
-                await this.loadUserFinancialDataFallback();
-            }
-            
-            // Ensure arrays are initialized
-            if (!this.userTransactions) this.userTransactions = [];
-            if (!this.userAccounts) this.userAccounts = [];
-            
-            console.log("📊 Smart AI Data check:", {
-                transactions: this.userTransactions.length,
-                accounts: this.userAccounts.length
-            });
+            // Initialize and load data
+            await this.waitForInitialization();
+            await this.loadUserFinancialData();
             
             // Check if we have data
-            if (this.userTransactions.length === 0 && this.userAccounts.length === 0) {
-                console.log("⚠️ No financial data found, showing empty state");
-                this.showEmptyState();
+            if (!this.userTransactions?.length && !this.userAccounts?.length) {
+                this.showEmptyState("No financial data found. Please add some transactions to get started.");
                 return;
             }
 
-            // Run Smart AI Analysis
-            await this.runSmartAnalysis();
+            // Run analysis in offline mode if API is not available
+            if (this.offlineMode) {
+                console.log("Running in offline mode - using basic analysis");
+                await this.runBasicAnalysis();
+            } else {
+                await this.runSmartAnalysis();
+            }
             
             this.showContentState();
             console.log("✅ Smart Ipon Coach AI initialized successfully");
@@ -119,6 +133,10 @@ class SmartIponCoachAI extends BaseAgent {
         } catch (error) {
             console.error("❌ Error starting Smart Ipon Coach AI:", error);
             this.showErrorMessage("Failed to initialize smart AI coach. Please try again.");
+            // Show content in offline mode as fallback
+            this.offlineMode = true;
+            await this.runBasicAnalysis();
+            this.showContentState();
         }
     }
 
@@ -153,31 +171,70 @@ class SmartIponCoachAI extends BaseAgent {
         return this.initialized;
     }
 
-    // Run comprehensive smart analysis
+    // Run comprehensive smart analysis with batching
     async runSmartAnalysis() {
-        try {
-            console.log("🧠 Running Smart AI Analysis...");
+        console.log("🧠 Running Smart AI Analysis...");
 
-            // Run all smart features in parallel
-            const analysisPromises = [
-                this.categorizeTransactions(),
-                this.detectOverspendingPatterns(),
-                this.generateBudgetRecommendations(),
-                this.setupSmartAlerts()
-            ];
+        const features = [
+            {
+                name: 'Transaction Categorization',
+                func: async () => await this.categorizeTransactions(),
+                fallback: () => this.fallbackCategorization(this.userTransactions),
+                updateUI: (data) => this.updateCategorizationUI(data)
+            },
+            {
+                name: 'Spending Pattern Detection',
+                func: async () => await this.detectOverspendingPatterns(),
+                fallback: () => this.fallbackPatternDetection(this.calculateMonthlySpending()),
+                updateUI: (data) => this.updateOverspendingUI(data)
+            },
+            {
+                name: 'Budget Recommendations',
+                func: async () => await this.generateBudgetRecommendations(),
+                fallback: () => this.fallbackBudgetRecommendations(this.getFinancialSummary()),
+                updateUI: (data) => this.updateBudgetUI(data)
+            },
+            {
+                name: 'Smart Alerts',
+                func: async () => await this.setupSmartAlerts(),
+                fallback: async () => await this.generateSmartAlerts(),
+                updateUI: (data) => this.updateAlertsUI(data)
+            }
+        ];
 
-            await Promise.all(analysisPromises);
-
-            // Log autonomous analysis completion
-            console.log("✅ Autonomous financial analysis completed successfully");
-
-        } catch (error) {
-            console.error("❌ Smart analysis failed:", error);
-            this.showErrorMessage("Failed to run smart analysis.");
+        for (const feature of features) {
+            try {
+                console.log(`Running ${feature.name}...`);
+                const result = await feature.func();
+                feature.updateUI(result);
+                console.log(`✅ ${feature.name} completed successfully`);
+            } catch (error) {
+                console.warn(`${feature.name} failed, using fallback:`, error);
+                const fallbackResult = await feature.fallback();
+                feature.updateUI(fallbackResult);
+            }
         }
+
+        console.log("✅ Financial analysis completed");
     }
 
-    // 1. Smart Transaction Categorization
+    // Process transactions in batches
+    async processBatch(transactions, processor) {
+        const results = [];
+        for (let i = 0; i < transactions.length; i += this.BATCH_SIZE) {
+            const batch = transactions.slice(i, i + this.BATCH_SIZE);
+            const batchResults = await processor(batch);
+            results.push(...batchResults);
+            
+            // Add a small delay between batches to help prevent rate limiting
+            if (i + this.BATCH_SIZE < transactions.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        return results;
+    }
+
+    // Smart Transaction Categorization with batching
     async categorizeTransactions() {
         try {
             console.log("🏷️ Starting smart transaction categorization...");
@@ -187,7 +244,6 @@ class SmartIponCoachAI extends BaseAgent {
                 return;
             }
 
-            // Prepare transactions for AI analysis
             const recentTransactions = this.userTransactions
                 .slice(-50) // Last 50 transactions for efficiency
                 .filter(tx => tx.type === 'expense')
@@ -199,104 +255,61 @@ class SmartIponCoachAI extends BaseAgent {
                     currentCategory: tx.category || 'Uncategorized'
                 }));
 
-            if (recentTransactions.length === 0) {
-                this.updateCategorizationUI([]);
-                return;
-            }
+            // Process transactions in smaller batches
+            const categorizedTransactions = await this.processBatch(
+                recentTransactions,
+                this.aiCategorizeTransactions.bind(this)
+            );
 
-            const categorizedData = await this.aiCategorizeTransactions(recentTransactions);
+            this.updateCategorizationUI(categorizedTransactions);
             
-            // Store categorized transactions
-            categorizedData.forEach(item => {
-                this.categorizedTransactions.set(item.id, item);
-            });
-
-            // Update UI
-            this.updateCategorizationUI(categorizedData);
-            
-            console.log("✅ Transaction categorization completed");
-
         } catch (error) {
-            console.error("❌ Transaction categorization failed:", error);
-            this.updateCategorizationUI([]);
+            console.error("❌ Categorization failed:", error);
+            // Fallback to basic categorization
+            const fallbackCategories = this.fallbackCategorization(this.userTransactions);
+            this.updateCategorizationUI(fallbackCategories);
         }
     }
 
-    // AI-powered transaction categorization
+    // AI-powered transaction categorization with rate limiting
     async aiCategorizeTransactions(transactions) {
         try {
-            const prompt = `As a Filipino financial advisor AI, categorize these transactions into appropriate categories. Consider Filipino spending patterns and common Filipino terms.
+            const prompt = `Please analyze and categorize these financial transactions into appropriate categories. For each transaction, consider the description and amount. Return the results in a clear, structured format.
 
-Transactions to categorize:
-${JSON.stringify(transactions, null, 2)}
+Transaction details:
+${JSON.stringify(transactions.map(tx => ({
+    description: tx.description || tx.notes || 'Unknown',
+    amount: tx.amount || 0,
+    date: tx.date
+})), null, 2)}
 
-Available categories: Food, Transport, Utilities, Rent, Entertainment, Health, Education, Shopping, Remittance, Others
+Available categories: ${Object.keys(this.filipinoCategories).join(', ')}
 
-For each transaction, provide:
-1. Most appropriate category
-2. Confidence level (0-100)
-3. Reasoning based on description
-4. Suggested Filipino subcategory if applicable
-
-Return as JSON array:
-[
-  {
-    "id": "transaction_id",
-    "originalDescription": "description",
-    "suggestedCategory": "category",
-    "confidence": 85,
-    "reasoning": "explanation",
-    "subcategory": "filipino_term",
-    "amount": amount
-  }
-]
-
-Focus on Filipino context (jeepney = transport, palengke = food, etc.)`;
-
+Please return the results in this JSON format:
+{
+    "categories": ["category1", "category2", ...],
+    "confidence": [0.95, 0.85, ...],
+    "reasoning": ["reason1", "reason2", ...]
+}`;
+            
             const response = await this.callGeminiAPI(prompt);
             
-            try {
-                const categorized = JSON.parse(response);
-                return Array.isArray(categorized) ? categorized : [];
-            } catch (parseError) {
-                console.warn("Failed to parse AI categorization response, using fallback");
+            if (!response || typeof response !== 'object') {
+                console.warn("Invalid AI response, using fallback categorization");
                 return this.fallbackCategorization(transactions);
             }
 
+            return transactions.map((tx, index) => ({
+                ...tx,
+                category: response.categories?.[index] || tx.currentCategory || 'Other',
+                confidence: response.confidence?.[index] || 0.5,
+                reasoning: response.reasoning?.[index] || 'Fallback categorization'
+            }));
+            
         } catch (error) {
-            console.error("AI categorization failed:", error);
+            console.warn("AI categorization failed, using fallback:", error);
             return this.fallbackCategorization(transactions);
         }
-    }
-
-    // Fallback categorization using keyword matching
-    fallbackCategorization(transactions) {
-        return transactions.map(tx => {
-            const description = (tx.description || '').toLowerCase();
-            let suggestedCategory = 'Others';
-            let confidence = 60;
-            let subcategory = '';
-
-            // Simple keyword matching
-            for (const [category, keywords] of Object.entries(this.filipinoCategories)) {
-                if (keywords.some(keyword => description.includes(keyword.toLowerCase()))) {
-                    suggestedCategory = category.charAt(0).toUpperCase() + category.slice(1);
-                    confidence = 75;
-                    subcategory = keywords.find(k => description.includes(k.toLowerCase())) || '';
-                    break;
-                }
-            }
-
-            return {
-                id: tx.id,
-                originalDescription: tx.description,
-                suggestedCategory,
-                confidence,
-                reasoning: `Keyword-based matching: "${subcategory}"`,
-                subcategory,
-                amount: tx.amount
-            };
-        });
     }
 
     // 2. Overspending Pattern Detection
@@ -729,39 +742,101 @@ Return as JSON object:
         console.log(`🚨 CRITICAL INTERVENTION EXECUTED: ${pattern.type}`);
     }
 
-    // Enhanced Gemini AI API
-    async callGeminiAPI(prompt, options = {}) {
-        if (!this.geminiApiKey || this.geminiApiKey === 'null') {
-            console.warn('No Gemini API key configured, using fallback responses');
-            throw new Error('No API key');
+    // Check authentication status
+    async checkAuthentication() {
+        if (this.offlineMode || !this.geminiApiKey) {
+            console.log("Running in offline mode - AI features will be limited");
+            this.offlineMode = true;
+            return true;
         }
-
+        
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 2048,
-                        ...options
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Gemini API error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            
+            // Test API connection
+            const testResponse = await this.callGeminiAPI("test");
+            return testResponse !== null;
         } catch (error) {
-            console.error('Gemini API call failed:', error);
-            throw error;
+            console.warn("API authentication failed - switching to offline mode. To enable AI features, please configure a valid API key in config.js");
+            this.offlineMode = true;
+            return true; // Continue in offline mode
+        }
+    }
+
+    // Add rate limiting helper
+    async rateLimitRequest() {
+        const now = Date.now();
+        
+        // Reset counter if window has passed
+        if (now - this.lastRequestTime > API_CONFIG.RATE_LIMIT_WINDOW) {
+            this.requestCount = 0;
+            this.lastRequestTime = now;
+        }
+        
+        // Check if we're at the limit
+        if (this.requestCount >= API_CONFIG.MAX_REQUESTS_PER_WINDOW) {
+            const waitTime = API_CONFIG.RATE_LIMIT_WINDOW - (now - this.lastRequestTime);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            this.requestCount = 0;
+            this.lastRequestTime = Date.now();
+        }
+        
+        this.requestCount++;
+        this.lastRequestTime = now;
+    }
+
+    // Update API call with retries and rate limiting
+    async callGeminiAPI(prompt, options = {}) {
+        let retries = 0;
+        let delay = API_CONFIG.RETRY_DELAY;
+
+        while (retries < API_CONFIG.MAX_RETRIES) {
+            try {
+                // Check rate limiting
+                await this.rateLimitRequest();
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }],
+                        ...options
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    
+                    // Handle rate limiting specifically
+                    if (response.status === 429) {
+                        console.warn(`Rate limited, attempt ${retries + 1} of ${API_CONFIG.MAX_RETRIES}`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= API_CONFIG.BACKOFF_MULTIPLIER;
+                        retries++;
+                        continue;
+                    }
+                    
+                    throw new Error(`Gemini API error: ${error.error?.message || 'Unknown error'}`);
+                }
+
+                const data = await response.json();
+                return data;
+
+            } catch (error) {
+                console.error(`API call failed, attempt ${retries + 1} of ${API_CONFIG.MAX_RETRIES}:`, error);
+                
+                if (retries === API_CONFIG.MAX_RETRIES - 1) {
+                    throw error;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= API_CONFIG.BACKOFF_MULTIPLIER;
+                retries++;
+            }
         }
     }
 
@@ -1213,6 +1288,77 @@ Focus on autonomous actions the agent can take without user input.`;
         setTimeout(() => {
             errorDiv.remove();
         }, 5000);
+    }
+
+    // Fallback categorization using keyword matching
+    fallbackCategorization(transactions) {
+        if (!Array.isArray(transactions)) {
+            console.warn("Invalid transactions array in fallback categorization");
+            return [];
+        }
+
+        return transactions.map(tx => {
+            const description = (tx.description || '').toLowerCase();
+            let category = 'Others';
+            let confidence = 0.6;
+            let subcategory = '';
+
+            // Simple keyword matching against Filipino categories
+            for (const [mainCategory, keywords] of Object.entries(this.filipinoCategories)) {
+                if (keywords.some(keyword => description.includes(keyword.toLowerCase()))) {
+                    category = mainCategory.charAt(0).toUpperCase() + mainCategory.slice(1);
+                    confidence = 0.75;
+                    subcategory = keywords.find(k => description.includes(k.toLowerCase())) || '';
+                    break;
+                }
+            }
+
+            // Amount-based categorization hints
+            const amount = parseFloat(tx.amount || 0);
+            if (amount > 10000) {
+                confidence = Math.max(confidence, 0.65); // Higher confidence for significant amounts
+            }
+
+            return {
+                id: tx.id,
+                description: tx.description || 'Unknown',
+                amount: amount,
+                date: tx.date,
+                category: category,
+                confidence: confidence,
+                subcategory: subcategory,
+                reasoning: subcategory ? `Matched Filipino keyword: "${subcategory}"` : 'Default categorization'
+            };
+        });
+    }
+
+    // Basic analysis without AI
+    async runBasicAnalysis() {
+        try {
+            console.log("🔍 Running basic analysis...");
+            
+            // Use fallback categorization
+            const categorizedTransactions = this.fallbackCategorization(this.userTransactions);
+            this.updateCategorizationUI(categorizedTransactions);
+            
+            // Use basic pattern detection
+            const patterns = this.fallbackPatternDetection(this.calculateMonthlySpending());
+            this.updateOverspendingUI(patterns);
+            
+            // Use fallback budget recommendations
+            const budgetData = this.fallbackBudgetRecommendations(this.getFinancialSummary());
+            this.updateBudgetUI(budgetData);
+            
+            // Set up basic alerts
+            const alerts = await this.generateSmartAlerts();
+            this.updateAlertsUI(alerts);
+            
+            console.log("✅ Basic analysis completed");
+            
+        } catch (error) {
+            console.error("❌ Basic analysis failed:", error);
+            this.showErrorMessage("Failed to analyze your financial data. Please try again.");
+        }
     }
 }
 

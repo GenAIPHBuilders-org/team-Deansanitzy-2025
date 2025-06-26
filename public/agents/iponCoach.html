@@ -8,13 +8,87 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js for beautiful visualizations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Main theme stylesheet -->
     <link rel="stylesheet" href="../css/theme.css">
     <!-- Page-specific stylesheet -->
     <link rel="stylesheet" href="iponCoach.css">
     <!-- Enhanced autonomous features stylesheet -->
-    <link rel="stylesheet" href="iponCoach-enhanced-styles.css">
+    <style>
+        /* Enhanced autonomous features styles */
+        .welcome-banner {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-banner h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-banner .tagline {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .theme-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .wide-card {
+            grid-column: 1 / -1;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-header h2 {
+            font-size: 1.25rem;
+            margin: 0;
+        }
+
+        .card-header i {
+            margin-right: 0.5rem;
+            color: var(--accent-color);
+        }
+
+        .loading-goals {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .loading-goals i {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent-color);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .fa-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
 </head>
 
 <body>

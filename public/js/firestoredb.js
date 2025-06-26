@@ -349,66 +349,77 @@ async function generateTransactionHash(data) {
 // Get all transactions for a user
 export async function getUserTransactions(userId) {
     try {
-        console.log('getUserTransactions called with userId:', userId);
+        console.log('🔄 getUserTransactions called with userId:', userId);
         
-        // Use a default userId if none provided
-        const finalUserId = userId || 'default-user';
-        console.log('Final userId being used:', finalUserId);
-
+        // Validate user authentication
+        if (!auth.currentUser) {
+            console.error('❌ No authenticated user found');
+            throw new Error('User not authenticated');
+        }
+        
+        // Validate user access
+        validateUserAccess(userId);
+        
         const transactions = [];
         
         // Query Firestore for transactions
         try {
+            console.log('📊 Querying transactions for user:', userId);
+            
+            // Create query for transactions, ordered by date
             const transactionsQuery = query(
-                collection(db, "users", finalUserId, "transactions"),
-                orderBy("timestamp", "desc")
+                collection(db, "users", userId, "transactions"),
+                orderBy("date", "desc")
             );
             
-            console.log('Executing Firestore query for transactions...');
+            console.log('🔍 Executing Firestore query...');
             const querySnapshot = await getDocs(transactionsQuery);
-            console.log('Query successful, processing results...');
+            console.log('✅ Query successful, found', querySnapshot.size, 'transactions');
             
             querySnapshot.forEach((doc) => {
                 try {
-                    const transactionData = { id: doc.id, ...doc.data() };
+                    const data = doc.data();
+                    const transactionData = {
+                        id: doc.id,
+                        ...data,
+                        // Ensure date is always present
+                        date: data.date || data.timestamp || new Date().toISOString(),
+                        // Convert amount to number if it's stored as string
+                        amount: typeof data.amount === 'string' ? parseFloat(data.amount) : data.amount
+                    };
                     
-                    // Add timestamp if missing (for older transactions)
-                    if (!transactionData.timestamp) {
-                        transactionData.timestamp = transactionData.date || new Date().toISOString();
+                    // Validate required fields
+                    if (!transactionData.amount || isNaN(transactionData.amount)) {
+                        console.warn('⚠️ Skipping transaction with invalid amount:', doc.id);
+                        return;
                     }
                     
-                    console.log('Found transaction:', transactionData);
+                    if (!transactionData.type || !['income', 'expense'].includes(transactionData.type.toLowerCase())) {
+                        console.warn('⚠️ Skipping transaction with invalid type:', doc.id);
+                        return;
+                    }
+                    
+                    console.log('📝 Processing transaction:', doc.id);
                     transactions.push(transactionData);
+                    
                 } catch (docError) {
-                    console.error('Error processing transaction document:', doc.id, docError);
+                    console.error('❌ Error processing transaction document:', doc.id, docError);
                 }
             });
-        } catch (queryError) {
-            console.warn('Query with timestamp failed, trying simple query:', queryError.message);
             
-            // Fallback to simple query without ordering
-            try {
-                const simpleQuery = query(collection(db, "users", finalUserId, "transactions"));
-                const querySnapshot = await getDocs(simpleQuery);
-                
-                querySnapshot.forEach((doc) => {
-                    const transactionData = { id: doc.id, ...doc.data() };
-                    transactions.push(transactionData);
-                });
-            } catch (simpleQueryError) {
-                console.error('Simple query also failed:', simpleQueryError);
-                return []; // Return empty array instead of throwing
-            }
+            // Sort transactions by date, most recent first
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            console.log(`✅ Successfully loaded ${transactions.length} transactions`);
+            return transactions;
+            
+        } catch (queryError) {
+            console.error('❌ Failed to query transactions:', queryError);
+            throw new Error('Failed to load transactions: ' + queryError.message);
         }
-        
-        // Sort transactions by timestamp, most recent first
-        transactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        console.log(`Total transactions found in Firestore: ${transactions.length}`);
-        return transactions;
     } catch (error) {
-        console.error("Error getting transactions: ", error);
-        return [];
+        console.error("❌ Error in getUserTransactions:", error);
+        throw error; // Propagate the error to be handled by the caller
     }
 }
 

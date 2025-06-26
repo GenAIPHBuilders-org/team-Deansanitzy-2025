@@ -135,14 +135,15 @@
 }
 
 .progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--primary-green), #0ea5e9);
-    border-radius: 2px;
     width: 0%;
-    animation: progressFill 3s ease-in-out infinite;
+    height: 100%;
+    background: #10df6f;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: progress 2s infinite;
 }
 
-@keyframes progressFill {
+@keyframes progress {
     0% { width: 0%; }
     50% { width: 70%; }
     100% { width: 100%; }
@@ -151,36 +152,31 @@
 /* Enhanced Empty State */
 .requirements-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     margin: 2rem 0;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .requirement-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1.5rem;
+    border-radius: 8px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    border-left: 3px solid var(--primary-green);
 }
 
 .requirement-item i {
-    font-size: 1.5rem;
-    color: var(--primary-green);
-    width: 24px;
-    text-align: center;
+    font-size: 2rem;
+    color: #10df6f;
 }
 
 .action-buttons {
     display: flex;
     gap: 1rem;
     justify-content: center;
-    margin-top: 2rem;
+    flex-wrap: wrap;
 }
 
 /* AI Insights Header */
@@ -386,17 +382,25 @@
     display: none !important;
 }
 
-.loading-container, .empty-container {
-    text-align: center;
-    padding: 4rem 1rem;
-    border-radius: 15px;
-    background: rgba(255, 255, 255, 0.05);
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
 }
 
-.empty-container .empty-icon {
-    font-size: 4rem;
-    display: block;
-    margin-bottom: 1rem;
+.empty-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+.empty-state-content {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
 }
 
 .spinner {
@@ -414,50 +418,28 @@
     100% { transform: rotate(360deg); }
 }
 
-
-
 /* Error Message Styles */
 .error-message {
-    position: fixed;
-    top: 2rem;
-    right: 2rem;
-    background: rgba(231, 76, 60, 0.1);
-    border: 1px solid rgba(231, 76, 60, 0.3);
-    color: #e74c3c;
-    padding: 1.5rem;
-    border-radius: 12px;
-    max-width: 400px;
-    z-index: 1000;
-    animation: slideInFromRight 0.5s ease-out;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.error-message h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.1rem;
-}
-
-.error-message p {
-    margin: 0;
-    font-size: 0.9rem;
+    text-align: center;
+    padding: 2rem;
+    background: rgba(255, 0, 0, 0.1);
+    border-radius: 8px;
+    margin: 1rem;
 }
 
 .error-message i {
-    font-size: 1.5rem;
-    margin-bottom: 0.5rem;
-    display: block;
-    text-align: center;
+    font-size: 2rem;
+    color: #ff4444;
+    margin-bottom: 1rem;
 }
 
-@keyframes slideInFromRight {
-    from {
-        opacity: 0;
-        transform: translateX(100%);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+.error-message p {
+    color: #fff;
+    margin: 1rem 0;
+}
+
+.error-message button {
+    margin-top: 1rem;
 }
 
 /* Predictions Card */
@@ -879,37 +861,29 @@
 /* Button Styles */
 .btn {
     padding: 0.75rem 1.5rem;
-    border: none;
     border-radius: 8px;
+    border: none;
     cursor: pointer;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    text-decoration: none;
+    transition: all 0.3s ease;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-green), #0ea5e9);
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    background: #10df6f;
+    color: #060e21;
 }
 
 .btn-secondary {
     background: rgba(255, 255, 255, 0.1);
-    color: var(--text-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
 }
 
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Chart Container Styling */
@@ -993,6 +967,24 @@ canvas {
     .score-number {
         font-size: 2rem;
     }
+}
+
+:root {
+    --primary: #10df6f;
+    --primary-light: rgba(16, 223, 111, 0.1);
+    --secondary: #e96d1f;
+    --secondary-light: rgba(233, 109, 31, 0.1);
+    --dark-blue: #060e21;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --success: #00c853;
+    --success-light: rgba(0, 200, 83, 0.1);
+    --error: #ff5252;
+    --error-light: rgba(255, 82, 82, 0.1);
+    --warning: #ffd740;
+    --warning-light: rgba(255, 215, 64, 0.1);
 }
 
 

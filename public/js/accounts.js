@@ -883,7 +883,7 @@ function showToast(message, type = 'info', duration = 5000) {
         align-items: center;
         gap: 0.75rem;
         padding: 1rem 1.25rem;
-        background: ${getToastBackground(type)};
+        background: ${type === 'danger' ? 'var(--error)' : 'var(--primary)'};
         color: white;
         border-radius: 12px;
         border-left: 4px solid ${getToastBorderColor(type)};

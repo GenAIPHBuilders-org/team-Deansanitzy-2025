@@ -16,181 +16,318 @@ const auth = getAuth(app);
 // Initialize receipt scanner
 let receiptScanner = null;
 
+// Handle scan transaction functionality
+async function handleScanTransaction() {
+    try {
+        if (!receiptScanner) {
+            receiptScanner = initReceiptScanning();
+        }
+        
+        if (!receiptScanner) {
+            throw new Error('Receipt scanner not available');
+        }
+
+        showToast('Starting receipt scan...', 'info');
+        await receiptScanner.startScan();
+        
+    } catch (error) {
+        console.error('❌ Scan error:', error);
+        showToast(error.message || 'Failed to start receipt scan', 'error');
+    }
+}
+
+// Initialize DOM elements
+const addTransactionBtn = document.getElementById('add-transaction-button');
+const addTransactionBtn2 = document.getElementById('add-transaction-btn');
+const scanTransactionBtn = document.getElementById('scan-transaction-button');
+const closeModalBtn = document.querySelector('.modal-close-btn');
+const cancelModalBtn = document.querySelector('.cancel-button');
+const modal = document.getElementById('add-transaction-modal');
+const addTransactionForm = document.getElementById('add-transaction-form');
+const filterButton = document.getElementById('filter-button');
+const closeFilterBtn = document.getElementById('close-filter');
+const filterPanel = document.getElementById('filter-panel');
+
+// Modal Functions
+const showModal = () => {
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+};
+
+const hideModal = () => {
+    if (modal) {
+        modal.style.display = 'none';
+        if (addTransactionForm) {
+            addTransactionForm.reset();
+            addTransactionForm.dataset.editMode = 'false';
+            delete addTransactionForm.dataset.transactionId;
+            
+            // Reset modal title and button text
+            const modalTitle = document.querySelector('.modal-header h2');
+            if (modalTitle) {
+                modalTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Add Transaction';
+            }
+            
+            const submitButton = document.querySelector('.modal-actions .action-button');
+            if (submitButton) {
+                submitButton.innerHTML = '<i class="fas fa-plus"></i> Add Transaction';
+            }
+        }
+    }
+};
+
+// Filter panel functions
+const toggleFilterPanel = () => {
+    if (filterPanel) {
+        filterPanel.classList.toggle('show');
+    }
+};
+
+// Function to initialize event listeners
+function initializeEventListeners() {
+    // Add transaction buttons
+    if (addTransactionBtn) {
+        addTransactionBtn.addEventListener('click', showModal);
+    }
+    if (addTransactionBtn2) {
+        addTransactionBtn2.addEventListener('click', showModal);
+    }
+    
+    // Scan button
+    if (scanTransactionBtn) {
+        scanTransactionBtn.addEventListener('click', handleScanTransaction);
+    }
+    
+    // Modal close buttons
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', hideModal);
+    }
+    if (cancelModalBtn) {
+        cancelModalBtn.addEventListener('click', hideModal);
+    }
+    
+    // Modal outside click
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                hideModal();
+            }
+        });
+    }
+    
+    // Filter panel buttons
+    if (filterButton) {
+        filterButton.addEventListener('click', toggleFilterPanel);
+    }
+    if (closeFilterBtn) {
+        closeFilterBtn.addEventListener('click', toggleFilterPanel);
+    }
+    
+    // Form submission
+    if (addTransactionForm) {
+        addTransactionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitButton = addTransactionForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+            
+            try {
+                const formData = new FormData(addTransactionForm);
+                const transactionData = {
+                    type: formData.get('type'),
+                    amount: parseFloat(formData.get('amount')),
+                    description: formData.get('description'),
+                    category: formData.get('category'),
+                    accountId: formData.get('account'),
+                    date: formData.get('date'),
+                    notes: formData.get('notes'),
+                    id: addTransactionForm.dataset.editMode === 'true' ? 
+                        addTransactionForm.dataset.transactionId : 
+                        generateTransactionId()
+                };
+                
+                const user = auth.currentUser;
+                if (!user) {
+                    throw new Error('User not authenticated');
+                }
+                
+                if (addTransactionForm.dataset.editMode === 'true') {
+                    await updateTransaction(user.uid, transactionData.id, transactionData);
+                    showToast('Transaction updated successfully', 'success');
+                } else {
+                    await storeTransaction(user.uid, transactionData);
+                    showToast('Transaction added successfully', 'success');
+                }
+                
+                hideModal();
+                loadTransactions(user.uid);
+                
+            } catch (error) {
+                console.error('❌ Failed to save transaction:', error);
+                showToast(error.message || 'Failed to save transaction', 'error');
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-plus"></i> Add Transaction';
+                }
+            }
+        });
+    }
+}
+
+// Helper function to generate transaction ID
+function generateTransactionId() {
+    return 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Call initialization after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    const addTransactionBtn = document.getElementById('add-transaction-button');
-    const scanTransactionBtn = document.getElementById('scan-transaction-button');
-    const modal = document.getElementById('add-transaction-modal');
-    const closeModalBtn = document.getElementById('close-add-transaction');
-    const cancelModalBtn = document.getElementById('cancel-add-transaction');
-    const addTransactionForm = document.getElementById('add-transaction-form');
+    console.log('🚀 DOM Content Loaded');
+    initializeEventListeners();
+    
+    // Initialize auth state listener
+    console.log('🔐 Setting up auth state listener...');
+    onAuthStateChanged(auth, user => {
+        console.log('🔄 Auth state changed:', user ? `User ${user.uid} logged in` : 'No user');
+        
+        if (user) {
+            currentUser = user;
+            console.log('✅ Loading transactions for user:', user.uid);
+            loadTransactions(user.uid).catch(error => {
+                console.error('❌ Error loading transactions:', error);
+                showTransactionError('Failed to load transactions. Please try refreshing the page.');
+            });
+            
+            // Also load bank accounts
+            loadBankAccounts(user.uid).catch(error => {
+                console.error('❌ Error loading bank accounts:', error);
+                showAccountLoadError();
+            });
+        } else {
+            currentUser = null;
+            console.log('❌ No authenticated user, redirecting to login...');
+            window.location.href = 'login.html';
+        }
+    });
 
     // Initialize receipt scanner
     receiptScanner = initReceiptScanning();
 
-    const showModal = () => {
-        modal.style.display = 'flex';
-    };
-
-    const hideModal = () => {
-        modal.style.display = 'none';
-        addTransactionForm.reset();
-    };
-
-    // Updated scan transaction functionality
-    const handleScanTransaction = async () => {
+    // Handle successful scan
+    const handleScanComplete = (scanData) => {
         try {
-            console.log('📸 Starting receipt scan...');
-            
-            // Check if device supports camera
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert('📱 Camera not supported on this device. Please use the "Add Transaction" button to manually enter your transaction.');
-                return;
-            }
-
-            // Start the receipt scanning process
-            await receiptScanner.startScan();
-            
+            console.log('📄 Scan completed:', scanData);
+            showModal();
+            populateFormWithScanData(scanData);
+            showToast('Receipt scanned successfully', 'success');
         } catch (error) {
-            console.error('❌ Failed to start receipt scan:', error);
-            
-            let errorMessage = 'Failed to start camera scanning. ';
-            if (error.name === 'NotAllowedError') {
-                errorMessage += 'Please allow camera access and try again.';
-            } else if (error.name === 'NotFoundError') {
-                errorMessage += 'No camera found on this device.';
-            } else {
-                errorMessage += 'Please try again or use manual entry.';
-            }
-            
-            if (confirm('📸 ' + errorMessage + '\n\nWould you like to add a transaction manually instead?')) {
-                showModal();
-            }
+            console.error('❌ Error processing scan data:', error);
+            showToast('Failed to process scanned receipt', 'error');
         }
     };
 
-    // Listen for receipt scan results
-    document.addEventListener('receiptScanned', (event) => {
-        const extractedData = event.detail;
-        console.log('📄 Receipt data received:', extractedData);
-        
-        // Pre-fill the transaction form with scanned data
-        populateFormWithScanData(extractedData);
-        
-        // Show the modal with pre-filled data
-        showModal();
-        
-        // Show success message
-        setTimeout(() => {
-            alert('✅ Receipt scanned successfully! Please review and confirm the extracted information.');
-        }, 500);
-    });
+    // Handle scan error
+    const handleScanError = (error) => {
+        console.error('❌ Scan error:', error);
+        showToast(error.message || 'Failed to scan receipt', 'error');
+    };
 
-    // Function to populate form with scanned data
+    // Populate form with scanned data
     function populateFormWithScanData(data) {
         try {
-            // Basic transaction fields
-            if (data.name || data.merchant) {
-                document.getElementById('transaction-name').value = data.name || data.merchant || '';
+            const form = document.getElementById('add-transaction-form');
+            if (!form) {
+                throw new Error('Transaction form not found');
             }
-            
-            if (data.amount || data.total) {
-                document.getElementById('transaction-amount').value = data.amount || data.total || '';
+
+            // Map scanned data to form fields
+            if (data.amount) {
+                const amountInput = form.querySelector('#transaction-amount');
+                if (amountInput) {
+                    amountInput.value = parseFloat(data.amount).toFixed(2);
+                }
             }
-            
-            if (data.type) {
-                document.getElementById('transaction-type').value = data.type;
+
+            if (data.description) {
+                const descriptionInput = form.querySelector('#transaction-description');
+                if (descriptionInput) {
+                    descriptionInput.value = data.description;
+                }
             }
-            
+
             if (data.date) {
-                document.getElementById('transaction-date').value = data.date;
-            } else {
-                // Default to today if no date found
-                document.getElementById('transaction-date').value = new Date().toISOString().split('T')[0];
+                const dateInput = form.querySelector('#transaction-date');
+                if (dateInput) {
+                    const scanDate = new Date(data.date);
+                    dateInput.value = scanDate.toISOString().split('T')[0];
+                }
             }
-            
-            if (data.category) {
-                // Map scanned category to form options
-                const categoryMapping = {
-                    'food': 'food',
-                    'shopping': 'shopping',
-                    'bills': 'bills',
-                    'transportation': 'transportation',
-                    'entertainment': 'entertainment',
-                    'health': 'health',
-                    'housing': 'housing',
-                    'education': 'education',
-                    'other': 'other'
-                };
-                
-                const mappedCategory = categoryMapping[data.category.toLowerCase()] || 'other';
-                document.getElementById('transaction-category').value = mappedCategory;
+
+            // Set transaction type to expense by default for receipts
+            const typeSelect = form.querySelector('#transaction-type');
+            if (typeSelect) {
+                typeSelect.value = 'expense';
             }
-            
-            // Set channel to 'in-store' for scanned receipts
-            document.getElementById('transaction-channel').value = 'in-store';
-            
-            // Add notes with extracted items if available
-            let notes = data.notes || '';
-            if (data.items && data.items.length > 0) {
-                const itemsList = data.items.map(item => 
-                    `${item.name}: ₱${item.price} (x${item.quantity || 1})`
-                ).join(', ');
-                notes = notes ? `${notes}\n\nItems: ${itemsList}` : `Items: ${itemsList}`;
+
+            // Try to categorize the transaction based on the description
+            if (data.description) {
+                const category = guessCategoryFromDescription(data.description);
+                const categorySelect = form.querySelector('#transaction-category');
+                if (categorySelect && category) {
+                    categorySelect.value = category;
+                }
             }
-            
-            if (data.merchant && data.merchant !== data.name) {
-                notes = notes ? `${notes}\n\nMerchant: ${data.merchant}` : `Merchant: ${data.merchant}`;
+
+            // Add receipt details to notes
+            const notesInput = form.querySelector('#transaction-notes');
+            if (notesInput) {
+                const receiptDetails = [
+                    'Receipt Details:',
+                    `Date: ${data.date || 'Not found'}`,
+                    `Amount: ${data.amount || 'Not found'}`,
+                    `Description: ${data.description || 'Not found'}`,
+                    `Merchant: ${data.merchant || 'Not found'}`,
+                    'Note: This transaction was created from a scanned receipt.'
+                ].join('\n');
+                notesInput.value = receiptDetails;
             }
-            
-            document.getElementById('transaction-notes').value = notes;
-            
-            console.log('✅ Form populated with scanned data');
-            
+
         } catch (error) {
             console.error('❌ Error populating form with scan data:', error);
-            alert('⚠️ Scanned data received but there was an error filling the form. Please enter the details manually.');
+            showToast('Error filling form with scanned data', 'error');
         }
     }
 
-    addTransactionBtn.addEventListener('click', showModal);
-    scanTransactionBtn.addEventListener('click', handleScanTransaction);
-    closeModalBtn.addEventListener('click', hideModal);
-    cancelModalBtn.addEventListener('click', hideModal);
-    window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            hideModal();
+    // Helper function to guess category from description
+    function guessCategoryFromDescription(description) {
+        const lowerDesc = description.toLowerCase();
+        
+        // Basic category mapping
+        const categoryMatches = {
+            'food': ['restaurant', 'cafe', 'food', 'grocery', 'meal', 'dining'],
+            'transportation': ['taxi', 'uber', 'grab', 'fare', 'transport', 'gas', 'fuel'],
+            'shopping': ['mall', 'store', 'shop', 'retail', 'market'],
+            'utilities': ['electric', 'water', 'utility', 'bill', 'internet'],
+            'entertainment': ['movie', 'cinema', 'game', 'entertainment'],
+            'health': ['medical', 'doctor', 'pharmacy', 'medicine', 'health'],
+            'education': ['school', 'tuition', 'book', 'education'],
+            'other': []
+        };
+
+        for (const [category, keywords] of Object.entries(categoryMatches)) {
+            if (keywords.some(keyword => lowerDesc.includes(keyword))) {
+                return category;
+            }
         }
-    });
+
+        return 'other';
+    }
 
     // Global variable to store current user
     let currentUser = null;
-
-    onAuthStateChanged(auth, user => {
-        console.log('🔄 Auth state changed in transactions.js:', user ? user.uid : 'null');
-        if (user) {
-            console.log('✅ User authenticated, initializing transactions module');
-            console.log('👤 User details:', {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-                emailVerified: user.emailVerified
-            });
-            currentUser = user;
-            
-            // Initialize with proper error handling
-            initializeTransactionsModule(user);
-        } else {
-            console.log('❌ No user authenticated, checking current location...');
-            console.log('📍 Current location:', window.location.href);
-            currentUser = null;
-            
-            // Only redirect if not already on login page
-            if (!window.location.href.includes('login.html')) {
-                console.log('🔄 Redirecting to login page...');
-                window.location.href = 'login.html';
-            }
-        }
-    });
 
     async function initializeTransactionsModule(user) {
         try {
@@ -371,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const addAccountOption = document.createElement('option');
                 addAccountOption.value = 'add-account';
                 addAccountOption.textContent = '➕ Add New Account';
-                addAccountOption.style.color = 'var(--primary-green)';
+                addAccountOption.style.color = 'var(--primary)';
                 addAccountOption.style.fontWeight = 'bold';
                 accountSelect.appendChild(addAccountOption);
                 
@@ -389,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const addAccountOption = document.createElement('option');
                 addAccountOption.value = 'add-account';
                 addAccountOption.textContent = '➕ Add Your First Account';
-                addAccountOption.style.color = 'var(--primary-green)';
+                addAccountOption.style.color = 'var(--primary)';
                 addAccountOption.style.fontWeight = 'bold';
                 accountSelect.appendChild(addAccountOption);
             }
@@ -503,7 +640,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 channel: document.getElementById('transaction-channel').value,
                 notes: document.getElementById('transaction-notes').value.trim(),
                 createdAt: new Date().toISOString(),
-                source: 'web_app'
+                source: 'web_app',
+                goalId: document.getElementById('transaction-goal').value || null
             };
             
             console.log('Transaction data prepared for submission:', transactionData);
@@ -553,6 +691,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     timestamp: result.timestamp,
                     userId: userId
                 });
+
+                // If transaction is associated with a goal, update goal progress
+                if (transactionData.goalId) {
+                    const event = new CustomEvent('goalTransaction', {
+                        detail: {
+                            goalId: transactionData.goalId,
+                            amount: transactionData.type === 'expense' ? -transactionData.amount : transactionData.amount
+                        }
+                    });
+                    window.dispatchEvent(event);
+                }
             } else {
                 throw new Error("Invalid response from storeTransaction");
             }
@@ -592,71 +741,190 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadTransactions(userId) {
+        console.log('🔄 Starting loadTransactions function...');
         const tableBody = document.getElementById('transactions-table-body');
         const emptyState = document.getElementById('transactions-empty-state');
-        const loadingState = document.getElementById('transactions-loading-state');
         
-        tableBody.innerHTML = '';
-        loadingState.style.display = 'block';
-        emptyState.style.display = 'none';
-
-        try {
-            const transactions = await getUserTransactions(userId);
-            loadingState.style.display = 'none';
-            
-            if (transactions.length === 0) {
-                emptyState.style.display = 'block';
-            } else {
-                transactions.forEach(tx => {
-                    const row = document.createElement('tr');
-                    row.dataset.transactionId = tx.id;
-                    row.innerHTML = `
-                        <td>
-                            <div class="transaction-name">${tx.name}</div>
-                            <div class="transaction-notes">${tx.notes || ''}</div>
-                        </td>
-                        <td>₱${tx.amount.toFixed(2)}</td>
-                        <td><span class="transaction-type ${tx.type}">${tx.type}</span></td>
-                        <td>${new Date(tx.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
-                        <td>
-                            <div class="account-name">${tx.accountName || 'N/A'}</div>
-                            ${tx.accountProvider && tx.accountProvider !== tx.accountName ? `<div class="account-provider">${tx.accountProvider}</div>` : ''}
-                        </td>
-                        <td>${tx.category}</td>
-                        <td class="transaction-actions">
-                            <button class="action-button delete-btn" data-id="${tx.id}" aria-label="Delete transaction"><i class="fas fa-trash"></i></button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            }
-        } catch(error) {
-            console.error("Failed to load transactions", error);
-            loadingState.style.display = 'none';
-            tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--secondary-orange);">Error loading transactions.</td></tr>';
+        if (!tableBody) {
+            console.error('❌ Could not find transactions table body');
+            return;
         }
 
-        // Add event listeners for delete buttons
-        document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                e.stopPropagation(); // Prevent row click event
-                const transactionId = e.currentTarget.dataset.id;
-                if (confirm('Are you sure you want to delete this transaction?')) {
-                    try {
-                        await deleteTransaction(userId, transactionId);
-                        // Optimistically remove from UI
-                        document.querySelector(`tr[data-transaction-id="${transactionId}"]`).remove();
-                        const transactions = await getUserTransactions(userId);
-                        if(transactions.length === 0){
-                            emptyState.style.display = 'block';
-                        }
-                    } catch (error) {
-                        console.error('Failed to delete transaction', error);
-                        alert('Could not delete transaction.');
-                    }
+        console.log('📊 Setting loading state...');
+        // Show loading state
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading transactions...</p>
+                </td>
+            </tr>
+        `;
+        
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+
+        try {
+            if (!userId) {
+                console.error('❌ No user ID provided to loadTransactions');
+                throw new Error('No user ID provided');
+            }
+
+            console.log('🔍 Loading transactions for user:', userId);
+            const transactions = await getUserTransactions(userId);
+            console.log('📊 Received transactions:', transactions?.length || 0);
+            
+            // Clear loading state
+            tableBody.innerHTML = '';
+            
+            if (!transactions || transactions.length === 0) {
+                console.log('ℹ️ No transactions found, showing empty state');
+                if (emptyState) {
+                    emptyState.style.display = 'block';
                 }
+                return;
+            }
+
+            // Sort transactions by date (newest first)
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            transactions.forEach(tx => {
+                const row = document.createElement('tr');
+                row.dataset.transactionId = tx.id;
+                
+                // Format date
+                const txDate = new Date(tx.date);
+                const formattedDate = txDate.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+
+                // Format amount with proper sign
+                const amount = tx.type === 'expense' ? -tx.amount : tx.amount;
+                const formattedAmount = new Intl.NumberFormat('en-PH', {
+                    style: 'currency',
+                    currency: 'PHP'
+                }).format(Math.abs(amount));
+
+                row.innerHTML = `
+                    <td>${formattedDate}</td>
+                    <td>${tx.description || 'No description'}</td>
+                    <td>${tx.category || 'Uncategorized'}</td>
+                    <td class="transaction-account-cell">
+                        <div class="account-name">${tx.accountName || 'N/A'}</div>
+                        ${tx.accountProvider ? `<div class="account-provider">${tx.accountProvider}</div>` : ''}
+                    </td>
+                    <td>
+                        <span class="transaction-type ${tx.type.toLowerCase()}">${
+                            tx.type.charAt(0).toUpperCase() + tx.type.slice(1)
+                        }</span>
+                    </td>
+                    <td class="amount ${tx.type.toLowerCase()}">${formattedAmount}</td>
+                    <td class="actions">
+                        <button class="action-button edit-btn" data-id="${tx.id}" title="Edit transaction">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-button delete-btn" data-id="${tx.id}" title="Delete transaction">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
             });
-        });
+
+            // Add event listeners for action buttons
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const transactionId = e.currentTarget.dataset.id;
+                    if (confirm('Are you sure you want to delete this transaction?')) {
+                        try {
+                            await deleteTransaction(userId, transactionId);
+                            // Optimistically remove from UI
+                            const row = document.querySelector(`tr[data-transaction-id="${transactionId}"]`);
+                            if (row) {
+                                row.remove();
+                                // Check if we need to show empty state
+                                if (tableBody.children.length === 0 && emptyState) {
+                                    emptyState.style.display = 'block';
+                                }
+                            }
+                            showToast('Transaction deleted successfully', 'success');
+                        } catch (error) {
+                            console.error('❌ Failed to delete transaction:', error);
+                            showToast('Failed to delete transaction', 'error');
+                        }
+                    }
+                });
+            });
+
+            document.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const transactionId = e.currentTarget.dataset.id;
+                    // Find the transaction data
+                    const transaction = transactions.find(t => t.id === transactionId);
+                    if (transaction) {
+                        showModal();
+                        populateFormWithTransaction(transaction);
+                    }
+                });
+            });
+
+        } catch (error) {
+            console.error('❌ Failed to load transactions:', error);
+            
+            let errorMessage = 'Failed to load transactions';
+            if (error.message.includes('User not authenticated')) {
+                errorMessage = 'Please log in to view transactions';
+            } else if (error.message.includes('permission-denied')) {
+                errorMessage = 'You do not have permission to view these transactions';
+            }
+            
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="error-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>${errorMessage}</p>
+                        <button class="retry-button" onclick="location.reload()">
+                            <i class="fas fa-sync"></i> Retry
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // Helper function to populate form with transaction data
+    function populateFormWithTransaction(transaction) {
+        const form = document.getElementById('add-transaction-form');
+        if (!form) return;
+
+        form.dataset.editMode = 'true';
+        form.dataset.transactionId = transaction.id;
+
+        // Populate form fields
+        form.querySelector('#transaction-type').value = transaction.type;
+        form.querySelector('#transaction-amount').value = transaction.amount;
+        form.querySelector('#transaction-description').value = transaction.description || '';
+        form.querySelector('#transaction-category').value = transaction.category || '';
+        form.querySelector('#transaction-account').value = transaction.accountId || '';
+        form.querySelector('#transaction-date').value = transaction.date.split('T')[0];
+        form.querySelector('#transaction-notes').value = transaction.notes || '';
+
+        // Update modal title and button text
+        const modalTitle = document.querySelector('.modal-header h2');
+        if (modalTitle) {
+            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Transaction';
+        }
+
+        const submitButton = document.querySelector('.modal-actions .action-button');
+        if (submitButton) {
+            submitButton.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        }
     }
 
     // Set default date to today in the modal form
@@ -674,7 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; color: var(--secondary-orange); padding: 2rem;">
+                    <td colspan="7" style="text-align: center; color: var(--secondary); padding: 2rem;">
                         <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
                         <br>${message}
                         <br><button onclick="location.reload()" style="margin-top: 1rem;" class="secondary-button">
@@ -844,6 +1112,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }, 300);
         }, duration);
+    }
+
+    async function loadGoals(userId) {
+        try {
+            const userData = await getUserData(userId);
+            return userData.goals || {};
+        } catch (error) {
+            console.error('Error loading goals:', error);
+            return {};
+        }
+    }
+
+    async function populateGoalSelect(userId) {
+        const goalSelect = document.getElementById('transaction-goal');
+        if (!goalSelect) return;
+
+        try {
+            const goals = await loadGoals(userId);
+            
+            // Clear existing options
+            goalSelect.innerHTML = '<option value="">No specific goal</option>';
+            
+            // Add options for each active goal
+            Object.entries(goals).forEach(([goalId, goal]) => {
+                if (goal.status === 'active') {
+                    const option = document.createElement('option');
+                    option.value = goalId;
+                    option.textContent = goal.name;
+                    goalSelect.appendChild(option);
+                }
+            });
+        } catch (error) {
+            console.error('Error populating goal select:', error);
+        }
     }
 });
 

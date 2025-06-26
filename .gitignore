@@ -17,11 +17,9 @@ node_modules/
 .env.production.local
 
 # Configuration files with API keys (CRITICAL for security)
-public/js/config.js
 public/js/config.local.js
 public/js/env-loader.js
 config.local.js
-**/config.js
 **/config.local.js
 credentials.json
 secrets.json

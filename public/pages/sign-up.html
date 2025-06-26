@@ -11,11 +11,21 @@
     <style>
         /* Enhanced color scheme */
         :root {
-            --primary-green: #10df6f;
-            --secondary-orange: #e96d1f;
+            --primary: #10df6f;
+            --primary-light: rgba(16, 223, 111, 0.1);
+            --secondary: #e96d1f;
+            --secondary-light: rgba(233, 109, 31, 0.1);
             --dark-blue: #060e21;
             --glass-bg: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --success: #00c853;
+            --success-light: rgba(0, 200, 83, 0.1);
+            --error: #ff5252;
+            --error-light: rgba(255, 82, 82, 0.1);
+            --warning: #ffd740;
+            --warning-light: rgba(255, 215, 64, 0.1);
         }
 
         /* San Francisco Font Family */
@@ -72,7 +82,7 @@
         }
         
         .auth-header h2 {
-            background: linear-gradient(135deg, var(--primary-green), white);
+            background: linear-gradient(135deg, var(--primary), white);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -124,7 +134,7 @@
 
         .auth-form input:focus {
             outline: none;
-            border-color: var(--primary-green);
+            border-color: var(--primary);
             box-shadow: 0 0 20px rgba(16, 223, 111, 0.3);
             background: rgba(255, 255, 255, 0.08);
         }
@@ -137,7 +147,7 @@
         .auth-form button {
             width: 100%;
             padding: 1rem;
-            background: linear-gradient(135deg, var(--primary-green), var(--secondary-orange));
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             border: none;
             border-radius: 12px;
             color: white;
@@ -163,14 +173,14 @@
         }
         
         .auth-footer a {
-            color: var(--primary-green);
+            color: var(--primary);
             text-decoration: none;
             font-weight: 600;
             transition: all 0.3s ease;
         }
 
         .auth-footer a:hover {
-            color: var(--secondary-orange);
+            color: var(--secondary);
         }
         
         .terms {
@@ -206,11 +216,11 @@
         }
         
         .requirement-met {
-            color: var(--primary-green);
+            color: var(--primary);
         }
         
         .requirement-unmet {
-            color: var(--secondary-orange);
+            color: var(--secondary);
         }
         
         /* Standardized back button */
@@ -235,7 +245,7 @@
         }
         
         .back-button:hover {
-            background: linear-gradient(135deg, var(--primary-green), var(--secondary-orange));
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             transform: translateX(-5px);
             box-shadow: 0 10px 25px rgba(16, 223, 111, 0.4);
         }
@@ -277,7 +287,7 @@
         }
 
         .footer-section h3 i {
-            color: var(--primary-green);
+            color: var(--primary);
             font-size: 1.2rem;
         }
         
@@ -305,7 +315,7 @@
         }
         
         .footer-section ul li a:hover {
-            color: var(--primary-green);
+            color: var(--primary);
         }
         
         .social-links {
@@ -331,7 +341,7 @@
         }
         
         .social-links a:hover {
-            background: linear-gradient(135deg, var(--primary-green), var(--secondary-orange));
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             transform: translateY(-3px);
             box-shadow: 0 8px 20px rgba(16, 223, 111, 0.4);
@@ -374,16 +384,16 @@
 
         /* Light effects */
         .light {
-            background: radial-gradient(circle, var(--primary-green) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
         }
 
         .light-2 {
-            background: radial-gradient(circle, var(--secondary-orange) 0%, transparent 70%);
+            background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
         }
 
         /* Enhanced checkbox styling */
         input[type="checkbox"] {
-            accent-color: var(--primary-green);
+            accent-color: var(--primary);
             transform: scale(1.1);
         }
 

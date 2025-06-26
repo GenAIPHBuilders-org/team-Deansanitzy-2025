@@ -1,5 +1,23 @@
 /* Ipon Coach Specific Styles - Complements theme.css */
 
+:root {
+    --primary: #10df6f;
+    --primary-light: rgba(16, 223, 111, 0.1);
+    --secondary: #e96d1f;
+    --secondary-light: rgba(233, 109, 31, 0.1);
+    --dark-blue: #060e21;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --success: #00c853;
+    --success-light: rgba(0, 200, 83, 0.1);
+    --error: #ff5252;
+    --error-light: rgba(255, 82, 82, 0.1);
+    --warning: #ffd740;
+    --warning-light: rgba(255, 215, 64, 0.1);
+}
+
 /* --- Loading / Empty States --- */
 .loading-indicator,
 .empty-message {
@@ -605,8 +623,6 @@
     color: #000;
 }
 
-
-
 /* Wide card layout */
 .wide-card {
     grid-column: span 1;
@@ -632,6 +648,23 @@
     z-index: 1000;
     animation: slideInFromRight 0.5s ease-out;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.error-message i {
+    font-size: 1.5rem;
+    margin-right: 0.5rem;
+    color: #f44336;
+}
+
+.error-message h3 {
+    margin: 0 0 0.5rem 0;
+    color: #f44336;
+}
+
+.error-message p {
+    margin: 0;
+    color: rgba(244, 67, 54, 0.9);
 }
 
 .loading-goals {

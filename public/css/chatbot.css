@@ -1,5 +1,23 @@
 /* Enhanced Chatbot Styles with Modern UI/UX and Animations */
 
+:root {
+    --primary: #10df6f;
+    --primary-light: rgba(16, 223, 111, 0.1);
+    --secondary: #e96d1f;
+    --secondary-light: rgba(233, 109, 31, 0.1);
+    --dark-blue: #060e21;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --success: #00c853;
+    --success-light: rgba(0, 200, 83, 0.1);
+    --error: #ff5252;
+    --error-light: rgba(255, 82, 82, 0.1);
+    --warning: #ffd740;
+    --warning-light: rgba(255, 215, 64, 0.1);
+}
+
 /* Chatbot Container */
 .chatbot-container {
     position: fixed;

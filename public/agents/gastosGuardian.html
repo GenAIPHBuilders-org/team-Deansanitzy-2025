@@ -105,9 +105,9 @@
                     <!-- AI Insights Header -->
                     <div class="ai-insights-header">
                         <div class="insight-summary">
-                            <h2><i class="fas fa-crystal-ball"></i> Financial Forecast & Analysis</h2>
+                            <h2><i class="fas fa-brain"></i> Financial Analysis</h2>
                             <div class="forecast-confidence">
-                                <span>Prediction Confidence: </span>
+                                <span>Analysis Confidence: </span>
                                 <div class="confidence-meter">
                                     <div class="confidence-fill" id="confidence-fill"></div>
                                 </div>
@@ -115,143 +115,40 @@
                             </div>
                         </div>
                         <div class="quick-actions">
-                            <button class="action-btn" id="run-scenario-btn">
-                                <i class="fas fa-flask"></i> Run Scenario
-                            </button>
-                            <button class="action-btn" id="cash-flow-alert-btn">
-                                <i class="fas fa-exclamation-triangle"></i> Cash Alerts
+                            <button onclick="window.refreshGastosGuardian()" class="action-btn" id="refresh-data-btn" title="Refresh financial data">
+                                <i class="fas fa-sync-alt"></i> Refresh
                             </button>
                         </div>
                     </div>
 
                     <div class="guardian-grid">
-                        <!-- Cash Flow Forecast Card -->
+                        <!-- Expense Analysis Card -->
                         <div class="card forecast-card">
                             <div class="card-header">
-                                <h3><i class="fas fa-chart-line"></i> Cash Flow Forecast</h3>
-                                <div class="forecast-period">
-                                    <select id="forecast-period">
-                                        <option value="30">Next 30 Days</option>
-                                        <option value="60">Next 60 Days</option>
-                                        <option value="90">Next 90 Days</option>
-                                    </select>
-                                </div>
+                                <h3><i class="fas fa-chart-line"></i> Expense Analysis</h3>
                             </div>
                             <div class="card-content">
-                                <canvas id="cash-flow-chart"></canvas>
-                                <div class="forecast-insights" id="forecast-insights">
-                                    <!-- AI-generated insights will be populated here -->
-                                </div>
+                                <canvas id="expense-chart"></canvas>
                             </div>
                         </div>
 
-                        <!-- Spending Predictions Card -->
-                        <div class="card predictions-card">
+                        <!-- Spending Leaks Card -->
+                        <div class="card">
                             <div class="card-header">
-                                <h3><i class="fas fa-brain"></i> AI Spending Predictions</h3>
-                                <span class="prediction-accuracy">
-                                    <i class="fas fa-target"></i> 
-                                    <span id="prediction-accuracy">--% Accuracy</span>
-                                </span>
+                                <h3><i class="fas fa-search"></i> Spending Leaks</h3>
                             </div>
-                            <div class="card-content">
-                                <div class="prediction-grid" id="prediction-grid">
-                                    <!-- Spending predictions will be populated here -->
-                                </div>
+                            <div class="card-content" id="spending-leaks-content">
+                                <p>Analyzing your spending patterns...</p>
                             </div>
                         </div>
 
-                        <!-- What-If Scenarios Card -->
-                        <div class="card scenarios-card">
+                        <!-- Tipid Tips Card -->
+                        <div class="card">
                             <div class="card-header">
-                                <h3><i class="fas fa-flask"></i> What-If Scenario Analysis</h3>
-                                <button class="add-scenario-btn" id="add-scenario-btn">
-                                    <i class="fas fa-plus"></i> New Scenario
-                                </button>
+                                <h3><i class="fas fa-lightbulb"></i> Tipid Tips</h3>
                             </div>
-                            <div class="card-content">
-                                <div class="scenario-builder" id="scenario-builder">
-                                    <div class="scenario-input">
-                                        <label>Scenario Name:</label>
-                                        <input type="text" id="scenario-name" placeholder="e.g., Buy new iPhone">
-                                        
-                                        <label>Amount:</label>
-                                        <input type="number" id="scenario-amount" placeholder="₱ 50,000">
-                                        
-                                        <label>When:</label>
-                                        <select id="scenario-timing">
-                                            <option value="this-month">This Month</option>
-                                            <option value="next-month">Next Month</option>
-                                            <option value="in-3-months">In 3 Months</option>
-                                        </select>
-                                        
-                                        <button class="analyze-btn" id="analyze-scenario-btn">
-                                            <i class="fas fa-calculator"></i> Analyze Impact
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="scenario-results" id="scenario-results">
-                                    <!-- Scenario analysis results will be shown here -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cash Flow Alerts Card -->
-                        <div class="card alerts-card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-bell"></i> Smart Cash Alerts</h3>
-                                <div class="alert-settings">
-                                    <button class="settings-btn" id="alert-settings-btn">
-                                        <i class="fas fa-cog"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-content">
-                                <div class="alerts-container" id="alerts-container">
-                                    <!-- AI-generated alerts will be populated here -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Financial Health Score Card -->
-                        <div class="card health-score-card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-heartbeat"></i> Financial Health Score</h3>
-                                <div class="score-trend">
-                                    <span id="score-trend-indicator">--</span>
-                                </div>
-                            </div>
-                            <div class="card-content">
-                                <div class="health-score-visual">
-                                    <div class="score-circle">
-                                        <svg viewBox="0 0 100 100">
-                                            <circle cx="50" cy="50" r="45" class="score-bg"></circle>
-                                            <circle cx="50" cy="50" r="45" class="score-fill" id="score-circle"></circle>
-                                        </svg>
-                                        <div class="score-text">
-                                            <span class="score-number" id="health-score">--</span>
-                                            <span class="score-label">Health Score</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="health-factors" id="health-factors">
-                                    <!-- Health factors will be populated here -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- AI Recommendations Card -->
-                        <div class="card recommendations-card">
-                            <div class="card-header">
-                                <h3><i class="fas fa-lightbulb"></i> AI Recommendations</h3>
-                                <div class="recommendation-priority">
-                                    <span id="priority-indicator">High Priority</span>
-                                </div>
-                            </div>
-                            <div class="card-content">
-                                <div class="recommendations-list" id="recommendations-list">
-                                    <!-- AI recommendations will be populated here -->
-                                </div>
+                            <div class="card-content" id="tipid-tips-content">
+                                <p>Generating personalized tips...</p>
                             </div>
                         </div>
                     </div>

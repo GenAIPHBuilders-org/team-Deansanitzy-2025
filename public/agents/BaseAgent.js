@@ -8,10 +8,18 @@
  * @copyright 2025 Kita-kita Platform
  */
 
-import { GEMINI_API_KEY, GEMINI_MODEL } from "../js/config.js";
+import { GEMINI_API_KEY, GEMINI_MODEL, firebaseConfig } from "../js/config.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getUserData, getUserTransactions, getUserBankAccounts, storeUserData } from "../js/firestoredb.js";
 import { devLog, devWarn, prodError, prodLog, isProduction, getEnvironmentConfig } from "../js/utils/environment.js";
+
+// Rate limiting configuration
+const RATE_LIMIT = {
+    MAX_REQUESTS_PER_MINUTE: 60,
+    BACKOFF_INITIAL_DELAY: 1000,
+    BACKOFF_MAX_DELAY: 32000,
+    BACKOFF_FACTOR: 2
+};
 
 /**
  * Abstract base class implementing autonomous agentic behaviors
@@ -34,9 +42,9 @@ export class BaseAgent {
         this.envConfig = getEnvironmentConfig();
         
         // Autonomous Behavior Systems
-        this.autonomyLevel = config.autonomyLevel || 'high'; // high, medium, low
+        this.autonomyLevel = config.autonomyLevel || 'medium';
         this.decisionThreshold = config.decisionThreshold || 0.7;
-        this.learningRate = config.learningRate || 0.1;
+        this.learningRate = config.learningRate || 0.3;
         
         // Memory & Learning Systems
         this.shortTermMemory = new Map(); // Current session data
@@ -86,7 +94,28 @@ export class BaseAgent {
         // Firebase & External APIs
         this.auth = getAuth();
         this.currentUser = null;
-        this.geminiModel = GEMINI_MODEL;
+        this.geminiModel = config.geminiModel || 'gemini-pro';
+        this.geminiApiKey = config.geminiApiKey;
+        
+        // Rate limiting state
+        this.requestCount = 0;
+        this.requestTimestamps = [];
+        this.lastRequestTime = 0;
+        
+        // Add error tracking
+        this.errors = {
+            apiErrors: 0,
+            rateLimitErrors: 0,
+            lastErrorTime: null,
+            consecutiveErrors: 0
+        };
+        
+        // Initialize with error thresholds
+        this.errorThresholds = {
+            maxConsecutiveErrors: 3,
+            maxApiErrors: 5,
+            errorResetTime: 300000 // 5 minutes
+        };
         
         // Initialize core systems
         this.initializeCoreSystemsAsync();
@@ -121,36 +150,60 @@ export class BaseAgent {
 
     /**
      * Load comprehensive user financial data including accounts
+     * @param {Object} user - Firebase user object (optional, will use current auth state if not provided)
      */
-    async loadUserFinancialData() {
+    async loadUserFinancialData(user = null) {
         try {
             devLog(`🔄 [${this.agentType}] Loading user financial data...`);
             
-            const currentUser = this.auth.currentUser;
+            // Use provided user or current auth state
+            const currentUser = user || this.auth.currentUser;
             if (!currentUser) {
                 devLog(`⚠️ [${this.agentType}] No authenticated user found`);
+                this.userFinancialProfile = null;
+                this.userTransactions = [];
+                this.userAccounts = [];
                 return;
             }
 
             this.currentUser = currentUser;
+            devLog(`👤 [${this.agentType}] Loading data for user: ${currentUser.uid}`);
 
-            // Load all financial data in parallel
-            const [userData, transactions, accounts] = await Promise.allSettled([
+            // Load all financial data in parallel with better error handling
+            const results = await Promise.allSettled([
                 getUserData(currentUser.uid),
                 getUserTransactions(currentUser.uid),
                 getUserBankAccounts(currentUser.uid)
             ]);
 
             // Process user profile data
-            this.userFinancialProfile = userData.status === 'fulfilled' ? userData.value : null;
+            if (results[0].status === 'fulfilled') {
+                this.userFinancialProfile = results[0].value;
+            } else {
+                devLog(`⚠️ Failed to load user data: ${results[0].reason}`);
+                this.userFinancialProfile = null;
+            }
             
             // Process transactions
-            this.userTransactions = transactions.status === 'fulfilled' ? 
-                (transactions.value || []) : [];
+            if (results[1].status === 'fulfilled') {
+                this.userTransactions = results[1].value || [];
+            } else {
+                devLog(`⚠️ Failed to load transactions: ${results[1].reason}`);
+                this.userTransactions = [];
+            }
             
             // Process accounts
-            this.userAccounts = accounts.status === 'fulfilled' ? 
-                (accounts.value || []) : [];
+            if (results[2].status === 'fulfilled') {
+                this.userAccounts = results[2].value || [];
+            } else {
+                devLog(`⚠️ Failed to load accounts: ${results[2].reason}`);
+                this.userAccounts = [];
+            }
+
+            // Check if we have any data
+            if (!this.userAccounts.length && !this.userTransactions.length) {
+                devLog(`⚠️ [${this.agentType}] No financial data found for user: ${currentUser.uid}`);
+            }
 
             // Generate account-specific insights
             await this.generateAccountInsights();
@@ -165,27 +218,83 @@ export class BaseAgent {
             devLog(`✅ [${this.agentType}] Financial data loaded:`, {
                 accounts: this.userAccounts.length,
                 transactions: this.userTransactions.length,
-                hasProfile: !!this.userFinancialProfile
+                hasProfile: !!this.userFinancialProfile,
+                userId: currentUser.uid
             });
 
         } catch (error) {
             prodError(`❌ [${this.agentType}] Error loading financial data:`, error);
             this.handleError('financial_data_load_failed', error);
+            
+            // Ensure we have empty arrays even on error
+            this.userTransactions = [];
+            this.userAccounts = [];
+            this.userFinancialProfile = null;
         }
     }
 
     /**
-     * Generate detailed insights for each account
+     * Refresh financial data when user authentication state changes
+     * @param {Object} user - Firebase user object
+     */
+    async refreshFinancialData(user) {
+        if (user) {
+            devLog(`🔄 [${this.agentType}] Refreshing data for authenticated user: ${user.uid}`);
+            await this.loadUserFinancialData(user);
+            
+            // Update initialization status if we now have data
+            if (!this.initialized && (this.userAccounts.length > 0 || this.userTransactions.length > 0)) {
+                this.initialized = true;
+                this.currentState = 'ready';
+                devLog(`✅ [${this.agentType}] Initialization completed after auth state change`);
+            }
+        } else {
+            devLog(`❌ [${this.agentType}] User logged out, clearing financial data`);
+            this.userFinancialProfile = null;
+            this.userTransactions = [];
+            this.userAccounts = [];
+            this.accountInsights.clear();
+            this.currentUser = null;
+        }
+    }
+
+    /**
+     * Generate insights for each account
+     * @private
      */
     async generateAccountInsights() {
-        for (const account of this.userAccounts) {
-            try {
-                const insights = await this.analyzeAccount(account);
-                this.accountInsights.set(account.id, insights);
-                this.performanceMetrics.accountAnalysisCount++;
-            } catch (error) {
-                console.error(`Error analyzing account ${account.id}:`, error);
+        try {
+            if (!this.userAccounts || this.userAccounts.length === 0) {
+                devLog(`⚠️ [${this.agentType}] No accounts available for insights generation`);
+                this.accountInsights.clear();
+                return;
             }
+
+            devLog(`🔄 [${this.agentType}] Generating insights for ${this.userAccounts.length} accounts...`);
+            
+            // Clear existing insights
+            this.accountInsights.clear();
+            
+            // Generate insights for each account
+            for (const account of this.userAccounts) {
+                if (!account || !account.id) continue;
+                
+                try {
+                    const insight = await this.analyzeAccount(account);
+                    if (insight) {
+                        this.accountInsights.set(account.id, insight);
+                    }
+                } catch (accountError) {
+                    devLog(`⚠️ Failed to analyze account ${account.id}:`, accountError);
+                }
+            }
+            
+            devLog(`✅ [${this.agentType}] Generated insights for ${this.accountInsights.size} accounts`);
+            
+        } catch (error) {
+            prodError(`❌ [${this.agentType}] Error generating account insights:`, error);
+            this.handleError('insights_generation_failed', error);
+            this.accountInsights.clear();
         }
     }
 
@@ -1173,48 +1282,106 @@ export class BaseAgent {
      */
 
     /**
-     * Call Gemini AI with structured prompts for autonomous reasoning
-     * @param {string} prompt - AI prompt
-     * @param {Object} context - Additional context
-     * @returns {Promise<Object>} AI response with parsed results
+     * Implements rate limiting for API calls
+     * @private
+     */
+    async enforceRateLimit() {
+        const now = Date.now();
+        
+        // Remove timestamps older than 1 minute
+        this.requestTimestamps = this.requestTimestamps.filter(
+            timestamp => now - timestamp < 60000
+        );
+        
+        // If we've hit the rate limit, wait until we can make another request
+        if (this.requestTimestamps.length >= RATE_LIMIT.MAX_REQUESTS_PER_MINUTE) {
+            const oldestTimestamp = this.requestTimestamps[0];
+            const waitTime = 60000 - (now - oldestTimestamp);
+            if (waitTime > 0) {
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+        }
+        
+        // Add current timestamp
+        this.requestTimestamps.push(now);
+    }
+
+    /**
+     * Implements exponential backoff for retrying failed requests
+     * @private
+     */
+    async retryWithExponentialBackoff(operation, maxRetries = 5) {
+        let retryCount = 0;
+        let delay = RATE_LIMIT.BACKOFF_INITIAL_DELAY;
+
+        while (retryCount < maxRetries) {
+            try {
+                await this.enforceRateLimit();
+                return await operation();
+            } catch (error) {
+                if (error.status === 429 || error.message.includes('429')) {
+                    retryCount++;
+                    if (retryCount === maxRetries) {
+                        throw new Error(`Failed after ${maxRetries} retries: ${error.message}`);
+                    }
+                    
+                    // Calculate delay with jitter
+                    const jitter = Math.random() * 1000;
+                    delay = Math.min(delay * RATE_LIMIT.BACKOFF_FACTOR + jitter, RATE_LIMIT.BACKOFF_MAX_DELAY);
+                    
+                    devLog(`Rate limit hit, retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    throw error;
+                }
+            }
+        }
+    }
+
+    /**
+     * Enhanced Gemini API call with rate limiting and retries
+     * @param {string} prompt - The prompt to send to Gemini
+     * @param {Object} context - Additional context for the API call
      */
     async callGeminiForReasoning(prompt, context = {}) {
-        try {
+        if (!this.geminiApiKey) {
+            console.warn('No Gemini API key provided, using fallback reasoning');
+            return this.getFallbackResponse(prompt, context);
+        }
+
+        const operation = async () => {
             const enhancedPrompt = this.buildEnhancedPrompt(prompt, context);
             
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
-                    contents: [{ parts: [{ text: enhancedPrompt }] }],
+                    contents: [{
+                        parts: [{
+                            text: enhancedPrompt
+                        }]
+                    }],
                     generationConfig: {
                         temperature: 0.7,
                         topK: 40,
                         topP: 0.95,
-                        maxOutputTokens: 2048,
-                    },
-                    safetySettings: [
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
-                    ]
-                }),
+                        maxOutputTokens: 1024
+                    }
+                })
             });
 
             if (!response.ok) {
-                throw new Error(`Gemini API error: ${response.status}`);
+                const error = await response.json();
+                throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
             }
 
             const data = await response.json();
-            const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            
-            return this.parseAIResponse(rawResponse);
-            
-        } catch (error) {
-            this.handleError('gemini_api_failed', error, { prompt: prompt.substring(0, 100) });
-            return await this.getFallbackResponse(prompt, context);
-        }
+            return this.parseAIResponse(data);
+        };
+
+        return this.retryWithExponentialBackoff(operation);
     }
 
     /**
@@ -1561,7 +1728,7 @@ export class BaseAgent {
     }
 
     /**
-     * Build enhanced prompt for Gemini AI
+     * Build enhanced prompt for Gemini API
      * @param {string} basePrompt - Base prompt
      * @param {Object} context - Additional context
      * @returns {string} Enhanced prompt
@@ -1783,6 +1950,158 @@ export class BaseAgent {
     async formulateConclusion(steps) { return 'conclusion_formulated'; }
     calculateOverallConfidence(steps) { return 0.7; }
     getStepWeight(stepType) { return 1.0; }
+
+    /**
+     * Standardized Gemini API call method for all agents
+     * @param {string} prompt - The prompt to send to Gemini
+     * @param {Object} options - Additional options for the API call
+     * @returns {Promise<Object>} - The parsed response from Gemini
+     */
+    async callGeminiAI(prompt, options = {}) {
+        if (!this.geminiApiKey) {
+            throw new Error('Gemini API key not configured');
+        }
+
+        // Rate limiting check
+        const now = Date.now();
+        if (now - this.lastApiCall < 1000) { // Minimum 1 second between calls
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Update rate limiting state
+        this.lastApiCall = now;
+        this.apiCallCount++;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    ...options
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Gemini API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return this.processGeminiResponse(data);
+        } catch (error) {
+            console.error(`${this.agentType} Gemini API call failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Process and validate Gemini API response
+     * @param {Object} data - Raw response from Gemini API
+     * @returns {Object} - Processed and validated response
+     */
+    processGeminiResponse(data) {
+        if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+            throw new Error('Invalid response format from Gemini API');
+        }
+
+        const response = data.candidates[0].content.parts[0].text;
+
+        // Try to parse JSON if the response looks like JSON
+        if (response.trim().startsWith('{') || response.trim().startsWith('[')) {
+            try {
+                return JSON.parse(response);
+            } catch (e) {
+                // If JSON parsing fails, return the raw text
+                return response;
+            }
+        }
+
+        return response;
+    }
+
+    // Add error tracking methods
+    trackError(error, type = 'api') {
+        const now = Date.now();
+        
+        // Reset error counts if enough time has passed
+        if (this.errors.lastErrorTime && 
+            (now - this.errors.lastErrorTime) > this.errorThresholds.errorResetTime) {
+            this.resetErrorCounts();
+        }
+        
+        this.errors.lastErrorTime = now;
+        this.lastError = error;
+        
+        if (error.status === 429) {
+            this.errors.rateLimitErrors++;
+            this.errors.consecutiveErrors++;
+        } else {
+            this.errors.apiErrors++;
+            this.errors.consecutiveErrors++;
+        }
+        
+        // Check if we should switch to offline mode
+        if (this.shouldSwitchToOfflineMode()) {
+            console.warn('Switching to offline mode due to error threshold exceeded');
+            this.config.offlineMode = true;
+        }
+    }
+
+    resetErrorCounts() {
+        this.errors = {
+            apiErrors: 0,
+            rateLimitErrors: 0,
+            lastErrorTime: null,
+            consecutiveErrors: 0
+        };
+    }
+
+    shouldSwitchToOfflineMode() {
+        return (
+            this.errors.consecutiveErrors >= this.errorThresholds.maxConsecutiveErrors ||
+            this.errors.apiErrors >= this.errorThresholds.maxApiErrors
+        );
+    }
+
+    // Add method to check API availability
+    async checkApiAvailability() {
+        if (this.config.offlineMode) {
+            return false;
+        }
+        
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.config.geminiModel}?key=${this.config.geminiApiKey}`);
+            return response.ok;
+        } catch (error) {
+            console.warn('API availability check failed:', error);
+            return false;
+        }
+    }
+
+    // Add method to handle API responses
+    handleApiResponse(response) {
+        if (!response.ok) {
+            const error = new Error(`API error: ${response.status}`);
+            error.status = response.status;
+            this.trackError(error);
+            throw error;
+        }
+        return response;
+    }
+
+    // Add method to check if we should retry an operation
+    shouldRetry(error, attempt) {
+        if (attempt >= 3) return false;
+        if (error.status === 429) return true;
+        if (error.status >= 500) return true;
+        return false;
+    }
 }
 
 /**

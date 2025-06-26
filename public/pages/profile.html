@@ -14,11 +14,21 @@
     <style>
         /* Profile Page Specific Styles */
         :root {
-            --primary-green: #10df6f;
-            --secondary-orange: #e96d1f;
+            --primary: #10df6f;
+            --primary-light: rgba(16, 223, 111, 0.1);
+            --secondary: #e96d1f;
+            --secondary-light: rgba(233, 109, 31, 0.1);
             --dark-blue: #060e21;
             --glass-bg: rgba(255, 255, 255, 0.05);
             --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --success: #00c853;
+            --success-light: rgba(0, 200, 83, 0.1);
+            --error: #ff5252;
+            --error-light: rgba(255, 82, 82, 0.1);
+            --warning: #ffd740;
+            --warning-light: rgba(255, 215, 64, 0.1);
         }
 
         body {
@@ -51,7 +61,7 @@
         .profile-header h1 {
             font-size: 2.5rem;
             font-weight: 700;
-            background: linear-gradient(135deg, white, var(--primary-green));
+            background: linear-gradient(135deg, white, var(--primary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -108,8 +118,6 @@
             background: linear-gradient(135deg, #4CAF50, #66BB6A);
         }
 
-
-
         .card-title {
             font-size: 1.4rem;
             font-weight: 600;
@@ -145,7 +153,7 @@
 
         .verified-badge {
             background: rgba(16, 223, 111, 0.2);
-            color: var(--primary-green);
+            color: var(--primary);
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
             font-size: 0.8rem;
@@ -154,10 +162,8 @@
 
         .verified-badge.unverified {
             background: rgba(233, 109, 31, 0.2);
-            color: var(--secondary-orange);
+            color: var(--secondary);
         }
-
-
 
         /* Actions */
         .profile-actions {
@@ -168,7 +174,7 @@
         }
 
         .action-btn {
-            background: linear-gradient(135deg, var(--primary-green), var(--secondary-orange));
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             border: none;
             padding: 1rem 2rem;
@@ -195,7 +201,7 @@
 
         .action-btn.secondary:hover {
             background: rgba(255, 255, 255, 0.1);
-            border-color: var(--primary-green);
+            border-color: var(--primary);
         }
 
         /* Loading States */
@@ -260,7 +266,7 @@
         <!-- Enhanced Header Navigation -->
         <header class="header">
             <div class="logo">
-                <i class="fas fa-coins" style="color: var(--primary-green); font-size: 1.5rem;"></i>
+                <i class="fas fa-coins" style="color: var(--primary); font-size: 1.5rem;"></i>
                 <span class="logo-text">Kita-kita</span>
             </div>
             <nav class="header-nav">
