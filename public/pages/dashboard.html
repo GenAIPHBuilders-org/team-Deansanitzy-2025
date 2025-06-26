@@ -61,10 +61,10 @@
                     
                     <div class="ai-agents-grid">
                         <!-- Ipon Coach Card -->
-                        <div class="ai-agent-card" data-agent="iponCoach">
+                        <a href="../agents/debtDemolisher.html" class="ai-agent-card" data-agent="debtDemolisher">
                             <div class="agent-card-header">
-                                <div class="agent-icon ipon-coach">
-                                    <i class="fas fa-piggy-bank"></i>
+                                <div class="agent-icon debt-demolisher">
+                                    <i class="fas fa-bomb"></i>
                                 </div>
                                 <div class="agent-status">
                                     <span class="status-dot"></span>
@@ -72,27 +72,27 @@
                                 </div>
                             </div>
                             <div class="agent-card-body">
-                                <h3>Ipon Coach</h3>
-                                <p>Your personal savings mentor with Filipino wisdom and practical tips for building wealth.</p>
+                                <h3>Debt Demolisher</h3>
+                                <p>Your autonomous agent for creating and executing a personalized debt-elimination plan.</p>
                                 <div class="agent-features">
-                                    <span class="feature-tag"><i class="fas fa-bullseye"></i> Savings Goals</span>
-                                    <span class="feature-tag"><i class="fas fa-chart-line"></i> Growth Tips</span>
-                                    <span class="feature-tag"><i class="fas fa-trophy"></i> Challenges</span>
+                                    <span class="feature-tag"><i class="fas fa-calculator"></i> Payoff Strategy</span>
+                                    <span class="feature-tag"><i class="fas fa-chart-line"></i> Progress Tracking</span>
+                                    <span class="feature-tag"><i class="fas fa-bell"></i> Smart Alerts</span>
                                 </div>
                             </div>
                             <div class="agent-card-footer">
-                                <button class="agent-cta-btn">
-                                    <span>Start Coaching</span>
+                                <div class="agent-cta-btn">
+                                    <span>Build My Plan</span>
                                     <i class="fas fa-arrow-right"></i>
-                                </button>
+                                </div>
                             </div>
-                        </div>
+                        </a>
 
                         <!-- Gastos Guardian Card -->
-                        <div class="ai-agent-card" data-agent="gastosGuardian">
+                        <a href="../agents/cashflowOptimizer.html" class="ai-agent-card" data-agent="cashflowOptimizer">
                             <div class="agent-card-header">
-                                <div class="agent-icon gastos-guardian">
-                                    <i class="fas fa-shield-alt"></i>
+                                <div class="agent-icon cashflow-optimizer">
+                                    <i class="fas fa-search-dollar"></i>
                                 </div>
                                 <div class="agent-status">
                                     <span class="status-dot"></span>
@@ -100,27 +100,27 @@
                                 </div>
                             </div>
                             <div class="agent-card-body">
-                                <h3>Gastos Guardian</h3>
-                                <p>Smart expense tracking with Filipino-centric insights to help you spend wisely.</p>
+                                <h3>Cashflow Optimizer</h3>
+                                <p>Autonomous agent to analyze cashflow and find savings.</p>
                                 <div class="agent-features">
-                                    <span class="feature-tag"><i class="fas fa-chart-pie"></i> Expense Analysis</span>
-                                    <span class="feature-tag"><i class="fas fa-lightbulb"></i> Tipid Tips</span>
-                                    <span class="feature-tag"><i class="fas fa-search-dollar"></i> Spending Leaks</span>
+                                    <span class="feature-tag"><i class="fas fa-receipt"></i> Bill Negotiation</span>
+                                    <span class="feature-tag"><i class="fas fa-user-secret"></i> Subscription Sleuth</span>
+                                    <span class="feature-tag"><i class="fas fa-tags"></i> Savings Finder</span>
                                 </div>
                             </div>
                             <div class="agent-card-footer">
-                                <button class="agent-cta-btn">
-                                    <span>Analyze Expenses</span>
+                                <div class="agent-cta-btn">
+                                    <span>Optimize Now</span>
                                     <i class="fas fa-arrow-right"></i>
-                                </button>
+                                </div>
                             </div>
-                        </div>
+                        </a>
 
                         <!-- Pera Planner Card -->
-                        <div class="ai-agent-card" data-agent="peraPlanner">
+                        <a href="../agents/wealthBuilder.html" class="ai-agent-card" data-agent="wealthBuilder">
                             <div class="agent-card-header">
-                                <div class="agent-icon pera-planner">
-                                    <i class="fas fa-map-marked-alt"></i>
+                                <div class="agent-icon wealth-builder">
+                                    <i class="fas fa-rocket"></i>
                                 </div>
                                 <div class="agent-status">
                                     <span class="status-dot"></span>
@@ -128,8 +128,8 @@
                                 </div>
                             </div>
                             <div class="agent-card-body">
-                                <h3>Pera Planner</h3>
-                                <p>Long-term financial roadmaps tailored for Filipino life stages and goals.</p>
+                                <h3>WealthBuilder AI</h3>
+                                <p>Your AI partner for long-term investment and wealth growth.</p>
                                 <div class="agent-features">
                                     <span class="feature-tag"><i class="fas fa-route"></i> Financial Roadmap</span>
                                     <span class="feature-tag"><i class="fas fa-seedling"></i> Investment Guide</span>
@@ -137,33 +137,34 @@
                                 </div>
                             </div>
                             <div class="agent-card-footer">
-                                <button class="agent-cta-btn">
-                                    <span>Plan Future</span>
+                                <div class="agent-cta-btn">
+                                    <span>Build Wealth</span>
                                     <i class="fas fa-arrow-right"></i>
-                                </button>
+                                </div>
                             </div>
-                        </div>
+                        </a>
                     </div>
                 </section>
 
-                <div class="widgets-container">
-                    <!-- Financial Health Widget -->
-                    <div class="dashboard-card financial-health-card">
+                <section class="ai-agents-section">
+                    <div class="financial-health-card">
                         <h2><i class="fas fa-heartbeat"></i> Financial Health</h2>
                         <div class="financial-health-content" id="financial-health-content">
                             <!-- Financial Health component will be loaded here by JS -->
                         </div>
                     </div>
+                </section>
 
+                <div class="widgets-container">
                     <!-- Spending Overview Widget -->
                     <div class="dashboard-card">
                         <h2><i class="fas fa-chart-pie"></i> Spending Overview</h2>
                         <div class="spending-chart-container">
                             <canvas id="spendingChart"></canvas>
-                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
         </main>
     </div>
 

@@ -210,6 +210,17 @@
                         <i class="fas fa-arrow-right"></i>
                     </div>
                 </div>
+
+                <div class="account-type-card" data-type="loan">
+                    <div class="account-type-icon">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <h3>Loan</h3>
+                    <p>Personal, car, or home loans</p>
+                    <div class="card-arrow">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
             </div>
 
             <!-- Account Details Form (Hidden Initially) -->
@@ -265,6 +276,32 @@
                                 <input type="number" id="account-balance" step="0.01" placeholder="0.00" required min="0">
                             </div>
                             <div class="form-validation-message" id="account-balance-error"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section" id="liability-details-section" style="display: none;">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-percentage"></i>
+                        Liability Details
+                    </h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="account-interest-rate">Interest Rate (APR %)</label>
+                            <div class="currency-input-container">
+                                <input type="number" id="account-interest-rate" step="0.01" placeholder="e.g., 24.5">
+                                <span class="currency-symbol">%</span>
+                            </div>
+                            <small class="form-help-text">Annual interest rate for this debt.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="account-minimum-payment">Minimum Monthly Payment</label>
+                            <div class="currency-input-container">
+                                <span class="currency-symbol">₱</span>
+                                <input type="number" id="account-minimum-payment" step="0.01" placeholder="e.g., 500.00">
+                            </div>
+                            <small class="form-help-text">Required monthly payment.</small>
                         </div>
                     </div>
                 </div>

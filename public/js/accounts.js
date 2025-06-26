@@ -41,6 +41,13 @@ const ACCOUNT_CONFIGS = {
             'BDO Nomura', 'Binance', 'Coins.ph', 'PDAX', 'Crypto.com', 'Other'
         ],
         types: ['Stocks', 'Mutual Funds', 'UITF', 'Bonds', 'Cryptocurrency', 'Other']
+    },
+    'loan': {
+        providers: [
+            'Bank Loan', 'Personal Lender', 'Auto Financing', 'Home Mortgage',
+            'Government Loan (e.g., SSS, Pag-IBIG)', 'Student Loan', 'Other'
+        ],
+        types: ['Personal Loan', 'Auto Loan', 'Mortgage', 'Student Loan', 'Other']
     }
 };
 
@@ -302,6 +309,25 @@ function showAccountForm() {
     // Populate provider and type options
     populateFormOptions();
     
+    // Show/hide liability details based on selection
+    const liabilitySection = document.getElementById('liability-details-section');
+    const typeSelect = document.getElementById('account-type-display');
+
+    const checkLiability = () => {
+        const selectedValue = typeSelect.value;
+        const isLiability = selectedAccountType === 'loan' || selectedValue === 'Credit Card';
+        
+        if (isLiability) {
+            liabilitySection.style.display = 'block';
+        } else {
+            liabilitySection.style.display = 'none';
+        }
+    };
+    
+    typeSelect.addEventListener('change', checkLiability);
+    // Initial check in case a default is set
+    checkLiability();
+    
     // Focus on first input
     setTimeout(() => {
         document.getElementById('account-name').focus();
@@ -523,6 +549,13 @@ async function handleAddAccount(e) {
             createdAt: new Date().toISOString()
         };
 
+        // Add liability fields if applicable
+        const liabilitySection = document.getElementById('liability-details-section');
+        if (liabilitySection.style.display === 'block') {
+            formData.interestRate = parseFloat(document.getElementById('account-interest-rate').value) || 0;
+            formData.minimumPayment = parseFloat(document.getElementById('account-minimum-payment').value) || 0;
+        }
+
         // Validate required fields before proceeding
         if (!selectedAccountType) {
             throw new Error('Please select an account type');
@@ -727,6 +760,16 @@ function createAccountCard(account) {
         maximumFractionDigits: 2 
     });
     
+    let liabilityInfo = '';
+    if (account.interestRate !== undefined && account.minimumPayment !== undefined) {
+        liabilityInfo = `
+            <div class="account-liability-details">
+                <span>APR: <strong>${account.interestRate}%</strong></span>
+                <span>Min. Payment: <strong>₱${account.minimumPayment.toLocaleString('en-PH', {minimumFractionDigits: 2})}</strong></span>
+            </div>
+        `;
+    }
+    
     card.innerHTML = `
         <div class="account-color-indicator" style="background-color: ${account.color}"></div>
         <div class="account-card-header">
@@ -737,6 +780,7 @@ function createAccountCard(account) {
             </div>
         </div>
         <div class="account-balance">₱${formattedBalance}</div>
+        ${liabilityInfo}
         ${account.notes ? `<div class="account-notes">${account.notes}</div>` : ''}
         <div class="account-actions">
             <button class="edit-account-btn" data-id="${account.id}" title="Edit Account" aria-label="Edit ${account.name}">

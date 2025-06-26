@@ -70,7 +70,19 @@ try {
 const db = admin.firestore();
 
 // Enhanced security middleware
-app.use(helmet()); // Set security HTTP headers
+// app.use(
+//   helmet({
+//     contentSecurityPolicy: {
+//       directives: {
+//         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+//         "script-src": ["'self'", "https://www.gstatic.com", "https://cdn.jsdelivr.net", "'unsafe-inline'", "https://www.googletagmanager.com", "https://apis.google.com"],
+//         "img-src": ["'self'", "data:", "https://www.google.com"],
+//         "connect-src": ["'self'", "https://*.googleapis.com", "https://www.googleapis.com", "https://www.google-analytics.com"],
+//         "frame-src": ["'self'", "https://*.firebaseapp.com"],
+//       },
+//     },
+//   })
+// );
 app.use(xss()); // Sanitize request data
 
 // Rate limiting to prevent abuse
@@ -106,6 +118,13 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static('public'));
+
+// API endpoint to serve the config
+app.get('/api/config', (req, res) => {
+    res.json({
+        gemini_api_key: process.env.GEMINI_API_KEY
+    });
+});
 
 // Configure multer for file uploads with size limits and filters
 const upload = multer({
@@ -381,8 +400,6 @@ const dbHelpers = {
     }
   },
 
-
-
   // Security monitoring functions
   async checkSuspiciousActivity(userId) {
     try {
@@ -501,10 +518,8 @@ async function callGeminiAI(prompt, retries = 3) {
   }
 }
 
-// API Routes
-
-// Health check endpoint with database status
-app.get('/api/health', async (req, res) => {
+// Health check endpoint
+app.get('/health', async (req, res) => {
   const healthStatus = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -758,8 +773,6 @@ app.post('/api/user/ensure-fixed-key', authenticateUser, async (req, res) => {
   }
 });
 
-
-
 app.post('/api/user/:userId', authenticateUser, async (req, res) => {
   try {
     const { userId } = req.params;
@@ -901,6 +914,72 @@ app.post('/api/ai/gastos-guardian', authenticateUser, async (req, res) => {
   }
 });
 
+app.post('/api/ai/cashflow-optimizer', authenticateUser, async (req, res) => {
+  try {
+    const { userId, context } = req.body;
+    
+    if (req.user.uid !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { promptType, transactionSummary, accountSummary } = context;
+    let prompt;
+
+    if (promptType === 'subscriptions') {
+      prompt = `
+        As an AI "Subscription Sleuth," analyze the user's transactions and accounts to identify all potential recurring subscriptions or bills.
+        Look for repeated payments to the same merchant (e.g., Netflix, Spotify, Meralco, PLDT).
+        Also consider account types that might have recurring fees.
+        For each, provide the name and estimated monthly cost.
+
+        Accounts:
+        ${accountSummary}
+
+        Transactions:
+        ${transactionSummary}
+
+        Provide the output as a JSON array of objects, or an empty array if none are found:
+        [
+          {"name": "Netflix Subscription", "amount": 550},
+          {"name": "Spotify Premium", "amount": 149}
+        ]
+      `;
+    } else if (promptType === 'optimization-tips') {
+      prompt = `
+        As a "Cashflow Optimizer AI," provide 2-3 actionable, personalized tips to improve financial efficiency based on this user's accounts and transactions.
+        Focus on reducing recurring costs, cutting down on non-essential spending, or suggesting cheaper alternatives.
+        Analyze spending patterns in relation to account balances. For example, if high-interest debt accounts exist, suggest prioritizing payments.
+
+        Accounts:
+        ${accountSummary}
+
+        Transactions:
+        ${transactionSummary}
+
+        Provide the output as a JSON array of strings:
+        ["Actionable tip based on spending.", "Another optimization suggestion."]
+      `;
+    } else {
+      return res.status(400).json({ error: 'Invalid prompt type for Cashflow Optimizer' });
+    }
+    
+    const aiResponse = await callGeminiAI(prompt);
+    
+    await db.collection('users').doc(userId).collection('ai_interactions').add({
+      agent: 'cashflow-optimizer',
+      userMessage: `Analyze: ${promptType}`,
+      aiResponse,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      context
+    });
+
+    res.json({ success: true, response: aiResponse });
+  } catch (error) {
+    console.error('Cashflow Optimizer error:', error);
+    res.status(500).json({ error: 'Failed to get AI response' });
+  }
+});
+
 app.post('/api/ai/pera-planner', authenticateUser, async (req, res) => {
   try {
     const { userId, message, context } = req.body;
@@ -942,6 +1021,31 @@ app.post('/api/ai/pera-planner', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('PeraPlanner error:', error);
     res.status(500).json({ error: 'Failed to get AI response' });
+  }
+});
+
+app.post('/api/ai/wealth-builder', authenticateUser, async (req, res) => {
+  try {
+    const { userId, prompt } = req.body;
+    
+    if (req.user.uid !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const aiResponse = await callGeminiAI(prompt);
+    
+    await db.collection('users').doc(userId).collection('ai_interactions').add({
+      agent: 'wealth-builder',
+      userMessage: 'WealthBuilder Analysis',
+      aiResponse,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      context: { prompt }
+    });
+
+    res.json({ success: true, response: aiResponse });
+  } catch (error) {
+    console.error('WealthBuilder AI error:', error);
+    res.status(500).json({ error: 'Failed to get AI response from WealthBuilder' });
   }
 });
 

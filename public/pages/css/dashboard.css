@@ -47,6 +47,11 @@
     --transition-fast: 0.2s ease;
     --transition-normal: 0.3s ease;
     --transition-slow: 0.5s ease;
+
+    /* Agent-specific Colors */
+    --debt-demolisher-glow: #ff4757;
+    --cashflow-optimizer-glow: #10df6f;
+    --wealth-builder-glow: #5e5ce6;
 }
 
 /* Base styles */
@@ -179,17 +184,68 @@ body {
 .ai-agent-card {
     background-color: #0d1117;
     border: 1px solid #30363d;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.3s ease;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    text-decoration: none;
+    opacity: 0;
+    animation: card-enter 0.6s ease-out forwards;
+}
+
+.ai-agents-grid .ai-agent-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+.ai-agents-grid .ai-agent-card:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.ai-agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 12px;
+    padding: 2px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+    -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    opacity: 0.5;
+    transition: all 0.3s ease;
 }
 
 .ai-agent-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(-8px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ai-agent-card:hover::before {
+    opacity: 1;
+}
+
+.ai-agent-card[data-agent="debtDemolisher"]:hover {
+    box-shadow: 0 12px 32px rgba(255, 71, 87, 0.2);
+    border-color: var(--debt-demolisher-glow);
+}
+
+.ai-agent-card[data-agent="cashflowOptimizer"]:hover {
+    box-shadow: 0 12px 32px rgba(16, 223, 111, 0.2);
+    border-color: var(--cashflow-optimizer-glow);
+}
+
+.ai-agent-card[data-agent="wealthBuilder"]:hover {
+    box-shadow: 0 12px 32px rgba(94, 92, 230, 0.2);
+    border-color: var(--wealth-builder-glow);
 }
 
 .agent-card-header {
@@ -208,11 +264,34 @@ body {
     justify-content: center;
     font-size: 1.5rem;
     color: #ffffff;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.agent-icon.ipon-coach { background: linear-gradient(135deg, #238636, #3fb950); }
-.agent-icon.gastos-guardian { background: linear-gradient(135deg, #FFC107, #FFD54F); }
-.agent-icon.pera-planner { background: linear-gradient(135deg, #9C27B0, #BA68C8); }
+.ai-agent-card:hover .agent-icon {
+    transform: scale(1.1);
+}
+
+.agent-icon.debt-demolisher {
+    background: linear-gradient(135deg, #c31432, #ff4b2b);
+}
+.ai-agent-card[data-agent="debtDemolisher"]:hover .agent-icon {
+    box-shadow: 0 0 20px var(--debt-demolisher-glow);
+}
+
+.agent-icon.cashflow-optimizer {
+    background: linear-gradient(135deg, #0f9b0f, #32cd32);
+}
+.ai-agent-card[data-agent="cashflowOptimizer"]:hover .agent-icon {
+    box-shadow: 0 0 20px var(--cashflow-optimizer-glow);
+}
+
+.agent-icon.wealth-builder {
+    background: linear-gradient(135deg, #4e54c8, #8f94fb);
+}
+.ai-agent-card[data-agent="wealthBuilder"]:hover .agent-icon {
+    box-shadow: 0 0 20px var(--wealth-builder-glow);
+}
 
 .agent-status {
     display: flex;
@@ -237,6 +316,18 @@ body {
 .agent-card-body h3 {
     margin: 0 0 0.5rem 0;
     font-size: 1.25rem;
+    transition: color 0.3s ease;
+    color: #c9d1d9;
+}
+
+.ai-agent-card[data-agent="debtDemolisher"]:hover h3 {
+    color: var(--debt-demolisher-glow);
+}
+.ai-agent-card[data-agent="cashflowOptimizer"]:hover h3 {
+    color: var(--cashflow-optimizer-glow);
+}
+.ai-agent-card[data-agent="wealthBuilder"]:hover h3 {
+    color: var(--wealth-builder-glow);
 }
 
 .agent-card-body p {
@@ -283,16 +374,18 @@ body {
 }
 
 .agent-cta-btn:hover {
-    background-color: #30363d;
-    border-color: #8b949e;
-    color: #f0f6fc;
+    background-color: #2ea043;
 }
 
-/* Widgets */
 .widgets-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    display: flex;
     gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.widgets-container > .dashboard-card {
+    flex: 1;
+    min-width: 0;
 }
 
 /* Keyframes */
@@ -688,9 +781,15 @@ body {
 }
 
 @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+        box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(63, 185, 80, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(63, 185, 80, 0);
+    }
 }
 
 @keyframes shimmer {
@@ -764,5 +863,103 @@ body {
 }
 
 .status-badge i {
-    font-size: 0.9rem;
+    margin-right: 0.5rem;
+}
+
+/* Financial Health Tabs */
+.financial-details-tabs {
+    margin-top: 2rem;
+}
+
+.tab-headers {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid #30363d;
+    margin-bottom: 1.5rem;
+}
+
+.tab-link {
+    padding: 0.75rem 1.5rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: #8b949e;
+    font-size: 1rem;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-link:hover {
+    color: #c9d1d9;
+}
+
+.tab-link.active {
+    color: #3fb950;
+    border-bottom-color: #3fb950;
+}
+
+.tab-content {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments for widgets */
+@media (max-width: 992px) {
+    .widgets-container {
+        flex-direction: column;
+    }
+}
+
+@keyframes card-enter {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Insight Card Placeholders */
+.insight-card.placeholder {
+    border: 2px dashed #30363d;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #8b949e;
+    cursor: default;
+    box-shadow: none;
+    padding: 2rem;
+}
+
+.insight-card.placeholder:hover {
+    transform: none;
+    border-color: #30363d;
+    background-color: transparent;
+}
+
+.placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    opacity: 0.6;
+}
+
+.placeholder-content i {
+    font-size: 2rem;
 }

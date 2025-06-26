@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pera Planner - Kita-kita</title>
+    <title>WealthBuilder AI - Kita-kita</title>
     <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../pages/css/dashboard.css">
-    <link rel="stylesheet" href="peraPlanner.css">
+    <link rel="stylesheet" href="wealthBuilder.css">
 </head>
 <body>
     <div class="dashboard-layout">
@@ -29,59 +29,61 @@
             <div class="page-content">
                 <div class="welcome-banner">
                     <div class="welcome-content">
-                        <h1>Pera Planner</h1>
-                        <p>Your AI-powered financial planning assistant.</p>
+                        <h1>WealthBuilder AI</h1>
+                        <p>Your AI partner for long-term investment and wealth growth.</p>
                     </div>
                 </div>
 
                 <div id="loading-state" class="state-container">
                     <div class="loading-spinner"></div>
-                    <p>Building your financial plan...</p>
+                    <p>Constructing your wealth-building strategy...</p>
                 </div>
 
                 <div id="empty-state" class="state-container" style="display: none;">
-                    <p>No data available to create a financial plan. Please link accounts or add transactions.</p>
+                    <i class="fas fa-box-open empty-icon"></i>
+                    <p>No data available to build your wealth plan. Please link accounts or add transactions.</p>
                 </div>
 
-                <div id="content-state" class="grid-container" style="display: none;">
-                    <div class="grid-item card" id="financial-overview">
-                        <h3>Financial Snapshot</h3>
-                        <div class="overview-cards">
-                            <div class="overview-card">
-                                <h4>Total Assets</h4>
-                                <p id="total-balance">₱0.00</p>
-                            </div>
-                            <div class="overview-card">
-                                <h4>Monthly Income</h4>
-                                <p id="monthly-income">₱0.00</p>
-                            </div>
-                            <div class="overview-card">
-                                <h4>Monthly Expenses</h4>
-                                <p id="monthly-expenses">₱0.00</p>
-                            </div>
-                            <div class="overview-card">
-                                <h4>Savings Rate</h4>
-                                <p id="savings-rate">0%</p>
+                <div id="content-state" class="analysis-container" style="display: none;">
+                    <div class="analysis-grid">
+                        <!-- Column 1: Financial Overview -->
+                        <div class="analysis-card" id="financial-overview">
+                            <h3 class="card-header"><i class="fas fa-chart-pie"></i> Financial Overview</h3>
+                            <div class="overview-grid">
+                                <div class="overview-item">
+                                    <span>Monthly Income</span>
+                                    <strong id="monthly-income">₱0.00</strong>
+                                </div>
+                                <div class="overview-item">
+                                    <span>Monthly Expenses</span>
+                                    <strong id="monthly-expenses">₱0.00</strong>
+                                </div>
+                                <div class="overview-item">
+                                    <span>Total Balance</span>
+                                    <strong id="total-balance">₱0.00</strong>
+                                </div>
+                                <div class="overview-item">
+                                    <span>Savings Rate</span>
+                                    <strong id="savings-rate">0%</strong>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="grid-item card" id="financial-goals">
-                        <h3>Your Financial Goals</h3>
-                        <button id="add-goal-btn" class="btn">Set New Goal</button>
-                        <div id="goals-list" class="goals-list">
-                            <!-- Goals will be rendered here by peraPlanner.js -->
+
+                        <!-- Column 2: Financial Insights -->
+                        <div class="analysis-card" id="financial-insights">
+                            <h3 class="card-header"><i class="fas fa-search-dollar"></i> Financial Insights</h3>
+                            <div id="insights-list" class="insights-list">
+                                <!-- AI-generated insights will be populated here -->
+                            </div>
                         </div>
-                    </div>
-                    <div class="grid-item card" id="ai-insights">
-                        <h3>AI-Powered Insights</h3>
-                        <div id="insights-content">
-                            <!-- AI insights will be rendered here -->
+
+                        <!-- Column 3: Recommended Actions -->
+                        <div class="analysis-card" id="recommended-actions">
+                            <h3 class="card-header"><i class="fas fa-tasks"></i> Recommended Actions</h3>
+                            <div id="actions-list" class="actions-list">
+                                <!-- AI-generated recommendations will be populated here -->
+                            </div>
                         </div>
-                    </div>
-                     <div class="grid-item card" id="financial-health">
-                        <h3>Financial Health Score</h3>
-                        <canvas id="health-score-chart"></canvas>
-                        <p id="health-score-summary"></p>
                     </div>
                 </div>
             </div>
@@ -131,7 +133,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" src="peraPlanner.js"></script>
+    <script type="module" src="wealthBuilder.js"></script>
 </body>
 </html>
 

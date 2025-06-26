@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ipon Coach AI - Your Intelligent Filipino Savings Assistant</title>
+    <title>Debt Demolisher AI - Your Autonomous Debt Elimination Agent</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js for beautiful visualizations -->
@@ -12,7 +12,7 @@
     <!-- Main theme stylesheet -->
     <link rel="stylesheet" href="../css/theme.css">
     <!-- Page-specific stylesheet -->
-    <link rel="stylesheet" href="iponCoach.css">
+    <link rel="stylesheet" href="debtDemolisher.css">
 </head>
 
 <body>
@@ -37,8 +37,8 @@
         <main class="main-content">
             <!-- Page Header -->
             <div class="page-header">
-                <h1>Ipon Coach AI</h1>
-                <p>Your intelligent savings assistant.</p>
+                <h1>Debt Demolisher AI</h1>
+                <p>Your autonomous agent for financial freedom.</p>
             </div>
 
             <!-- AI Dashboard Content -->
@@ -46,16 +46,16 @@
                 <!-- Loading State -->
                 <div id="loading-state" class="loading-state">
                     <div class="loading-spinner"></div>
-                    <p>Analyzing your financial data...</p>
+                    <p>Analyzing your debt portfolio...</p>
                 </div>
 
                 <!-- Empty State -->
                 <div id="empty-state" class="empty-state" style="display: none;">
-                    <i class="fas fa-chart-line"></i>
-                    <h3>Ready to Analyze Your Finances</h3>
-                    <p>Provide transaction and account data for personalized AI insights.</p>
-                    <a href="../pages/dashboard.html" class="primary-button">
-                        <i class="fas fa-plus"></i> Add Financial Data
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <h3>Ready to Demolish Your Debt</h3>
+                    <p>Connect your accounts to generate a personalized debt elimination plan.</p>
+                    <a href="../pages/accounts.html" class="primary-button">
+                        <i class="fas fa-link"></i> Link Accounts
                     </a>
                 </div>
 
@@ -64,48 +64,37 @@
                     
                     <div class="metric-grid">
                         <div class="metric-item">
-                            <div class="metric-label">Monthly Savings</div>
-                            <div class="metric-value" id="monthly-savings">₱0</div>
+                            <div class="metric-label">Total Debt</div>
+                            <div class="metric-value" id="total-debt">₱0</div>
                         </div>
                         <div class="metric-item">
-                            <div class="metric-label">Savings Goal Progress</div>
-                            <div class="metric-value" id="savings-goal-progress">0%</div>
+                            <div class="metric-label">Debt Reduction Progress</div>
+                            <div class="metric-value" id="debt-reduction-progress">0%</div>
                         </div>
                         <div class="metric-item">
-                            <div class="metric-label">Potential Savings</div>
-                            <div class="metric-value" id="potential-savings">₱0</div>
+                            <div class="metric-label">Est. Payoff Date</div>
+                            <div class="metric-value" id="estimated-payoff-date">N/A</div>
                         </div>
                         <div class="metric-item">
-                            <div class="metric-label">Savings Rate</div>
-                            <div class="metric-value" id="savings-rate">0%</div>
+                            <div class="metric-label">Interest Saved</div>
+                            <div class="metric-value" id="interest-saved">₱0</div>
                         </div>
                     </div>
 
                     <div class="content-grid">
-                        <!-- Chart Card -->
-                        <div class="dashboard-card chart-card">
-                            <h3>Savings Over Time</h3>
-                            <div class="chart-container">
-                                <canvas id="savingsChart"></canvas>
+                        <!-- Debt Portfolio Card -->
+                        <div class="dashboard-card">
+                            <h3><i class="fas fa-list-alt"></i> Debt Portfolio</h3>
+                            <div class="analysis-content" id="debt-portfolio-content">
+                                <!-- Debt portfolio content will be dynamically inserted here -->
                             </div>
                         </div>
 
-                        <!-- Smart Analysis Card -->
+                        <!-- Repayment Strategy Card -->
                         <div class="dashboard-card">
-                            <h3><i class="fas fa-tags"></i> Smart Analysis</h3>
-                            <div class="analysis-content" id="categorization-content">
-                                <!-- Smart analysis content will be dynamically inserted here -->
-                            </div>
-                            <div class="analysis-content" id="overspending-content">
-                                <!-- Overspending analysis content will be dynamically inserted here -->
-                            </div>
-                        </div>
-
-                        <!-- Budget Insights Card -->
-                        <div class="dashboard-card">
-                            <h3><i class="fas fa-piggy-bank"></i> Budget Insights</h3>
-                            <div class="analysis-content" id="budget-content">
-                                <!-- Budget recommendations will be dynamically inserted here -->
+                            <h3><i class="fas fa-tasks"></i> Repayment Strategy</h3>
+                            <div class="analysis-content" id="strategy-content">
+                                <!-- Repayment strategy will be dynamically inserted here -->
                             </div>
                         </div>
 
@@ -123,7 +112,7 @@
     </div>
 
     <!-- Enhanced JavaScript Module -->
-    <script type="module" src="iponCoach.js"></script>
+    <script type="module" src="debtDemolisher.js"></script>
     <script type="module">
         import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
         
@@ -144,7 +133,7 @@
     
     <!-- Fallback for browsers that don't support modules -->
     <script nomodule>
-        alert('Your browser does not support ES6 modules. Please update your browser to use Ipon Coach AI.');
+        alert('Your browser does not support ES6 modules. Please update your browser to use Debt Demolisher AI.');
     </script>
 </body>
 

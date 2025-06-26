@@ -1,0 +1,329 @@
+/* Shared styles for login and sign-up pages */
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Standardized container */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    padding: var(--spacing-xl);
+}
+
+/* Standardized auth card */
+.auth-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(25px);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-light);
+    padding: var(--spacing-xxl);
+    width: 100%;
+    max-width: 500px; /* Standardize max-width */
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-normal);
+    position: relative;
+}
+
+.auth-card:hover {
+    box-shadow: 0 35px 70px rgba(0, 0, 0, 0.5);
+    border-color: var(--border-focus);
+}
+
+/* Standardized header */
+.auth-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.auth-header h2 {
+    color: var(--text-primary);
+    font-size: 2.2rem;
+    margin-bottom: var(--spacing-sm);
+    font-weight: 700;
+}
+
+.auth-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Standardized form styling */
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.auth-form .form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.auth-form .form-row .form-group {
+    flex: 1;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.auth-form input[type="text"],
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all var(--transition-fast);
+    box-sizing: border-box;
+}
+
+.auth-form input:focus {
+    outline: none;
+    border-color: var(--primary-green);
+    box-shadow: 0 0 20px rgba(16, 223, 111, 0.2);
+}
+
+.auth-form input::placeholder {
+    color: var(--text-tertiary);
+}
+
+.auth-form .form-group label[style*="inline-flex"] {
+    display: inline-flex; 
+    align-items: center; 
+    gap: 8px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.auth-form input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--primary-green);
+    transform: scale(1.1);
+}
+
+/* Standardized button styling */
+.auth-form button[type="submit"] {
+    width: 100%;
+    padding: var(--spacing-md);
+    background: var(--primary-green);
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--bg-dark);
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    margin-top: 1rem;
+    box-shadow: 0 10px 30px rgba(16, 223, 111, 0.2);
+}
+
+.auth-form button[type="submit"]:hover {
+    background: var(--primary-green-dark);
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(16, 223, 111, 0.3);
+}
+
+/* Google Sign In Button */
+#google-login {
+    background: #fff !important;
+    color: #333 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: var(--spacing-md);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    border-radius: var(--radius-md);
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    margin-top: 1rem;
+}
+
+#google-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Or divider */
+.or-divider {
+    position: relative;
+    text-align: center;
+    margin: 2rem 0;
+    color: var(--text-secondary);
+}
+
+.or-divider::before,
+.or-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 35%;
+    height: 1px;
+    background: var(--border-light);
+}
+
+.or-divider::before { left: 0; }
+.or-divider::after { right: 0; }
+
+
+/* Standardized footer link styling */
+.auth-footer {
+    text-align: center;
+    margin-top: var(--spacing-xl);
+    color: var(--text-secondary);
+}
+
+.auth-footer a {
+    color: var(--primary-green);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+    color: var(--primary-green-dark);
+}
+
+/* Links inside the form card */
+.forgot-password, .terms {
+    text-align: center;
+    margin-top: var(--spacing-md);
+    font-size: 0.9rem;
+}
+
+.forgot-password a, .terms a {
+    color: var(--secondary-orange);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.forgot-password a:hover, .terms a:hover {
+    color: var(--primary-green);
+    text-decoration: underline;
+}
+
+.terms {
+    color: var(--text-secondary);
+}
+
+/* Password requirements for sign-up */
+.password-requirements {
+    margin-top: var(--spacing-md);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.password-requirements p {
+    margin: 0 0 0.5rem 0;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.password-requirements ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    list-style-type: none;
+}
+
+.password-requirements ul ul {
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+}
+
+.password-requirements li::before {
+    content: '•';
+    color: var(--secondary-orange); /* Default unmet state */
+    display: inline-block; 
+    width: 1em;
+    margin-left: -1em;
+}
+
+.requirement-met::before {
+    color: var(--primary-green) !important;
+    content: '✓' !important;
+}
+
+/* Standardized back button */
+.back-button {
+    position: fixed;
+    top: 2rem;
+    left: 2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    text-decoration: none;
+    backdrop-filter: blur(10px);
+    transition: all var(--transition-fast);
+    z-index: 100;
+    box-shadow: var(--shadow-md);
+}
+
+.back-button:hover {
+    background: var(--primary-green);
+    color: var(--bg-dark);
+    transform: scale(1.05);
+    box-shadow: 0 10px 25px rgba(16, 223, 111, 0.3);
+}
+
+.back-button i {
+    font-size: 1.2rem;
+}
+
+/* The footer from index.html is reused, so it should already be styled correctly. No need to duplicate footer styles here */
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .auth-container {
+        padding: 1rem;
+        align-items: flex-start;
+        padding-top: 6rem;
+    }
+
+    .auth-card {
+        padding: var(--spacing-xl);
+    }
+
+    .auth-header h2 {
+        font-size: 1.8rem;
+    }
+
+    .auth-form .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .back-button {
+        top: 1rem;
+        left: 1rem;
+        width: 45px;
+        height: 45px;
+    }
+} 

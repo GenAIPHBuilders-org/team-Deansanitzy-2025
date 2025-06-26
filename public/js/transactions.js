@@ -146,6 +146,37 @@ function initializeEventListeners() {
     }
 }
 
+// Function to populate categories based on transaction type
+function populateCategories() {
+    const transactionType = document.getElementById('transaction-type').value;
+    const categorySelect = document.getElementById('transaction-category');
+    
+    const expenseCategories = [
+        'Food', 'Shopping', 'Bills', 'Transportation', 
+        'Entertainment', 'Housing', 'Health', 'Education', 'Other'
+    ];
+    const incomeCategories = [
+        'Salary', 'Freelance', 'Investments', 'Gifts', 'Other'
+    ];
+
+    categorySelect.innerHTML = ''; // Clear existing options
+
+    const categories = transactionType === 'income' ? incomeCategories : expenseCategories;
+
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.toLowerCase();
+        option.textContent = category;
+        categorySelect.appendChild(option);
+    });
+}
+
+// Add event listener for transaction type change
+const transactionTypeSelect = document.getElementById('transaction-type');
+if (transactionTypeSelect) {
+    transactionTypeSelect.addEventListener('change', populateCategories);
+}
+
 // Helper function to generate transaction ID
 function generateTransactionId() {
     return 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -188,6 +219,7 @@ async function initializePage() {
             
             // Initialize event listeners after auth is ready
             initializeEventListeners();
+            populateCategories(); // Initial population
         } else {
             console.log('❌ No authenticated user, redirecting to login...');
             window.location.href = 'login.html';
@@ -824,10 +856,8 @@ document.getElementById('transaction-date').value = new Date().toISOString().spl
 // Error handling functions
 function showTransactionError(message) {
     const tableBody = document.getElementById('transactions-table-body');
-    const loadingState = document.getElementById('transactions-loading-state');
     const emptyState = document.getElementById('transactions-empty-state');
     
-    if (loadingState) loadingState.style.display = 'none';
     if (emptyState) emptyState.style.display = 'none';
     
     if (tableBody) {

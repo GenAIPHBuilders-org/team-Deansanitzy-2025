@@ -70,9 +70,15 @@ async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
     }
 }
 
-// Call Gemini AI function
+/**
+ * A shared function to call the Gemini AI API with proper error handling,
+ * rate limiting, and exponential backoff.
+ * @param {string} prompt The complete prompt to send to the AI.
+ * @param {object} options Optional parameters for the generation config.
+ * @returns {Promise<string>} The text response from the AI.
+ */
 export async function callGeminiAI(prompt, options = {}) {
-    console.log('🤖 Calling Gemini AI');
+    console.log('🤖 Calling Gemini AI via agentCommon.js');
     console.log('📝 Prompt preview:', prompt.substring(0, 150) + '...');
     
     if (!GEMINI_API_KEY) {
@@ -91,7 +97,8 @@ export async function callGeminiAI(prompt, options = {}) {
         throw error;
     }
     
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    // Corrected endpoint to use v1beta, which supports gemini-1.5-flash-latest
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     
     const body = {
         contents: [{ parts: [{ text: prompt }] }],
@@ -124,69 +131,69 @@ export async function callGeminiAI(prompt, options = {}) {
     };
     
     const makeRequest = async () => {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'User-Agent': 'Kita-kita-Financial-Assistant/1.0'
-            },
-            body: JSON.stringify(body)
-        });
-        
-        console.log('📡 Response status:', response.status, response.statusText);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ HTTP error details:', errorText);
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
             
-            // Handle specific error cases
-            if (response.status === 429) {
-                throw new Error('API quota exceeded. Please try again later or upgrade your plan.');
-            }
+            console.log('📡 Response status:', response.status, response.statusText);
             
-            try {
-                const errorData = JSON.parse(errorText);
-                if (errorData.error && errorData.error.message) {
-                    throw new Error(`Gemini API Error: ${errorData.error.message}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ HTTP error details:', errorText);
+                
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.error && errorData.error.message) {
+                        throw new Error(`Gemini API Error: ${errorData.error.message}`);
+                    }
+                } catch (parseError) {
+                    // Fallback to raw text if JSON parsing fails
                 }
-            } catch (parseError) {
-                // If we can't parse the error, use the original text
+                
+                throw new Error(`Gemini API HTTP error ${response.status}: ${errorText}`);
             }
             
-            throw new Error(`Gemini API HTTP error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.candidates && data.candidates.length > 0 && 
-            data.candidates[0].content && data.candidates[0].content.parts && 
-            data.candidates[0].content.parts.length > 0) {
+            const data = await response.json();
             
-            const responseText = data.candidates[0].content.parts[0].text;
-            console.log('💬 Response preview:', responseText.substring(0, 100) + '...');
-            return responseText;
-        } else if (data.promptFeedback && data.promptFeedback.blockReason) {
-            throw new Error('Content was blocked by Gemini AI safety filters. Please try rephrasing your question.');
-        } else {
-            throw new Error('Received unexpected response format from Gemini API');
+            if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+                const responseText = data.candidates[0].content.parts[0].text;
+                console.log('💬 Response preview:', responseText.substring(0, 100) + '...');
+                return responseText;
+            } else {
+                console.warn('Unexpected API response structure:', data);
+                if (data.promptFeedback?.blockReason) {
+                    throw new Error(`Content blocked by Gemini AI safety filters: ${data.promptFeedback.blockReason}`);
+                }
+                throw new Error('Received an unexpected or empty response from the Gemini API.');
+            }
+        } catch (error) {
+            console.error("Fetch or processing error in makeRequest:", error);
+            throw error; // Re-throw to be caught by retryWithBackoff
         }
     };
     
     try {
-        return await retryWithBackoff(makeRequest);
+        return await retryWithBackoff(makeRequest, 3, 2000); // Increased initial delay
     } catch (error) {
-        console.error('💥 Error calling Gemini API:', error);
+        console.error('💥 Final Error after retries in callGeminiAI:', error);
         
-        if (error.message.includes('quota exceeded')) {
-            throw new Error('API quota exceeded. The service is currently unavailable. Please try again later or contact support to upgrade your plan.');
-        } else if (error.message.includes('Rate limit exceeded')) {
+        // Provide more user-friendly error messages
+        if (error.message.includes('quota')) {
+            throw new Error('API quota exceeded. The service is currently unavailable.');
+        } else if (error.message.includes('Rate limit')) {
             throw new Error('Too many requests. Please wait a moment before trying again.');
-        } else if (error.message.includes('fetch')) {
-            throw new Error('Network error: Unable to connect to AI service. Please check your internet connection.');
+        } else if (error.message.includes('fetch') || error.message.includes('Network')) {
+            throw new Error('Network error: Unable to connect to the AI service.');
         } else if (error.message.includes('API_KEY')) {
             throw new Error('AI service configuration error. Please contact support.');
         }
         
+        // Default to throwing the specific Gemini API error message if available
         throw error;
     }
 } 

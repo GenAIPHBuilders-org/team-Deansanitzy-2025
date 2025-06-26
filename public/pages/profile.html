@@ -75,14 +75,53 @@
                         </span>
                     </div>
                 </div>
+
+                <!-- Financial Information Card -->
+                <div class="profile-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </div>
+                        <h2 class="card-title">Financial Information</h2>
+                    </div>
+                    <p class="card-description">Providing this information helps our AI assistants give you more personalized and accurate advice.</p>
+
+                    <form id="financial-profile-form" novalidate>
+                        <div class="form-item">
+                            <label for="monthly-income">Stated Monthly Income (PHP)</label>
+                            <div class="input-group">
+                                <i class="fas fa-money-bill-wave"></i>
+                                <input type="number" id="monthly-income" name="monthly-income" placeholder="e.g., 50000" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-item">
+                            <label for="employment-status">Employment Status</label>
+                            <div class="input-group">
+                                <i class="fas fa-briefcase"></i>
+                                <select id="employment-status" name="employment-status">
+                                    <option value="">Select your status</option>
+                                    <option value="salaried">Salaried</option>
+                                    <option value="self-employed">Self-employed / Freelancer</option>
+                                    <option value="student">Student</option>
+                                    <option value="retired">Retired</option>
+                                    <option value="unemployed">Unemployed</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" id="save-financial-profile-button" class="primary-button">
+                                <i class="fas fa-save"></i> Save Financial Info
+                            </button>
+                            <span id="save-status" class="save-status"></span>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- Profile Actions -->
             <div class="profile-actions">
-                <a href="settings.html" class="secondary-button">
-                    <i class="fas fa-cog"></i>
-                    Account Settings
-                </a>
                 <button id="sign-out-button" class="secondary-button">
                     <i class="fas fa-sign-out-alt"></i>
                     Sign Out

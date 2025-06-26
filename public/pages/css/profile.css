@@ -104,51 +104,136 @@ body {
 /*-Profile Page----------------------------------------------------*/
 .profile-grid {
     display: grid;
-    grid-template-columns: 1fr;
-    max-width: 800px;
-    margin: 0 auto 2rem auto;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
 }
 
 .profile-card {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 8px;
+    background-color: #161b22;
     padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid #30363d;
+    transition: all 0.3s ease;
 }
 
 .card-header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid #30363d;
 }
 
 .card-icon {
-    font-size: 1.25rem;
-    color: #2ea043;
-    background-color: rgba(46, 160, 67, 0.1);
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
+    font-size: 1.5rem;
+    color: #3fb950;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: rgba(63, 185, 80, 0.1);
+    border-radius: 50%;
 }
 
 .card-title {
+    margin: 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #f0f6fc;
-    margin: 0;
 }
+
+.card-description {
+    color: #8b949e;
+    font-size: 0.95rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Form Styles */
+#financial-profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-item label {
+    font-weight: 500;
+    color: #c9d1d9;
+    margin-bottom: 0.5rem;
+}
+
+.input-group {
+    position: relative;
+}
+
+.input-group i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #8b949e;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #c9d1d9;
+    font-size: 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+}
+
+.input-group input:focus,
+.input-group select:focus {
+    outline: none;
+    border-color: #3fb950;
+    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.3);
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.primary-button {
+    /* Assuming this class is defined elsewhere, but adding some specifics */
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+}
+
+.save-status {
+    font-size: 0.9rem;
+    transition: opacity 0.3s ease;
+}
+
+.save-status.saving { color: #8b949e; }
+.save-status.success { color: #3fb950; }
+.save-status.error { color: #f85149; }
 
 .user-info-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 0.5rem;
+    padding: 1rem 0;
     border-bottom: 1px solid #30363d;
 }
 
@@ -157,45 +242,41 @@ body {
 }
 
 .info-label {
-    color: #8b949e;
     font-weight: 500;
+    color: #8b949e;
 }
 
 .info-value {
-    color: #f0f6fc;
+    color: #c9d1d9;
     font-weight: 500;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
+.loading {
+    color: #8b949e;
+    font-style: italic;
+}
+
 .verified-badge {
-    background: rgba(46, 160, 67, 0.15);
-    color: #2ea043;
-    padding: 0.25rem 0.75rem;
+    background-color: rgba(63, 185, 80, 0.1);
+    color: #3fb950;
+    padding: 0.25rem 0.6rem;
     border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
 .verified-badge.unverified {
-    background: rgba(218, 54, 51, 0.15);
-    color: #da3633;
+    background-color: rgba(248, 81, 73, 0.1);
+    color: #f85149;
 }
 
 .profile-actions {
+    margin-top: 2rem;
     display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-
-/* Loading State */
-.loading {
-    color: #8b949e;
-    font-size: 0.9rem;
+    justify-content: flex-end;
 }
 
 /* Responsive Design */

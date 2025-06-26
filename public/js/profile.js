@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebas
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
 import { firebaseConfig } from "./config.js";
-import { getUserData, storeUserData } from "./firestoredb.js";
+import { getUserData, storeUserData, updateFinancialProfile } from "./firestoredb.js";
 import { secureStorage } from "./helpers.js";
 
 // Initialize Firebase
@@ -63,6 +63,7 @@ async function loadUserProfile(user) {
 
         // Update UI elements
         updateUserInfoDisplay(user, userData);
+        updateFinancialInfoDisplay(userData.financialProfile);
         
     } catch (error) {
         console.error('Error loading user profile:', error);
@@ -113,6 +114,24 @@ function updateUserInfoDisplay(user, userData) {
     } catch (error) {
         console.error('Error updating user info display:', error);
     }
+}
+
+// Update financial information display
+function updateFinancialInfoDisplay(financialProfile) {
+    if (!financialProfile) {
+        console.log('No financial profile data to display.');
+        return;
+    }
+    const monthlyIncomeInput = document.getElementById('monthly-income');
+    const employmentStatusSelect = document.getElementById('employment-status');
+
+    if (monthlyIncomeInput && financialProfile.monthlyIncome) {
+        monthlyIncomeInput.value = financialProfile.monthlyIncome;
+    }
+    if (employmentStatusSelect && financialProfile.employmentStatus) {
+        employmentStatusSelect.value = financialProfile.employmentStatus;
+    }
+    console.log('Financial info display updated.');
 }
 
 // Load telegram connection key from server
@@ -346,8 +365,20 @@ function initializeEventListeners() {
         copyKeyBtn.addEventListener('click', copyTelegramKey);
     }
     
+    // Sign out button
+    const signOutBtn = document.getElementById('sign-out-button');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', signOutUser);
+    }
+    
+    // Financial Profile Form
+    const financialForm = document.getElementById('financial-profile-form');
+    if (financialForm) {
+        financialForm.addEventListener('submit', saveFinancialProfile);
+    }
+    
     // Global functions for HTML onclick handlers
-    window.signOut = signOutUser;
+    window.signOutUser = signOutUser;
     
     // Note: Removed refresh key functionality - keys are now fixed per email
     console.log('Event listeners initialized');
@@ -389,6 +420,51 @@ async function copyTelegramKey() {
     } catch (error) {
         console.error('Error copying to clipboard:', error);
         showError('Failed to copy key to clipboard');
+    }
+}
+
+// Save financial profile
+async function saveFinancialProfile(event) {
+    event.preventDefault();
+    if (!currentUser) {
+        showError('You must be logged in to save your profile.');
+        return;
+    }
+
+    const saveButton = document.getElementById('save-financial-profile-button');
+    const saveStatus = document.getElementById('save-status');
+
+    saveButton.disabled = true;
+    saveStatus.textContent = 'Saving...';
+    saveStatus.className = 'save-status saving';
+
+    const monthlyIncome = document.getElementById('monthly-income').value;
+    const employmentStatus = document.getElementById('employment-status').value;
+
+    const financialData = {
+        monthlyIncome: monthlyIncome ? parseFloat(monthlyIncome) : null,
+        employmentStatus: employmentStatus || null
+    };
+
+    try {
+        const success = await updateFinancialProfile(currentUser.uid, financialData);
+        if (success) {
+            saveStatus.textContent = 'Saved!';
+            saveStatus.className = 'save-status success';
+        } else {
+            throw new Error('Failed to save to the database.');
+        }
+    } catch (error) {
+        console.error('Failed to save financial profile:', error);
+        showError('Could not save your financial information.');
+        saveStatus.textContent = 'Save failed';
+        saveStatus.className = 'save-status error';
+    } finally {
+        saveButton.disabled = false;
+        setTimeout(() => {
+            saveStatus.textContent = '';
+            saveStatus.className = 'save-status';
+        }, 3000);
     }
 }
 
@@ -449,6 +525,7 @@ window.profileDebug = {
     loadTelegramKey,
     ensureFixedKeyExists,
     copyTelegramKey,
+    saveFinancialProfile,
     currentUser: () => currentUser,
     telegramKey: () => telegramKey
 };

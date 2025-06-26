@@ -105,4 +105,15 @@ export const withDevelopmentFallback = (productionFn, developmentFallback) => {
         return developmentFallback();
     }
     return null;
+};
+
+// API Endpoint Configuration
+export const getApiBaseUrl = () => {
+    if (isProduction()) {
+        // In production, the API is served from the same origin
+        return ''; 
+    } else {
+        // In development, the API is on port 3000
+        return 'http://localhost:3000';
+    }
 }; 

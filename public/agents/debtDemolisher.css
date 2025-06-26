@@ -1,4 +1,4 @@
-/* Ipon Coach Specific Styles - Complements theme.css */
+/* Debt Demolisher Specific Styles - Complements theme.css */
 
 /*-Body & Layout--------------------------------------------------*/
 body {
@@ -174,10 +174,6 @@ body {
     flex-direction: column;
 }
 
-.dashboard-card.chart-card {
-    grid-column: 1 / -1; /* Make chart card span full width */
-}
-
 .dashboard-card h3 {
     font-size: 1.25rem;
     font-weight: 600;
@@ -192,12 +188,6 @@ body {
 
 .dashboard-card h3 i {
     color: #2ea043;
-}
-
-.chart-container {
-    height: 300px;
-    position: relative;
-    flex-grow: 1;
 }
 
 .analysis-content {
@@ -235,7 +225,7 @@ body {
     }
 }
 
-/* Ipon Coach Specific Styles - Complements theme.css */
+/* Debt Demolisher Specific Styles - Complements theme.css */
 
 :root {
     --primary: #10df6f;

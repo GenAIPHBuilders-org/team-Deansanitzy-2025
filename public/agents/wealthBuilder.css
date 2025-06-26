@@ -1,0 +1,433 @@
+/* wealthBuilder.css */
+
+/* --- Base & Layout --- */
+.analysis-container {
+    padding-top: 1rem;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.analysis-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    transition: all var(--transition-normal);
+}
+
+.analysis-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1.5rem 0;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.card-header i {
+    color: var(--primary-green);
+}
+
+
+/* --- Financial Overview Card --- */
+#financial-overview .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+}
+
+.overview-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.overview-item span {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.overview-item strong {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+
+/* --- Insights & Actions Lists --- */
+.insights-list,
+.actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.insight-item,
+.action-item {
+    display: flex;
+    gap: 1rem;
+    border-left: 3px solid transparent; /* Placeholder for priority color */
+    padding-left: 1rem;
+}
+
+.insight-icon,
+.action-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.insight-content,
+.action-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.insight-content h4,
+.action-content h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.insight-content p,
+.action-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* --- Priority & Category Colors --- */
+
+/* High Priority */
+.priority-high {
+    border-left-color: var(--secondary-orange);
+}
+.insight-icon.priority-high,
+.action-icon.priority-high {
+    background-color: var(--secondary-orange-light);
+    color: var(--secondary-orange);
+}
+
+/* Medium Priority */
+.priority-medium {
+    border-left-color: #3b82f6; /* Blue for medium */
+}
+.insight-icon.priority-medium,
+.action-icon.priority-medium {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+/* Low Priority */
+.priority-low {
+    border-left-color: var(--text-tertiary);
+}
+.insight-icon.priority-low,
+.action-icon.priority-low {
+    background-color: rgba(139, 148, 158, 0.1);
+    color: var(--text-tertiary);
+}
+
+/* --- Loading and Empty States --- */
+.state-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    min-height: 40vh;
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--primary-green-light);
+    border-top-color: var(--primary-green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.empty-icon {
+    font-size: 3rem;
+    color: var(--text-tertiary);
+    margin-bottom: 1.5rem;
+}
+
+.state-container p {
+    font-size: 1.1rem;
+    max-width: 400px;
+}
+
+/* Main Analysis Layout */
+.analysis-container {
+    padding: 1rem 0;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.analysis-card {
+    background-color: transparent;
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+}
+
+.analysis-card h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Financial Overview Card */
+#financial-overview .overview-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+#financial-overview .overview-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-light);
+}
+
+#financial-overview .overview-item strong {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+}
+
+/* Insights and Actions Lists */
+.insights-list, .actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.insight-item, .action-item {
+    padding-left: 1.5rem;
+    border-left: 3px solid var(--primary-green);
+}
+
+.insight-item h4, .action-item h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem 0;
+}
+
+.insight-item p, .action-item p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.action-item .action-priority {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-transform: capitalize;
+}
+
+.action-priority.high {
+    background-color: var(--secondary-orange-light);
+    color: var(--secondary-orange);
+}
+
+.action-priority.medium {
+    background-color: rgba(255, 215, 64, 0.1);
+    color: #ffd740;
+}
+
+.action-priority.low {
+    background-color: var(--primary-green-light);
+    color: var(--primary-green);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .analysis-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .analysis-card {
+        padding: 1rem;
+    }
+}
+
+/* peraPlanner.css */
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+.card {
+    background-color: var(--card-bg-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.card h3 {
+    margin-top: 0;
+    color: var(--header-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Financial Goals Card */
+#financial-goals .btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+#financial-goals .btn:hover {
+    background-color: #00b36b;
+}
+
+.goals-list {
+    margin-top: 1rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.goal-item {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+/* Insights Card */
+#insights-content {
+    line-height: 1.6;
+}
+
+/* Modal Styles */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+}
+
+.modal-content {
+    background-color: var(--card-bg-color);
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 500px;
+    position: relative;
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: white;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+}
+
+.modal-content .btn {
+     background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1rem;
+}
+
+#financial-health canvas {
+    max-width: 100%;
+    margin: 1rem auto 0;
+    display: block;
+} 

@@ -9,12 +9,6 @@ node_modules/
 # Production
 /build
 
-# Environment variables and configuration files with sensitive data
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # Configuration files with API keys (CRITICAL for security)
 public/js/config.local.js
@@ -86,11 +80,6 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -199,4 +188,5 @@ Thumbs.db
 *.p12
 *.pfx
 api-keys.txt
-secrets.txt 
+secrets.txt
+

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gastos Guardian AI - Smart Financial Forecasting</title>
+    <title>Cashflow Optimizer AI - Automated Financial Analysis</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js for advanced visualizations -->
@@ -12,7 +12,7 @@
     <!-- Main theme stylesheet -->
     <link rel="stylesheet" href="../css/theme.css">
     <!-- Page-specific stylesheet -->
-    <link rel="stylesheet" href="gastosGuardian.css">
+    <link rel="stylesheet" href="cashflowOptimizer.css">
 </head>
 
 <body>
@@ -37,23 +37,23 @@
         <main class="main-content">
             <!-- Page Header -->
             <div class="page-header">
-                <h1>Gastos Guardian AI</h1>
-                <p>Your autonomous financial forecasting agent.</p>
+                <h1>Cashflow Optimizer AI</h1>
+                <p>Your autonomous agent for financial efficiency.</p>
             </div>
 
-            <!-- Guardian Dashboard Content -->
-            <section id="guardian-dashboard">
+            <!-- Optimizer Dashboard Content -->
+            <section id="optimizer-dashboard">
                 <!-- Loading State -->
                 <div id="loading-state" class="loading-state">
                     <div class="loading-spinner"></div>
-                    <p>Guardian AI is analyzing your financial patterns...</p>
+                    <p>Optimizer AI is analyzing your cash flow...</p>
                 </div>
 
                 <!-- Empty State -->
                 <div id="empty-state" class="empty-state" style="display: none;">
                     <i class="fas fa-robot"></i>
-                    <h3>Guardian AI is ready to help</h3>
-                    <p>Connect your accounts and add transactions to get started.</p>
+                    <h3>Optimizer AI is ready to help</h3>
+                    <p>Connect your accounts to discover savings and optimize your spending.</p>
                     <a href="../pages/accounts.html" class="primary-button">
                         <i class="fas fa-university"></i> Add Accounts
                     </a>
@@ -62,27 +62,38 @@
                 <!-- Main Content -->
                 <div id="content-state" style="display: none;">
                     <div class="content-grid">
-                        <!-- Expense Analysis Card -->
+                        <!-- Cashflow Analysis Card -->
                         <div class="dashboard-card chart-card">
-                            <h3><i class="fas fa-chart-line"></i> Expense Analysis</h3>
+                            <h3><i class="fas fa-chart-line"></i> Cashflow Analysis</h3>
                             <div class="chart-container">
-                                <canvas id="expense-chart"></canvas>
+                                <canvas id="cashflow-chart"></canvas>
                             </div>
                         </div>
 
-                        <!-- Spending Leaks Card -->
-                        <div class="dashboard-card">
-                            <h3><i class="fas fa-search-dollar"></i> Spending Leaks</h3>
-                            <div class="analysis-content" id="spending-leaks-content">
-                                <p>Analyzing your spending patterns...</p>
+                        <!-- Grid for the analysis cards -->
+                        <div class="analysis-cards-grid">
+                            <!-- Subscription Sleuth Card -->
+                            <div class="dashboard-card">
+                                <h3><i class="fas fa-user-secret"></i> Subscription Sleuth</h3>
+                                <div class="analysis-content" id="subscription-content">
+                                    <p>Scanning for recurring payments...</p>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Tipid Tips Card -->
-                        <div class="dashboard-card">
-                            <h3><i class="fas fa-lightbulb"></i> Tipid Tips</h3>
-                            <div class="analysis-content" id="tipid-tips-content">
-                                <p>Generating personalized tips...</p>
+                            <!-- Optimization Tips Card -->
+                            <div class="dashboard-card">
+                                <h3><i class="fas fa-lightbulb"></i> Optimization Tips</h3>
+                                <div class="analysis-content" id="optimization-tips-content">
+                                    <p>Generating personalized tips...</p>
+                                </div>
+                            </div>
+
+                            <!-- Spending Spotlight Card -->
+                            <div class="dashboard-card">
+                                <h3><i class="fas fa-search-dollar"></i> Spending Spotlight</h3>
+                                <div class="analysis-content" id="spending-spotlight-content">
+                                    <p>Analyzing your spending patterns...</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -92,7 +103,7 @@
     </div>
 
     <!-- Enhanced JavaScript Module -->
-    <script type="module" src="gastosGuardian.js"></script>
+    <script type="module" src="cashflowOptimizer.js"></script>
     <script type="module">
         import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
         
@@ -113,7 +124,7 @@
     
     <!-- Fallback for browsers that don't support modules -->
     <script nomodule>
-        alert('Your browser does not support ES6 modules. Please update your browser to use Gastos Guardian AI.');
+        alert('Your browser does not support ES6 modules. Please update your browser to use Cashflow Optimizer AI.');
     </script>
 </body>
 </html>

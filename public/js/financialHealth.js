@@ -169,7 +169,7 @@ function delay(ms) {
 async function callGeminiAPI(prompt, retries = 3, baseDelay = 1000) {
     for (let attempt = 0; attempt < retries; attempt++) {
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -272,32 +272,32 @@ function generateFinancialPrompt(userData) {
     // Categorize transactions
     const categories = categorizeTransactions(transactions);
     
-    return `As a Filipino financial health AI assistant, analyze this user's financial data and provide detailed insights:
+    return `You are my personal Filipino financial health AI assistant, named "Kita-kita Coach". Your goal is to analyze my financial data and provide me with encouraging, clear, and actionable insights. Address me directly using "you" and "your".
 
-    FINANCIAL SUMMARY:
+    Here is my financial summary:
     - Total Balance: PHP ${totalBalance.toFixed(2)}
-    - Monthly Income: PHP ${monthlyIncome.toFixed(2)}
-    - Monthly Expenses: PHP ${monthlyExpenses.toFixed(2)}
+    - My Monthly Income: PHP ${monthlyIncome.toFixed(2)}
+    - My Monthly Expenses: PHP ${monthlyExpenses.toFixed(2)}
     
-    ACCOUNTS:
+    MY ACCOUNTS:
     ${JSON.stringify(accounts, null, 2)}
 
-    TRANSACTION CATEGORIES:
+    MY TRANSACTION CATEGORIES:
     ${JSON.stringify(categories, null, 2)}
 
-    RECENT TRANSACTIONS:
+    MY RECENT TRANSACTIONS:
     ${JSON.stringify(monthlyTransactions, null, 2)}
 
-    Please provide a comprehensive financial health analysis considering Filipino financial context:
-    1. Calculate appropriate metrics based on Filipino financial standards
-    2. Consider local economic factors and cost of living
-    3. Provide culturally relevant recommendations
-    4. Account for Filipino financial habits and challenges
+    Please provide a comprehensive financial health analysis for me, considering the Filipino financial context. Your tone should be supportive and empowering.
+    1. Calculate my key financial metrics based on Filipino financial standards.
+    2. Consider local economic factors and cost of living in your analysis of my finances.
+    3. Provide me with culturally relevant recommendations that I can realistically follow.
+    4. Take into account common Filipino financial habits and challenges when giving advice.
 
-    Respond in this exact JSON format:
+    Please respond in this exact JSON format, writing all descriptions and recommendations directly to me (the user):
     {
         "healthScore": number (0-100),
-        "summary": "detailed summary of financial health status",
+        "summary": "A detailed summary of my current financial health status, written to me.",
         "metrics": {
             "savingsRate": number,
             "debtToIncome": number,
@@ -311,28 +311,28 @@ function generateFinancialPrompt(userData) {
         "insights": [
             {
                 "type": "strength|weakness|opportunity|threat",
-                "title": "specific insight title",
-                "description": "detailed description with specific numbers and context",
+                "title": "A specific insight title about my finances.",
+                "description": "A detailed description of the insight, using my specific numbers and context. Explain it to me clearly.",
                 "priority": "high|medium|low",
-                "impact": "description of how this affects long-term financial health",
+                "impact": "A description of how this affects my long-term financial health.",
                 "trend": "improving|stable|declining"
             }
         ],
         "recommendations": [
             {
-                "title": "specific actionable recommendation",
-                "description": "detailed step-by-step guidance",
+                "title": "A specific, actionable recommendation for me.",
+                "description": "Detailed step-by-step guidance on how I can implement this.",
                 "impact": "high|medium|low",
                 "timeframe": "immediate|short_term|long_term",
                 "difficulty": "easy|moderate|challenging",
-                "expectedOutcome": "specific expected results",
-                "alternativeSolutions": ["alternative approach 1", "alternative approach 2"]
+                "expectedOutcome": "The specific results I can expect from following this recommendation.",
+                "alternativeSolutions": ["An alternative approach I could take.", "Another alternative solution."]
             }
         ],
         "riskAssessment": {
-            "shortTerm": ["specific risk 1", "specific risk 2"],
-            "longTerm": ["specific risk 1", "specific risk 2"],
-            "mitigationStrategies": ["specific strategy 1", "specific strategy 2"]
+            "shortTerm": ["A specific short-term risk to my finances.", "Another short-term risk."],
+            "longTerm": ["A specific long-term risk to my finances.", "Another long-term risk."],
+            "mitigationStrategies": ["A specific strategy for me to mitigate these risks.", "Another mitigation strategy."]
         }
     }`;
 }
@@ -424,11 +424,11 @@ function renderFinancialHealthWidget(analysis, userData) {
                     <div class="health-score-circle" style="background: conic-gradient(${scoreColor} ${healthScore}%, #2a2d3e ${healthScore}% 100%)">
                         <div class="health-score-inner">
                             <div class="score-value">${healthScore}</div>
-                            <div class="score-label">Health Score</div>
+                            <div class="score-label">Your Score</div>
                         </div>
                     </div>
                     <div class="health-summary">
-                        <h3>Financial Health Status</h3>
+                        <h3>Your Financial Health Status</h3>
                         <p>${analysis.summary}</p>
                     </div>
                 </div>
@@ -440,7 +440,7 @@ function renderFinancialHealthWidget(analysis, userData) {
                         <i class="fas fa-piggy-bank"></i>
                     </div>
                     <div class="metric-content">
-                        <div class="metric-title">Savings Rate</div>
+                        <div class="metric-title">Your Savings Rate</div>
                         <div class="metric-value ${analysis.metrics.savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget ? 'positive' : 'negative'}">
                             ${analysis.metrics.savingsRate}%
                         </div>
@@ -456,11 +456,11 @@ function renderFinancialHealthWidget(analysis, userData) {
                         <i class="fas fa-wallet"></i>
                     </div>
                     <div class="metric-content">
-                        <div class="metric-title">Expense Ratio</div>
+                        <div class="metric-title">Your Expense Ratio</div>
                         <div class="metric-value ${analysis.metrics.expenseRatio <= FINANCIAL_HEALTH_CONFIG.expenseRatioMax ? 'positive' : 'negative'}">
                             ${analysis.metrics.expenseRatio}%
                         </div>
-                        <div class="metric-target">Target: < ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%</div>
+                        <div class="metric-target">Your Target: < ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%</div>
                         <div class="metric-progress">
                             <div class="progress-bar" style="width: ${Math.min(100, (analysis.metrics.expenseRatio / FINANCIAL_HEALTH_CONFIG.expenseRatioMax) * 100)}%"></div>
                         </div>
@@ -472,11 +472,11 @@ function renderFinancialHealthWidget(analysis, userData) {
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <div class="metric-content">
-                        <div class="metric-title">Emergency Fund</div>
+                        <div class="metric-title">Your Emergency Fund</div>
                         <div class="metric-value ${analysis.metrics.emergencyFundMonths >= FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget ? 'positive' : 'negative'}">
                             ${analysis.metrics.emergencyFundMonths.toFixed(1)} months
                         </div>
-                        <div class="metric-target">Target: ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months</div>
+                        <div class="metric-target">Your Target: ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months</div>
                         <div class="metric-progress">
                             <div class="progress-bar" style="width: ${Math.min(100, (analysis.metrics.emergencyFundMonths / FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) * 100)}%"></div>
                         </div>
@@ -488,7 +488,7 @@ function renderFinancialHealthWidget(analysis, userData) {
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="metric-content">
-                        <div class="metric-title">Investment Allocation</div>
+                        <div class="metric-title">Your Investment Allocation</div>
                         <div class="metric-value">${analysis.metrics.investmentAllocation}%</div>
                         <div class="metric-target">Recommended: 15-30%</div>
                         <div class="metric-progress">
@@ -498,112 +498,164 @@ function renderFinancialHealthWidget(analysis, userData) {
                 </div>
             </div>
 
-            <div class="insights-section">
-                <h3>Key Financial Insights</h3>
-                <div class="insights-grid">
-                    ${analysis.insights.map(insight => `
-                        <div class="insight-card ${insight.type}" data-trend="${insight.trend}">
-                            <div class="insight-header">
-                                <div class="insight-icon">
-                                    ${getInsightIcon(insight.type)}
-                                </div>
-                                <div class="insight-priority ${insight.priority}">
-                                    ${insight.priority.toUpperCase()}
-                                </div>
-                                <div class="insight-trend">
-                                    <i class="fas fa-${getTrendIcon(insight.trend)}"></i>
-                                </div>
-                            </div>
-                            <div class="insight-content">
-                                <h4>${insight.title}</h4>
-                                <p>${insight.description}</p>
-                                <div class="insight-impact">
-                                    <strong>Impact:</strong> ${insight.impact}
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
+            <div class="financial-details-tabs">
+                <div class="tab-headers">
+                    <button class="tab-link active" data-tab="insights">Key Insights</button>
+                    <button class="tab-link" data-tab="recommendations">Your Action Plan</button>
+                    <button class="tab-link" data-tab="risks">Risk Assessment</button>
                 </div>
-            </div>
 
-            <div class="recommendations-section">
-                <h3>Action Plan</h3>
-                <div class="recommendations-grid">
-                    ${analysis.recommendations.map(rec => `
-                        <div class="recommendation-card">
-                            <div class="recommendation-header">
-                                <div class="recommendation-impact ${rec.impact}">
-                                    ${rec.impact.toUpperCase()} IMPACT
-                                </div>
-                                <div class="recommendation-timeframe ${rec.timeframe}">
-                                    ${formatTimeframe(rec.timeframe)}
-                                </div>
-                                <div class="recommendation-difficulty ${rec.difficulty}">
-                                    ${rec.difficulty.toUpperCase()}
-                                </div>
-                            </div>
-                            <div class="recommendation-content">
-                                <h4>${rec.title}</h4>
-                                <p>${rec.description}</p>
-                                <div class="recommendation-outcome">
-                                    <strong>Expected Outcome:</strong> ${rec.expectedOutcome}
-                                </div>
-                                ${rec.alternativeSolutions.length > 0 ? `
-                                    <div class="recommendation-alternatives">
-                                        <strong>Alternative Approaches:</strong>
-                                        <ul>
-                                            ${rec.alternativeSolutions.map(alt => `<li>${alt}</li>`).join('')}
-                                        </ul>
+                <div id="insights" class="tab-content">
+                    <div class="insights-section">
+                        <h3>Your Key Financial Insights</h3>
+                        <div class="insights-grid">
+                            ${
+                                (() => {
+                                    const displayedInsights = analysis.insights.slice(0, 6);
+                                    let insightsHtml = displayedInsights.map(insight => `
+                                        <div class="insight-card ${insight.type}" data-trend="${insight.trend}">
+                                            <div class="insight-header">
+                                                <div class="insight-icon">
+                                                    ${getInsightIcon(insight.type)}
+                                                </div>
+                                                <div class="insight-priority ${insight.priority}">
+                                                    ${insight.priority.toUpperCase()}
+                                                </div>
+                                                <div class="insight-trend">
+                                                    <i class="fas fa-fw fa-${getTrendIcon(insight.trend)}"></i>
+                                                </div>
+                                            </div>
+                                            <div class="insight-content">
+                                                <h4>${insight.title}</h4>
+                                                <p>${insight.description}</p>
+                                                <div class="insight-impact">
+                                                    <strong>Impact on your finances:</strong> ${insight.impact}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('');
+
+                                    const placeholdersNeeded = 6 - displayedInsights.length;
+                                    if (placeholdersNeeded > 0) {
+                                        for (let i = 0; i < placeholdersNeeded; i++) {
+                                            insightsHtml += `
+                                                <div class="insight-card placeholder">
+                                                    <div class="placeholder-content">
+                                                        <i class="fas fa-stream"></i>
+                                                        <span>More insights will appear as you add data.</span>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+                                    }
+                                    return insightsHtml;
+                                })()
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div id="recommendations" class="tab-content" style="display: none;">
+                    <div class="recommendations-section">
+                        <h3>Your Personalized Action Plan</h3>
+                        <div class="recommendations-grid">
+                            ${analysis.recommendations.map(rec => `
+                                <div class="recommendation-card">
+                                    <div class="recommendation-header">
+                                        <div class="recommendation-impact ${rec.impact}">
+                                            ${rec.impact.toUpperCase()} IMPACT
+                                        </div>
+                                        <div class="recommendation-timeframe ${rec.timeframe}">
+                                            ${formatTimeframe(rec.timeframe)}
+                                        </div>
+                                        <div class="recommendation-difficulty ${rec.difficulty}">
+                                            ${rec.difficulty.toUpperCase()}
+                                        </div>
                                     </div>
-                                ` : ''}
+                                    <div class="recommendation-content">
+                                        <h4>${rec.title}</h4>
+                                        <p>${rec.description}</p>
+                                        <div class="recommendation-outcome">
+                                            <strong>Expected Outcome for you:</strong> ${rec.expectedOutcome}
+                                        </div>
+                                        ${rec.alternativeSolutions && rec.alternativeSolutions.length > 0 ? `
+                                            <div class="recommendation-alternatives">
+                                                <strong>Alternative approaches for you:</strong>
+                                                <ul>
+                                                    ${rec.alternativeSolutions.map(alt => `<li>${alt}</li>`).join('')}
+                                                </ul>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+
+                <div id="risks" class="tab-content" style="display: none;">
+                    <div class="risk-assessment-section">
+                        <h3>Your Financial Risk Assessment</h3>
+                        <div class="risk-grid">
+                            <div class="risk-column">
+                                <h4>Short-term Risks to You</h4>
+                                <ul class="risk-list">
+                                    ${analysis.riskAssessment.shortTerm.map(risk => `
+                                        <li class="risk-item">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            ${risk}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            <div class="risk-column">
+                                <h4>Long-term Risks to You</h4>
+                                <ul class="risk-list">
+                                    ${analysis.riskAssessment.longTerm.map(risk => `
+                                        <li class="risk-item">
+                                            <i class="fas fa-chart-line"></i>
+                                            ${risk}
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                            <div class="risk-column">
+                                <h4>How You Can Mitigate Risks</h4>
+                                <ul class="risk-list">
+                                    ${analysis.riskAssessment.mitigationStrategies.map(strategy => `
+                                        <li class="risk-item">
+                                            <i class="fas fa-shield-alt"></i>
+                                            ${strategy}
+                                        </li>
+                                    `).join('')}
+                                </ul>
                             </div>
                         </div>
-                    `).join('')}
-                </div>
-            </div>
-
-            <div class="risk-assessment-section">
-                <h3>Risk Assessment</h3>
-                <div class="risk-grid">
-                    <div class="risk-column">
-                        <h4>Short-term Risks</h4>
-                        <ul class="risk-list">
-                            ${analysis.riskAssessment.shortTerm.map(risk => `
-                                <li class="risk-item">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    ${risk}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                    <div class="risk-column">
-                        <h4>Long-term Risks</h4>
-                        <ul class="risk-list">
-                            ${analysis.riskAssessment.longTerm.map(risk => `
-                                <li class="risk-item">
-                                    <i class="fas fa-chart-line"></i>
-                                    ${risk}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>
-                    <div class="risk-column">
-                        <h4>Mitigation Strategies</h4>
-                        <ul class="risk-list">
-                            ${analysis.riskAssessment.mitigationStrategies.map(strategy => `
-                                <li class="risk-item">
-                                    <i class="fas fa-shield-alt"></i>
-                                    ${strategy}
-                                </li>
-                            `).join('')}
-                        </ul>
                     </div>
                 </div>
             </div>
         </div>
     `;
 
-    // Initialize tooltips and interactions
+    // Add event listeners for tabs
+    const tabLinks = financialHealthContent.querySelectorAll('.tab-link');
+    const tabContents = financialHealthContent.querySelectorAll('.tab-content');
+
+    tabLinks.forEach(link => {
+        link.addEventListener('click', (event) => {
+            const tabId = event.currentTarget.dataset.tab;
+
+            tabLinks.forEach(l => l.classList.remove('active'));
+            tabContents.forEach(c => (c.style.display = 'none'));
+
+            event.currentTarget.classList.add('active');
+            const activeTab = financialHealthContent.querySelector(`#${tabId}`);
+            if (activeTab) {
+                activeTab.style.display = 'block';
+            }
+        });
+    });
+
     initializeTooltips();
     initializeInteractions();
     initializeAnimations();
@@ -733,28 +785,28 @@ function enhancedOfflineAnalysis(userData) {
         if (savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget) {
             insights.push({
                 type: "strength",
-                title: "Strong Savings Rate",
-                description: `You're saving ${savingsRate.toFixed(1)}% of your income, which is above the target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%`,
+                title: "Excellent Savings Rate",
+                description: `You're doing a great job saving ${savingsRate.toFixed(1)}% of your income, which is above the recommended target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%. Keep up the great work!`,
                 priority: "high",
-                impact: "Maintaining this savings rate will help build long-term wealth",
+                impact: "Maintaining this savings rate will significantly help you build long-term wealth and financial security.",
                 trend: "stable"
             });
         } else if (savingsRate > 0) {
             insights.push({
                 type: "opportunity",
-                title: "Room for Savings Growth",
-                description: `Your current savings rate is ${savingsRate.toFixed(1)}%. Try to reach the target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%`,
+                title: "Opportunity to Boost Your Savings",
+                description: `Your current savings rate is ${savingsRate.toFixed(1)}%. You're on the right track, and with a few adjustments, you can reach the target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%.`,
                 priority: "medium",
-                impact: "Increasing savings will improve financial security",
+                impact: "Increasing your savings will accelerate your progress towards your financial goals and improve your financial security.",
                 trend: "improving"
             });
         } else {
             insights.push({
                 type: "weakness",
-                title: "Negative Savings Rate",
-                description: "Your expenses exceed your income. Focus on reducing expenses or increasing income.",
+                title: "Your Expenses are Higher Than Your Income",
+                description: "It looks like you're spending more than you earn right now. It's important to address this to get back on track.",
                 priority: "high",
-                impact: "This situation is unsustainable and needs immediate attention",
+                impact: "This situation is unsustainable and can lead to debt. Taking action now is crucial for your financial well-being.",
                 trend: "declining"
             });
         }
@@ -763,10 +815,10 @@ function enhancedOfflineAnalysis(userData) {
         if (emergencyFundMonths < FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) {
             insights.push({
                 type: "threat",
-                title: "Emergency Fund Below Target",
-                description: `Your emergency fund covers ${emergencyFundMonths.toFixed(1)} months of expenses. Aim for ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months.`,
+                title: "Build Up Your Emergency Fund",
+                description: `Your emergency fund currently covers ${emergencyFundMonths.toFixed(1)} months of your expenses. Aiming for the recommended ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months will give you a stronger safety net.`,
                 priority: "high",
-                impact: "A stronger emergency fund will provide better financial security",
+                impact: "A fully-funded emergency fund will protect you from unexpected financial shocks without derailing your long-term goals.",
                 trend: "stable"
             });
         }
@@ -777,15 +829,15 @@ function enhancedOfflineAnalysis(userData) {
         // Savings recommendations
         if (savingsRate < FINANCIAL_HEALTH_CONFIG.savingsRateTarget) {
             recommendations.push({
-                title: "Increase Savings Rate",
-                description: `Set up automatic transfers to a savings account for ${Math.min(20, FINANCIAL_HEALTH_CONFIG.savingsRateTarget - savingsRate).toFixed(0)}% of your income`,
+                title: "Boost Your Savings Rate",
+                description: `A great first step is to set up an automatic transfer to your savings account. Try moving ${Math.min(20, FINANCIAL_HEALTH_CONFIG.savingsRateTarget - savingsRate).toFixed(0)}% of your income on payday. You won't even miss it!`,
                 impact: "high",
                 timeframe: "immediate",
                 difficulty: "moderate",
-                expectedOutcome: "Improved financial security and wealth building",
+                expectedOutcome: "You'll build your savings faster and improve your overall financial security.",
                 alternativeSolutions: [
-                    "Reduce discretionary spending",
-                    "Find additional income sources"
+                    "Review your subscriptions and daily spending for easy cuts.",
+                    "Consider a side-hustle or freelance work for an income boost."
                 ]
             });
         }
@@ -793,15 +845,15 @@ function enhancedOfflineAnalysis(userData) {
         // Emergency fund recommendations
         if (emergencyFundMonths < FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) {
             recommendations.push({
-                title: "Build Emergency Fund",
-                description: `Allocate extra funds to your emergency savings until you reach ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months of expenses`,
+                title: "Build Your Emergency Fund",
+                description: `Focus on allocating extra funds to your emergency savings until you reach the goal of ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months of expenses.`,
                 impact: "high",
                 timeframe: "short_term",
                 difficulty: "moderate",
-                expectedOutcome: "Better protection against unexpected expenses",
+                expectedOutcome: "You will have a strong financial safety net to protect you against unexpected expenses.",
                 alternativeSolutions: [
-                    "Set up automatic monthly transfers",
-                    "Use windfalls for emergency fund"
+                    "Set up a recurring automatic transfer to your savings.",
+                    "Dedicate any windfalls, like bonuses or tax refunds, to your emergency fund."
                 ]
             });
         }
@@ -809,15 +861,15 @@ function enhancedOfflineAnalysis(userData) {
         // Expense management recommendations
         if (expenseRatio > FINANCIAL_HEALTH_CONFIG.expenseRatioMax) {
             recommendations.push({
-                title: "Reduce Expenses",
-                description: `Review your monthly expenses and identify areas to cut back to bring your expense ratio below ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%`,
+                title: "Review and Reduce Your Expenses",
+                description: `Take a close look at your monthly spending to find areas where you can cut back. Your goal is to get your expense ratio below ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%.`,
                 impact: "high",
                 timeframe: "immediate",
                 difficulty: "challenging",
-                expectedOutcome: "Improved cash flow and ability to save",
+                expectedOutcome: "You'll free up more cash, which will improve your ability to save and invest.",
                 alternativeSolutions: [
-                    "Create a detailed budget",
-                    "Negotiate bills and subscriptions"
+                    "Create a detailed budget to track every peso.",
+                    "Try negotiating your recurring bills like phone or internet."
                 ]
             });
         }
@@ -825,9 +877,9 @@ function enhancedOfflineAnalysis(userData) {
         return {
             healthScore: Math.round(healthScore),
             summary: `Your financial health score is ${Math.round(healthScore)}/100. ${
-                healthScore >= 80 ? "You're doing great!" :
-                healthScore >= 60 ? "You're on the right track." :
-                "There's room for improvement."
+                healthScore >= 80 ? "You're in excellent financial shape! Keep up the great work." :
+                healthScore >= 60 ? "You're on the right track. A few small changes will make a big difference." :
+                "There are opportunities for improvement, and I'm here to help you get started."
             }`,
             metrics: {
                 savingsRate: parseFloat(savingsRate.toFixed(1)),

@@ -230,12 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         const welcomeMessage = `${greeting}, ${firstName}! ${welcomeEmoji} I'm your AI financial assistant powered by advanced AI technology.${personalizedWelcome} I can analyze your transactions, provide personalized insights, and help you make smarter financial decisions. What would you like to explore today?`;
                         
-                        addMessage('bot', welcomeMessage);
-                        
-                        // Add suggestion buttons after a delay
-                        setTimeout(() => {
-                            addSuggestions();
-                        }, 1000);
+                        addMessage('bot', welcomeMessage, { withSuggestions: true });
                     }, 500);
                 }
             });
@@ -606,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Typing complete, show timestamp and maybe add suggestions
                     timestampElement.style.opacity = '1';
                     
-                    if (conversationMemory.interactionCount % 3 === 1 && !options.noSuggestions) {
+                    if (options.withSuggestions) {
                         setTimeout(addSuggestions, 500);
                     }
                 }
