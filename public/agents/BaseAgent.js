@@ -12,6 +12,7 @@ import { GEMINI_API_KEY, GEMINI_MODEL, firebaseConfig } from "../js/config.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getUserData, getUserTransactions, getUserBankAccounts, storeUserData } from "../js/firestoredb.js";
 import { devLog, devWarn, prodError, prodLog, isProduction, getEnvironmentConfig } from "../js/utils/environment.js";
+import { callGeminiAI } from "../js/agentCommon.js";
 
 // Rate limiting configuration
 const RATE_LIMIT = {
@@ -1582,25 +1583,18 @@ export class BaseAgent {
      * @returns {Promise<Array>} Array of sub-problems
      */
     async decomposeComplex(problem) {
-        const decompositionPrompt = `
-        Decompose this financial problem into smaller, manageable sub-problems:
-        
-        Problem: ${JSON.stringify(problem)}
-        
-        Break it down into 3-5 specific sub-problems that can be analyzed independently.
-        Return as JSON array: ["sub-problem 1", "sub-problem 2", ...]
-        `;
-
         try {
-            const response = await this.callGeminiForReasoning(decompositionPrompt);
-            return Array.isArray(response) ? response : [problem.description || 'Unknown problem'];
+            const decompositionPrompt = `Decompose this complex financial problem into smaller, manageable sub-problems: "${problem}"`;
+            const response = await callGeminiAI(decompositionPrompt);
+            return this.parseAIResponse(response).subProblems || [problem];
         } catch (error) {
-            return [problem.description || 'Unknown problem'];
+            this.handleError('decomposition_failed', error, { problem });
+            return [problem]; // Fallback to the original problem
         }
     }
 
     /**
-     * Gather relevant evidence from memory and external sources
+     * Gather relevant evidence for a given problem
      * @param {Object} problem - Problem to gather evidence for
      * @returns {Promise<Object>} Collected evidence
      */

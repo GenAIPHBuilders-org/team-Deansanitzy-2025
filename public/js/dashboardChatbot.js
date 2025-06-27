@@ -17,127 +17,6 @@ import {
     predictFutureTransactions 
 } from "./agentTransactions.js";
 
-// Enhanced implementation of callGeminiAI with better error handling and logging
-async function localCallGeminiAI(prompt, options = {}) {
-    console.log('🤖 Using enhanced local Gemini AI implementation');
-    console.log('📝 Prompt preview:', prompt.substring(0, 150) + '...');
-    console.log('🔑 API Key status:', GEMINI_API_KEY ? 'Present' : 'Missing');
-    console.log('🎯 Model:', GEMINI_MODEL);
-    
-    if (!GEMINI_API_KEY) {
-        throw new Error('Gemini API key is not configured');
-    }
-    
-    if (!GEMINI_MODEL) {
-        throw new Error('Gemini model is not configured');
-    }
-    
-    // Ensure we're using the latest model from config
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-    
-    // Enhanced request body with more configuration options
-    const body = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            maxOutputTokens: options.maxTokens || 1000,
-            temperature: options.temperature || 0.7,
-            topP: options.topP || 0.95,
-            topK: options.topK || 40,
-            candidateCount: 1,
-            stopSequences: []
-        },
-        safetySettings: [
-            {
-                category: "HARM_CATEGORY_HARASSMENT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-                category: "HARM_CATEGORY_HATE_SPEECH",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-        ]
-    };
-    
-    try {
-        console.log('🚀 Sending request to Gemini API...');
-        console.log('🌐 Endpoint:', endpoint.replace(GEMINI_API_KEY, '[API_KEY_HIDDEN]'));
-        
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'User-Agent': 'Kita-kita-Financial-Assistant/1.0'
-            },
-            body: JSON.stringify(body)
-        });
-        
-        console.log('📡 Response status:', response.status, response.statusText);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ HTTP error details:', errorText);
-            
-            // Try to parse error for more specific information
-            try {
-                const errorData = JSON.parse(errorText);
-                if (errorData.error && errorData.error.message) {
-                    throw new Error(`Gemini API Error: ${errorData.error.message}`);
-                }
-            } catch (parseError) {
-                // If we can't parse the error, use the original text
-            }
-            
-            throw new Error(`Gemini API HTTP error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        console.log('✅ Received response from Gemini API');
-        console.log('📊 Response structure check:', {
-            hasCandidates: !!data.candidates,
-            candidatesLength: data.candidates?.length || 0,
-            hasContent: !!(data.candidates?.[0]?.content),
-            hasParts: !!(data.candidates?.[0]?.content?.parts),
-            partsLength: data.candidates?.[0]?.content?.parts?.length || 0
-        });
-        
-        if (data.candidates && data.candidates.length > 0 && 
-            data.candidates[0].content && data.candidates[0].content.parts && 
-            data.candidates[0].content.parts.length > 0) {
-            
-            const responseText = data.candidates[0].content.parts[0].text;
-            console.log('💬 Response preview:', responseText.substring(0, 100) + '...');
-            return responseText;
-        } else if (data.promptFeedback && data.promptFeedback.blockReason) {
-            console.error('🚫 Gemini API blocked:', data.promptFeedback.blockReason);
-            throw new Error('Content was blocked by Gemini AI safety filters. Please try rephrasing your question.');
-        } else {
-            console.error('⚠️ Unexpected API response structure:', JSON.stringify(data, null, 2));
-            throw new Error('Received unexpected response format from Gemini API');
-        }
-    } catch (error) {
-        console.error('💥 Error calling Gemini API:', error);
-        
-        // Provide more user-friendly error messages
-        if (error.message.includes('fetch')) {
-            throw new Error('Network error: Unable to connect to AI service. Please check your internet connection.');
-        } else if (error.message.includes('API_KEY')) {
-            throw new Error('AI service configuration error. Please contact support.');
-        } else if (error.message.includes('quota')) {
-            throw new Error('AI service is temporarily unavailable due to high demand. Please try again later.');
-        }
-        
-        throw error;
-    }
-}
-
 // Add immediate console log to verify script loading
 console.log('🚀 dashboardChatbot.js script loaded');
 
@@ -633,77 +512,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add more engaging and personalized suggestion buttons
     function addSuggestions() {
-        const suggestionsContainer = document.createElement('div');
-        suggestionsContainer.className = 'suggestions-container';
+        const suggestionContainer = document.createElement('div');
+        suggestionContainer.classList.add('suggestions');
         
-        // Get personalized suggestions based on financial data
-        let personalizedSuggestions = [...financialSuggestions];
-        
-        // Add contextual suggestions if we have user data
-        if (userContext) {
-            const { financialMetrics, transactions } = userContext;
-            
-            // Add savings-focused suggestions if savings rate is low
-            if (financialMetrics.savingsRate < 10) {
-                personalizedSuggestions.push(
-                    "How can I improve my savings rate?",
-                    "Give me a savings plan",
-                    "Tips to save more money"
-                );
-            }
-            
-            // Add spending-focused suggestions if expenses are high relative to income
-            if (financialMetrics.monthlyExpenses > financialMetrics.monthlyIncome * 0.8) {
-                personalizedSuggestions.push(
-                    "Help me reduce my expenses",
-                    "Where can I cut spending?",
-                    "Budget planning assistance"
-                );
-            }
-            
-            // Add transaction-specific suggestions if we have transactions
-            if (transactions && transactions.recentTransactions && transactions.recentTransactions.length > 0) {
-                personalizedSuggestions.push(
-                    "Analyze my spending patterns",
-                    "Find unusual transactions",
-                    "Identify my recurring expenses"
-                );
-            }
+        // Use a Set to ensure unique suggestions
+        const uniqueSuggestions = new Set();
+        while (uniqueSuggestions.size < 4 && financialSuggestions.length > 0) {
+            const randomIndex = Math.floor(Math.random() * financialSuggestions.length);
+            uniqueSuggestions.add(financialSuggestions[randomIndex]);
         }
         
-        // Prioritize suggestions not in conversation memory
-        const unusedSuggestions = personalizedSuggestions.filter(s => 
-            !conversationMemory.discussedTopics.includes(s.toLowerCase()));
-        
-        // Randomly select 3-4 suggestions, preferring unused ones
-        let selected = [];
-        if (unusedSuggestions.length >= 3) {
-            const shuffled = [...unusedSuggestions].sort(() => 0.5 - Math.random());
-            selected = shuffled.slice(0, Math.min(4, shuffled.length));
-        } else {
-            const shuffled = [...personalizedSuggestions].sort(() => 0.5 - Math.random());
-            selected = shuffled.slice(0, Math.min(4, shuffled.length));
-        }
-        
-        // Create buttons with a staggered animation effect
-        selected.forEach((suggestion, index) => {
+        uniqueSuggestions.forEach(suggestion => {
             const button = document.createElement('button');
-            button.className = 'suggestion-button';
-            button.style.animationDelay = `${index * 0.1}s`;
             button.textContent = suggestion;
             button.addEventListener('click', () => {
                 userInput.value = suggestion;
                 sendUserMessage();
-                
-                // Remove suggestions after clicking
-                if (chatMessages.contains(suggestionsContainer)) {
-                    chatMessages.removeChild(suggestionsContainer);
-                }
             });
-            suggestionsContainer.appendChild(button);
+            suggestionContainer.appendChild(button);
         });
         
-        chatMessages.appendChild(suggestionsContainer);
+        chatMessages.appendChild(suggestionContainer);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     
@@ -738,202 +567,19 @@ document.addEventListener('DOMContentLoaded', () => {
             let responseText = '';
             
             if (userContext) {
-                const { userData, accounts, financialMetrics, transactions, predictions } = userContext;
-                console.log('Using financial context for response generation');
+                const contextualPrompt = await generatePrompt(message, userContext);
                 
-                // Check if the message is about a specific transaction or category
-                const isTransactionQuery = message.toLowerCase().includes('transaction') || 
-                                          message.toLowerCase().includes('spending') || 
-                                          message.toLowerCase().includes('expense');
-                
-                const isCategoryQuery = financialMetrics.topExpenseCategories.some(cat => 
-                    message.toLowerCase().includes(cat.category.toLowerCase()));
-                
-                const isPredictionQuery = message.toLowerCase().includes('predict') || 
-                                         message.toLowerCase().includes('future') || 
-                                         message.toLowerCase().includes('forecast');
-                
-                let contextualPrompt = '';
-                let aiOptions = {
-                    temperature: 0.3,
-                    maxTokens: 1000
-                };
-                
-                if (isTransactionQuery || isCategoryQuery) {
-                    console.log('Processing transaction-specific query');
-                    // Enhanced prompt for transaction-specific queries with personality
-                    contextualPrompt = `
-                    You are Kita-kita, a friendly and engaging financial assistant with a warm, supportive personality. You're talking to ${userData?.firstName || 'User'} about their finances. Your goal is to provide personalized, actionable advice while being conversational and encouraging.
-                    
-                    USER INFO:
-                    Name: ${userData?.firstName || 'User'} ${userData?.lastName || ''}
-                    
-                    FINANCIAL DATA:
-                    Total Balance: ₱${accounts.totalBalance.toFixed(2)}
-                    Monthly Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}
-                    Monthly Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}
-                    Savings Rate: ${financialMetrics.savingsRate}%
-                    
-                    TRANSACTION INSIGHTS:
-                    Top Categories: ${transactions.insights.topCategories.map(c => c.category).join(', ') || 'No categories available'}
-                    Unusual Spending: ${transactions.insights.unusualSpending.length} transactions identified
-                    Savings Opportunities: ${transactions.insights.savingsOpportunities.length} opportunities found
-                    Recurring Expenses: ${transactions.insights.recurringExpenses.length} recurring expenses detected
-                    
-                    Transaction Summary: ${transactions.insights.summary || 'No transaction summary available'}
-                    
-                    Based on this transaction data, answer the user's question: "${message}"
-                    
-                    PERSONALITY GUIDELINES:
-                    - Be friendly and conversational, like you're chatting with a friend
-                    - Use occasional emojis where appropriate (1-2 per message)
-                    - Refer to the user by their first name
-                    - Be encouraging and positive, even when discussing financial challenges
-                    - Ask a follow-up question at the end to keep the conversation going
-                    - Vary your responses and never sound repetitive or robotic
-                    
-                    Provide specific, actionable advice based on their actual transaction patterns.
-                    Keep your response under 250 words and make it engaging.
-                    `;
-                } else if (isPredictionQuery) {
-                    console.log('Processing prediction query');
-                    // Enhanced prompt for prediction queries with personality and engagement
-                    contextualPrompt = `
-                    You are Kita-kita, a friendly and insightful financial assistant with a warm, supportive personality. You're talking to ${userData?.firstName || 'User'} about their future finances. Your goal is to provide forward-looking advice that's both helpful and encouraging.
-                    
-                    USER INFO:
-                    Name: ${userData?.firstName || 'User'} ${userData?.lastName || ''}
-                    
-                    CURRENT FINANCIAL DATA:
-                    Total Balance: ₱${accounts.totalBalance.toFixed(2)}
-                    Monthly Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}
-                    Monthly Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}
-                    Savings Rate: ${financialMetrics.savingsRate}%
-                    
-                    FINANCIAL PREDICTIONS (Next 3 Months):
-                    Predicted Monthly Income: ₱${predictions.predictedMonthlyIncome.toFixed(2)}
-                    Predicted Recurring Expenses: ₱${predictions.recurringExpenses.toFixed(2)}
-                    Predicted Non-Recurring Expenses: ₱${predictions.nonRecurringExpenses.toFixed(2)}
-                    Predicted Savings: ₱${predictions.predictedSavings.toFixed(2)}
-                    Predicted Balance After 3 Months: ₱${predictions.predictedEndingBalance.toFixed(2)}
-                    
-                    Prediction Summary: ${predictions.summary || 'No prediction summary available'}
-                    
-                    Based on these financial predictions, answer the user's question: "${message}"
-                    
-                    PERSONALITY GUIDELINES:
-                    - Be optimistic but realistic about financial futures
-                    - Use occasional emojis where appropriate (1-2 per message)
-                    - Refer to the user by their first name
-                    - Frame challenges as opportunities for growth
-                    - Ask a follow-up question at the end to encourage planning
-                    - Use vivid language to help the user visualize their financial future
-                    - Vary your responses and never sound repetitive or robotic
-                    
-                    Be specific about future financial trends. Provide actionable advice based on predicted financial patterns.
-                    Keep your response under 250 words and make it engaging and motivational.
-                    `;
-                } else {
-                    console.log('Processing general financial query');
-                    // Enhanced prompt for general financial queries with personality and engagement
-                    contextualPrompt = `
-                    You are Kita-kita, a friendly and knowledgeable financial assistant with a warm, supportive personality. You're having a conversation with ${userData?.firstName || 'User'} about their overall financial situation. Your goal is to provide holistic financial guidance that's personalized, actionable, and delivered in a friendly way.
-                    
-                    USER INFO:
-                    Name: ${userData?.firstName || 'User'} ${userData?.lastName || ''}
-                    
-                    FINANCIAL DATA:
-                    Total Balance: ₱${accounts.totalBalance.toFixed(2)}
-                    Number of Accounts: ${accounts.count}
-                    Monthly Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}
-                    Monthly Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}
-                    Savings Rate: ${financialMetrics.savingsRate}%
-                    
-                    Top expense categories:
-                    ${financialMetrics.topExpenseCategories.length > 0 ? 
-                        financialMetrics.topExpenseCategories.map(c => 
-                            `- ${c.category}: ₱${c.amount.toFixed(2)} (${c.percentage}% of expenses)`
-                        ).join('\n') : 'No expense categories available'}
-                    
-                    Recent Transactions: ${transactions.count} total
-                    ${transactions.recentTransactions.length > 0 ? 
-                        transactions.recentTransactions.map((t, i) => 
-                            `${i+1}. ${t.name}: ${t.type === 'income' ? '+' : '-'}₱${Math.abs(parseFloat(t.amount)).toFixed(2)} (${t.category || 'Uncategorized'}, ${new Date(t.date).toLocaleDateString()})`
-                        ).slice(0, 3).join('\n') : 'No recent transactions available'}
-                    
-                    TRANSACTION INSIGHTS:
-                    ${transactions.insights.summary || 'No transaction insights available'}
-                    
-                    FINANCIAL PREDICTIONS (Next 3 Months):
-                    ${predictions.summary || 'No prediction data available'}
-                    
-                    Based on this comprehensive financial information, give a personalized response to the user's question/request: "${message}"
-                    
-                    PERSONALITY GUIDELINES:
-                    - Be friendly and conversational, like you're chatting with a friend
-                    - Use occasional emojis where appropriate (1-2 per message)
-                    - Refer to the user by their first name frequently
-                    - Celebrate financial wins, no matter how small
-                    - Provide gentle guidance for financial challenges
-                    - Ask a relevant follow-up question at the end
-                    - Use analogies or examples to make financial concepts relatable
-                    - Vary your responses and never sound repetitive or robotic
-                    
-                    Focus on providing specific, actionable advice based on the user's actual financial data.
-                    Keep your response under 250 words and make it engaging, supportive, and motivational.
-                    `;
-                }
-                
-                // Enhanced API call with better error handling and variety
+                // Use a try-catch block to handle potential AI errors gracefully
                 try {
-                    console.log('Calling Gemini API with enhanced implementation...');
-                    console.log('Using API key:', GEMINI_API_KEY ? 'Valid key present' : 'Missing key');
-                    console.log('Using model:', GEMINI_MODEL);
-                    
-                    // Adjust temperature for more varied responses
-                    aiOptions.temperature = 0.7 + (Math.random() * 0.2); // Between 0.7 and 0.9 for more variety
-                    aiOptions.maxTokens = 1000; // Ensure we get longer, more detailed responses
-                    
-                    // Add conversation context to the prompt for more coherent responses
-                    if (conversationMemory && conversationMemory.lastQuery) {
-                        contextualPrompt = `Previous question: "${conversationMemory.lastQuery}"
-
-Current question: "${message}"
-
-${contextualPrompt}`;
-                    }
-                    
-                    // Add a direct instruction to vary responses
-                    contextualPrompt += "\n\nIMPORTANT: Provide a unique, varied response each time. Never repeat the same generic advice. Be conversational and engaging.";
-                    
-                    // Log the prompt length for debugging
-                    console.log('Prompt length:', contextualPrompt.length, 'characters');
-                    
-                    // Try the local implementation first (which has been enhanced)
-                    responseText = await localCallGeminiAI(contextualPrompt, aiOptions);
-                    console.log('Successfully received response from enhanced Gemini implementation');
-                    console.log('Response preview:', responseText.substring(0, 100) + '...');
-                    
-                    // Check if we got a valid response
-                    if (!responseText || responseText.length < 20) {
-                        console.warn('Received suspiciously short response, trying fallback...');
-                        throw new Error('Response too short');
-                    }
+                    // Use the globally defined callGeminiAI function for consistency
+                    console.log('Calling shared callGeminiAI function...');
+                    responseText = await callGeminiAI(contextualPrompt, { maxTokens: 500 });
                 } catch (error) {
-                    console.error('Error with enhanced Gemini implementation:', error);
-                    
-                    // Try the imported function as a backup
-                    try {
-                        console.log('Trying imported callGeminiAI as backup...');
-                        responseText = await callGeminiAI(contextualPrompt, aiOptions);
-                        console.log('Successfully received response from imported callGeminiAI');
-                    } catch (backupError) {
-                        console.error('Both Gemini implementations failed:', backupError);
-                        
-                        // Generate a varied fallback response based on the financial data
-                        responseText = generateFallbackResponse(message, userContext);
-                        console.log('Using fallback response mechanism');
-                    }
+                    console.error('Error getting AI response:', error);
+                    responseText = generateFallbackResponse(message, {
+                        error: true,
+                        errorMessage: error.message
+                    });
                 }
             } else {
                 console.log('No user context available, providing general advice');
@@ -960,10 +606,10 @@ ${contextualPrompt}`;
                 console.log('Response generated successfully');
                 // Format the response text
                 // Convert text with single asterisks to bullet points
-                responseText = responseText.replace(/\n\s*\*\s*([^\n*]+)/g, '\n• $1');
+                responseText = responseText.replace(/\\n\\s*\\*\\s*([^\\n*]+)/g, '\n• $1');
                 
                 // Convert text with double asterisks to bold
-                responseText = responseText.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                responseText = responseText.replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>');
                 
                 addMessage('bot', responseText);
             } else {
@@ -982,121 +628,213 @@ ${contextualPrompt}`;
         }
     }
     
-    // Generate a varied and personalized fallback response based on financial data when AI fails
+    // Function to generate the prompt for the AI
+    async function generatePrompt(message, context) {
+        const { userData, accounts, financialMetrics, transactions, predictions } = context;
+        console.log('Using financial context for response generation');
+        
+        const isTransactionQuery = message.toLowerCase().includes('transaction') || 
+                                   message.toLowerCase().includes('spending') || 
+                                   message.toLowerCase().includes('expense');
+        
+        const isCategoryQuery = financialMetrics.topExpenseCategories.some(cat => 
+            message.toLowerCase().includes(cat.category.toLowerCase()));
+        
+        const isPredictionQuery = message.toLowerCase().includes('predict') || 
+                                  message.toLowerCase().includes('future') || 
+                                  message.toLowerCase().includes('forecast');
+        
+        let contextualPrompt = '';
+        
+        if (isTransactionQuery || isCategoryQuery) {
+            console.log('Processing transaction-specific query');
+            contextualPrompt = `
+            You are Kita-kita, a friendly and engaging financial assistant with a warm, supportive personality. You're talking to ${userData?.firstName || 'User'} about their finances. Your goal is to provide personalized, actionable advice while being conversational and encouraging.
+            
+            USER INFO:
+            Name: ${userData?.firstName || 'User'} ${userData?.lastName || ''}
+            
+            FINANCIAL DATA:
+            Total Balance: ₱${accounts.totalBalance.toFixed(2)}
+            Monthly Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}
+            Monthly Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}
+            Savings Rate: ${financialMetrics.savingsRate}%
+            
+            TRANSACTION INSIGHTS:
+            Top Categories: ${transactions.insights.topCategories.map(c => c.category).join(', ') || 'No categories available'}
+            Unusual Spending: ${transactions.insights.unusualSpending.length} transactions identified
+            Savings Opportunities: ${transactions.insights.savingsOpportunities.length} opportunities found
+            Recurring Expenses: ${transactions.insights.recurringExpenses.length} recurring expenses detected
+            
+            Transaction Summary: ${transactions.insights.summary || 'No transaction summary available'}
+            
+            Based on this transaction data, answer the user's question: "${message}"
+            
+            PERSONALITY GUIDELINES:
+            - Be friendly and conversational, like you're chatting with a friend
+            - Use occasional emojis where appropriate (1-2 per message)
+            - Refer to the user by their first name
+            - Be encouraging and positive, even when discussing financial challenges
+            - Ask a follow-up question at the end to keep the conversation going
+            - Vary your responses and never sound repetitive or robotic
+            
+            Provide specific, actionable advice based on their actual transaction patterns.
+            Keep your response under 250 words and make it engaging.
+            `;
+        } else if (isPredictionQuery) {
+            console.log('Processing prediction query');
+            contextualPrompt = `
+            You are Kita-kita, a friendly and insightful financial assistant with a warm, supportive personality. You're talking to ${userData?.firstName || 'User'} about their future finances. Your goal is to provide forward-looking advice that's both helpful and encouraging.
+            
+            USER INFO:
+            Name: ${userData?.firstName || 'User'} ${userData?.lastName || ''}
+            
+            CURRENT FINANCIAL DATA:
+            Total Balance: ₱${accounts.totalBalance.toFixed(2)}
+            Monthly Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}
+            Monthly Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}
+            Savings Rate: ${financialMetrics.savingsRate}%
+            
+            FINANCIAL PREDICTIONS (Next 3 Months):
+            Predicted Monthly Income: ₱${predictions.predictedMonthlyIncome.toFixed(2)}
+            Predicted Recurring Expenses: ₱${predictions.recurringExpenses.toFixed(2)}
+            Predicted Non-Recurring Expenses: ₱${predictions.nonRecurringExpenses.toFixed(2)}
+            Predicted Savings: ₱${predictions.predictedSavings.toFixed(2)}
+            Predicted Balance After 3 Months: ₱${predictions.predictedEndingBalance.toFixed(2)}
+            
+            Prediction Summary: ${predictions.summary || 'No prediction summary available'}
+            
+            Based on these financial predictions, answer the user's question: "${message}"
+            
+            PERSONALITY GUIDELINES:
+            - Be optimistic but realistic about financial futures
+            - Use occasional emojis where appropriate (1-2 per message)
+            - Refer to the user by their first name
+            - Frame challenges as opportunities for growth
+            - Ask a follow-up question at the end to encourage planning
+            - Use vivid language to help the user visualize their financial future
+            - Vary your responses and never sound repetitive or robotic
+            
+            Be specific about future financial trends. Provide actionable advice based on predicted financial patterns.
+            Keep your response under 250 words and make it engaging and motivational.
+            `;
+        } else {
+            console.log('Processing general financial query');
+            contextualPrompt = `
+            You are Kita-kita, a friendly and knowledgeable financial assistant with a warm, supportive personality. You're having a conversation with ${userData?.firstName || 'User'} about their overall financial situation. Your goal is to provide holistic financial guidance that's personalized, actionable, and delivered in a friendly way.
+            
+            USER INFO:
+            Name: ${userData?.firstName || 'User'} ${userData?.lastName || ''}
+            
+            FINANCIAL DATA:
+            Total Balance: ₱${accounts.totalBalance.toFixed(2)}
+            Number of Accounts: ${accounts.count}
+            Monthly Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}
+            Monthly Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}
+            Savings Rate: ${financialMetrics.savingsRate}%
+            
+            Top expense categories:
+            ${financialMetrics.topExpenseCategories.length > 0 ? 
+                financialMetrics.topExpenseCategories.map(c => 
+                    `- ${c.category}: ₱${c.amount.toFixed(2)} (${c.percentage}% of expenses)`
+                ).join('\\n') : 'No expense categories available'}
+            
+            Recent Transactions: ${transactions.count} total
+            ${transactions.recentTransactions.length > 0 ? 
+                transactions.recentTransactions.map((t, i) => 
+                    `${i+1}. ${t.name}: ${t.type === 'income' ? '+' : '-'}₱${Math.abs(parseFloat(t.amount)).toFixed(2)} (${t.category || 'Uncategorized'}, ${new Date(t.date).toLocaleDateString()})`
+                ).slice(0, 3).join('\\n') : 'No recent transactions available'}
+            
+            TRANSACTION INSIGHTS:
+            ${transactions.insights.summary || 'No transaction insights available'}
+            
+            FINANCIAL PREDICTIONS (Next 3 Months):
+            ${predictions.summary || 'No prediction data available'}
+            
+            Based on this comprehensive financial information, give a personalized response to the user's question/request: "${message}"
+            
+            PERSONALITY GUIDELINES:
+            - Be friendly and conversational, like you're chatting with a friend
+            - Use occasional emojis where appropriate (1-2 per message)
+            - Refer to the user by their first name frequently
+            - Celebrate financial wins, no matter how small
+            - Provide gentle guidance for financial challenges
+            - Ask a relevant follow-up question at the end
+            - Use analogies or examples to make financial concepts relatable
+            - Vary your responses and never sound repetitive or robotic
+            
+            Focus on providing specific, actionable advice based on the user's actual financial data.
+            Keep your response under 250 words and make it engaging, supportive, and motivational.
+            `;
+        }
+        
+        return contextualPrompt;
+    }
+    
     function generateFallbackResponse(message, context) {
-        console.log('Generating enhanced fallback response based on financial data');
-        const { userData, accounts, financialMetrics, transactions } = context;
-        const firstName = userData?.firstName || 'there';
+        let response = "I'm having a bit of trouble connecting to my AI brain right now, but I can still help! ";
         
-        // Get current time for time-based greetings
-        const hour = new Date().getHours();
-        let greeting = "Hi";
-        if (hour < 12) greeting = "Good morning";
-        else if (hour < 18) greeting = "Good afternoon";
-        else greeting = "Good evening";
-        
-        // Add some variety with random emoji selection
-        const emojis = {
-            positive: ['✨', '👍', '🌟', '💪', '🚀'],
-            money: ['💰', '💵', '💸', '🏦', '💹'],
-            savings: ['🔐', '🏆', '💎', '🛡️', '🌱'],
-            warning: ['⚠️', '🔔', '📊', '🔍', '📈']
-        };
+        if (context && context.error) {
+            response += `It seems there was an error: ${context.errorMessage}. `;
+        }
         
         const randomEmoji = (category) => {
-            const options = emojis[category] || emojis.positive;
-            return options[Math.floor(Math.random() * options.length)];
+            const emojis = {
+                'saving': ['💰', '📈', '💪'],
+                'spending': ['💸', '🛍️', '🤔'],
+                'budgeting': ['📊', '📝', '🎯'],
+                'general': ['💡', '👍', '😊']
+            };
+            const list = emojis[category] || emojis['general'];
+            return list[Math.floor(Math.random() * list.length)];
         };
         
-        // Generate different response templates for variety
-        const responseTemplates = [
-            // Spending related templates
-            () => `${greeting}, ${firstName}! ${randomEmoji('money')} I notice you've spent ₱${financialMetrics.monthlyExpenses.toFixed(2)} this month. ${financialMetrics.topExpenseCategories.length > 0 ? `Your biggest spending area is ${financialMetrics.topExpenseCategories[0].category} (₱${financialMetrics.topExpenseCategories[0].amount.toFixed(2)}). Maybe we could look at ways to optimize that?` : 'Would you like some tips on tracking your expenses more effectively?'}`,
-            
-            // Savings related templates
-            () => `${greeting}, ${firstName}! ${randomEmoji('savings')} Your savings rate is currently at ${financialMetrics.savingsRate}%. ${financialMetrics.savingsRate < 15 ? "That's a bit below the recommended 15-20%. I have some ideas that might help boost your savings!" : "That's pretty good! Want to explore ways to make your savings work harder for you?"}`,
-            
-            // Income related templates
-            () => `${greeting}, ${firstName}! ${randomEmoji('money')} With a monthly income of ₱${financialMetrics.monthlyIncome.toFixed(2)}, you have a good foundation. ${financialMetrics.monthlyIncome > financialMetrics.monthlyExpenses ? "You're earning more than you spend - that's excellent!" : "Let's look at ways to increase your income-to-expense ratio."}`,
-            
-            // Balance related templates
-            () => `${greeting}, ${firstName}! ${randomEmoji('positive')} Your current balance across all accounts is ₱${accounts.totalBalance.toFixed(2)}. ${accounts.totalBalance > financialMetrics.monthlyExpenses * 3 ? "That's a healthy emergency fund!" : "Working toward a 3-6 month emergency fund would be a good goal."}`,
-            
-            // Transaction related templates
-            () => {
-                if (transactions && transactions.recentTransactions && transactions.recentTransactions.length > 0) {
-                    const latest = transactions.recentTransactions[0];
-                    return `${greeting}, ${firstName}! ${randomEmoji('money')} I see your most recent transaction was ${latest.name} for ₱${Math.abs(parseFloat(latest.amount)).toFixed(2)}. Looking at your overall financial picture, you have ₱${accounts.totalBalance.toFixed(2)} total with a ${financialMetrics.savingsRate}% savings rate.`;
-                } else {
-                    return `${greeting}, ${firstName}! ${randomEmoji('warning')} I don't see any recent transactions. Your overall financial picture shows ₱${accounts.totalBalance.toFixed(2)} total balance with a ${financialMetrics.savingsRate}% savings rate.`;
-                }
-            },
-            
-            // General financial health template
-            () => `${greeting}, ${firstName}! ${randomEmoji('positive')} Here's a quick snapshot of your finances: Income: ₱${financialMetrics.monthlyIncome.toFixed(2)}, Expenses: ₱${financialMetrics.monthlyExpenses.toFixed(2)}, Savings rate: ${financialMetrics.savingsRate}%. ${financialMetrics.savingsRate < 10 ? "We should work on improving your savings rate." : "You're making good progress!"}`
-        ];
-        
-        // Keyword matching for more relevant responses
-        if (message.toLowerCase().includes('spend') || message.toLowerCase().includes('expense')) {
-            return responseTemplates[0]();
-        } else if (message.toLowerCase().includes('save') || message.toLowerCase().includes('saving')) {
-            return responseTemplates[1]();
-        } else if (message.toLowerCase().includes('income') || message.toLowerCase().includes('earn')) {
-            return responseTemplates[2]();
-        } else if (message.toLowerCase().includes('balance') || message.toLowerCase().includes('account')) {
-            return responseTemplates[3]();
-        } else if (message.toLowerCase().includes('transaction') || message.toLowerCase().includes('purchase')) {
-            return responseTemplates[4]();
-        } else {
-            // For general queries, pick a random template for variety
-            const randomIndex = Math.floor(Math.random() * responseTemplates.length);
-            return responseTemplates[randomIndex]();
-        }
-    }
-    
-    // Generate generic financial advice when no user context is available
-    function generateGenericFinancialAdvice(message) {
-        console.log('Generating generic financial advice');
-        
-        if (message.toLowerCase().includes('spend') || message.toLowerCase().includes('expense')) {
-            return "To improve your spending habits, consider using the 50/30/20 rule: allocate 50% of your income to needs, 30% to wants, and 20% to savings and debt repayment. Track your expenses for a month to identify areas where you can cut back.";
-        } else if (message.toLowerCase().includes('save') || message.toLowerCase().includes('saving')) {
-            return "For effective saving, start by building an emergency fund with 3-6 months of expenses. Then, set specific savings goals with timeframes. Automate your savings by setting up automatic transfers on payday to ensure consistency.";
-        } else if (message.toLowerCase().includes('invest')) {
-            return "When starting to invest, first ensure you have an emergency fund and have paid off high-interest debt. Consider low-cost index funds for beginners, and remember that diversification is key to managing risk. Start small and increase your investments as you learn more.";
+        if (message.toLowerCase().includes('save') || message.toLowerCase().includes('saving')) {
+            response += `A great rule of thumb for saving is the 50/30/20 rule: 50% of your income for needs, 30% for wants, and 20% for savings. How does that sound? ${randomEmoji('saving')}`;
+        } else if (message.toLowerCase().includes('spend') || message.toLowerCase().includes('expense')) {
+            response += `To understand your spending, try reviewing your last month's bank statement and categorizing each expense. You might be surprised where your money goes! ${randomEmoji('spending')}`;
         } else if (message.toLowerCase().includes('budget')) {
-            return "Creating a budget starts with tracking all income and expenses. Categorize your spending, set realistic limits for each category, and review your budget regularly. Use digital tools or apps to make budgeting easier and more consistent.";
+            response += `A simple way to start a budget is to list all your income sources and all your fixed expenses (like rent and bills). The amount left over is what you have for flexible spending and saving. Ready to give it a try? ${randomEmoji('budgeting')}`;
         } else {
-            return "To improve your overall financial health, follow these key principles: spend less than you earn, build an emergency fund, pay off high-interest debt, save for retirement, and invest for long-term growth. Regular financial check-ups can help you stay on track with your goals.";
+            response += `You can always review your transactions on the dashboard to get a clear picture of your finances. What's one financial goal you have right now? ${randomEmoji('general')}`;
         }
+        
+        return response;
     }
     
-    // Test AI connection function
+    function generateGenericFinancialAdvice(message) {
+        const lowerCaseMessage = message.toLowerCase();
+        
+        if (lowerCaseMessage.includes('invest')) {
+            return "Investing is a great way to grow your wealth over time. Some common options in the Philippines include stocks, mutual funds, and Pag-IBIG MP2. It's wise to do some research or consult a financial advisor to see what fits your risk tolerance.";
+        } else if (lowerCaseMessage.includes('debt')) {
+            return "Tackling debt can feel empowering. Two popular methods are the 'Snowball' method (paying off smallest debts first for motivation) and the 'Avalanche' method (paying off debts with the highest interest rates first to save money).";
+        } else if (lowerCaseMessage.includes('credit score')) {
+            return "While the Philippines is still developing a centralized credit scoring system, paying bills on time, managing credit card debt wisely, and maintaining a healthy relationship with banks are all great habits that will build a positive credit history.";
+        } else {
+            return "That's a great question! For personalized advice, please log in or sign up so I can understand your financial situation better. For now, a universal tip is to always track your income and expenses to understand your cash flow.";
+        }
+    }
+
     async function testAIConnection() {
         try {
             console.log('🧪 Testing AI connection...');
-            const testResponse = await localCallGeminiAI('Hello! Please respond with "AI connection successful" to confirm you are working.', {
+            const testResponse = await callGeminiAI('Hello! Please respond with "AI connection successful" to confirm you are working.', {
                 temperature: 0.1,
                 maxTokens: 50
             });
-            console.log('✅ AI Connection Test Result:', testResponse);
-            return true;
+            if (testResponse && testResponse.includes('successful')) {
+                console.log('✅ AI Connection Test PASSED');
+            } else {
+                console.warn('⚠️ AI Connection Test FAILED: Unexpected response', testResponse);
+            }
         } catch (error) {
-            console.error('❌ AI Connection Test Failed:', error);
-            return false;
+            console.error('❌ AI Connection Test FAILED:', error);
         }
     }
-    
-    // Add a debug function to window for manual testing
-    window.testChatbotAI = testAIConnection;
-    
-    // Call the initialize function
+
+    // Initialize the chatbot
     initializeChatbot();
-    
-    // Test AI connection on load (optional)
-    setTimeout(() => {
-        if (window.location.hash === '#test-ai') {
-            testAIConnection();
-        }
-    }, 2000);
+    // Test the AI connection on startup
+    testAIConnection();
 });

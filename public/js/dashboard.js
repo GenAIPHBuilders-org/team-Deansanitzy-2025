@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
         await initializeDashboard();
 
         // Setup logout button
-        const logoutButton = document.getElementById('logout-button');
+        const logoutButton = document.getElementById('logout-link');
         if (logoutButton) {
           logoutButton.addEventListener('click', (e) => {
             e.preventDefault();
@@ -976,13 +976,15 @@ async function loadTransactions() {
       transactions = [];
     }
 
-    // Update the main transactions table (if exists)
-    try {
-      if (typeof renderTransactions === 'function') {
-        renderTransactions(transactions);
+    // Update the main transactions table (if it exists on the page)
+    if (document.getElementById('transactions-table-body')) {
+      try {
+        if (typeof renderTransactions === 'function') {
+          renderTransactions(transactions);
+        }
+      } catch (renderError) {
+        console.error('Error rendering transactions table:', renderError);
       }
-    } catch (renderError) {
-      console.error('Error rendering transactions table:', renderError);
     }
     
     // Update the spending chart if it exists
@@ -994,33 +996,6 @@ async function loadTransactions() {
       console.error('Error updating spending chart:', chartError);
     }
 
-    // Update the recent transactions widget
-    try {
-      if (typeof renderRecentTransactions === 'function') {
-        renderRecentTransactions(transactions);
-      }
-    } catch (recentError) {
-      console.error('Error rendering recent transactions:', recentError);
-    }
-    
-    // Update the dashboard transactions list widget
-    try {
-      if (typeof renderRecentTransactionsList === 'function') {
-        renderRecentTransactionsList(transactions);
-      }
-    } catch (listError) {
-      console.error('Error rendering recent transactions list:', listError);
-    }
-
-    // Refresh financial health
-    try {
-      if (typeof refreshFinancialHealth === 'function') {
-        refreshFinancialHealth();
-      }
-    } catch (healthError) {
-      console.error('Error refreshing financial health:', healthError);
-    }
-    
     // Store transactions in sessionStorage for faster access by other components
     try {
       sessionStorage.setItem('userTransactions', JSON.stringify({
@@ -1163,9 +1138,6 @@ function renderTransactions(transactions) {
                 if (typeof updateSpendingChart === 'function') {
                   updateSpendingChart(remainingTransactions);
                 }
-
-                // Update recent transactions widget
-                renderRecentTransactions(remainingTransactions);
 
                 // Update bank cards to reflect new balance
                 await renderBankCards();
@@ -1385,125 +1357,6 @@ async function deleteAccount(accountId) {
   } catch (error) {
     console.error('Error deleting account:', error);
     throw error;
-  }
-}
-
-// Add this function to render recent transactions in the dashboard widget
-function renderRecentTransactions(transactions) {
-  const recentTransactionsContainer = document.getElementById('recent-transactions');
-
-  if (!recentTransactionsContainer) {
-    console.log('Recent transactions container not found - may not be on this page');
-    return;
-  }
-
-  // Clear existing content
-  recentTransactionsContainer.innerHTML = '';
-
-  // If no transactions, show empty state
-  if (!transactions || transactions.length === 0) {
-    recentTransactionsContainer.innerHTML = '<p class="empty-state">No recent transactions to display</p>';
-    return;
-  }
-
-  // Filter out invalid transactions and get only the 3 most recent
-  const validTransactions = transactions.filter(transaction => 
-    transaction && 
-    transaction.date && 
-    transaction.name && 
-    typeof transaction.amount !== 'undefined'
-  );
-
-  if (validTransactions.length === 0) {
-    recentTransactionsContainer.innerHTML = '<p class="empty-state">No valid transactions to display</p>';
-    return;
-  }
-
-  const recentTransactions = [...validTransactions]
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 3);
-
-  // Create and append transaction items
-  recentTransactions.forEach(transaction => {
-    try {
-      const transactionEl = document.createElement('div');
-      const transactionType = transaction.type || 'expense';
-      transactionEl.className = `transaction-item ${transactionType}`;
-
-      // Safely parse amount
-      const amount = parseFloat(transaction.amount) || 0;
-      
-      // Format amount with proper currency symbol
-      const amountText = amount >= 0
-        ? `+₱${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-        : `-₱${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-
-      // Get appropriate icon based on category
-      const category = transaction.category || 'other';
-      const categoryIcon = getCategoryIcon(category);
-      const name = transaction.name || 'Unknown Transaction';
-
-      // Safely parse date
-      let formattedDate = 'Unknown Date';
-      try {
-        const transactionDate = new Date(transaction.date);
-        if (!isNaN(transactionDate.getTime())) {
-          formattedDate = formatDate(transactionDate);
-        }
-      } catch (dateError) {
-        console.warn('Error parsing transaction date:', transaction.date);
-      }
-
-      transactionEl.innerHTML = `
-        <div class="transaction-icon ${category}">
-          <i class="${categoryIcon}"></i>
-        </div>
-        <div class="transaction-details">
-          <span class="transaction-name">${name}</span>
-          <span class="transaction-date">${formattedDate}</span>
-        </div>
-        <div class="transaction-amount ${amount >= 0 ? 'positive' : 'negative'}">
-          ${amountText}
-        </div>
-      `;
-
-      recentTransactionsContainer.appendChild(transactionEl);
-    } catch (error) {
-      console.error('Error rendering transaction:', transaction, error);
-    }
-  });
-}
-
-// Helper function to get category icon
-function getCategoryIcon(category) {
-  const icons = {
-    'food': 'fas fa-utensils',
-    'shopping': 'fas fa-shopping-bag',
-    'bills': 'fas fa-file-invoice',
-    'transportation': 'fas fa-car',
-    'entertainment': 'fas fa-film',
-    'housing': 'fas fa-home',
-    'health': 'fas fa-heartbeat',
-    'education': 'fas fa-graduation-cap',
-    'income': 'fas fa-money-bill-wave',
-    'other': 'fas fa-receipt'
-  };
-
-  return icons[category] || 'fas fa-receipt';
-}
-
-// Helper function to format date
-function formatDate(date) {
-  const now = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (date.toDateString() === now.toDateString()) {
-    return 'Today';
-  } else if (date.toDateString() === yesterday.toDateString()) {
-    return 'Yesterday';
-  } else {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 }
 

@@ -8,6 +8,7 @@ import {
     db,
     getDocs
 } from "./firestoredb.js";
+import { callGeminiAI } from '../js/agentCommon.js';
 
 // Financial Health Configuration
 const FINANCIAL_HEALTH_CONFIG = {
@@ -160,59 +161,6 @@ async function processFinancialData(userData) {
     }
 }
 
-// Add this helper function for delay
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Add this helper function for API calls with retry
-async function callGeminiAPI(prompt, retries = 3, baseDelay = 1000) {
-    for (let attempt = 0; attempt < retries; attempt++) {
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.7,
-                        topK: 40,
-                        topP: 0.95,
-                        maxOutputTokens: 2048,
-                    }
-                })
-            });
-
-            if (response.status === 429) {
-                const waitTime = baseDelay * Math.pow(2, attempt);
-                console.log(`Rate limit hit, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
-                await delay(waitTime);
-                continue;
-            }
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Gemini API error:', errorData);
-                throw new Error(`Gemini API error: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            if (attempt === retries - 1) throw error;
-            const waitTime = baseDelay * Math.pow(2, attempt);
-            console.log(`API call failed, waiting ${waitTime}ms before retry ${attempt + 1}/${retries}`);
-            await delay(waitTime);
-        }
-    }
-    throw new Error('All retries failed');
-}
-
 async function analyzeFinancialHealth(userData) {
     if (!GEMINI_API_KEY) {
         console.log('Gemini API key not configured, using offline analysis');
@@ -222,32 +170,24 @@ async function analyzeFinancialHealth(userData) {
     try {
         const prompt = generateFinancialPrompt(userData);
         
-        // Use the new retry mechanism
         try {
-            const data = await callGeminiAPI(prompt);
+            const aiResponse = await callGeminiAI(prompt, { maxOutputTokens: 2048 });
             
-            if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
-                console.log('Invalid Gemini API response format, falling back to offline analysis');
+            if (!aiResponse) {
+                console.log('Invalid Gemini API response, falling back to offline analysis');
                 return enhancedOfflineAnalysis(userData);
             }
 
-            const aiResponse = data.candidates[0].content.parts[0].text;
-            
-            try {
-                // Parse JSON response
-                const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const analysis = JSON.parse(jsonMatch[0]);
-                    return enhanceAIAnalysis(analysis, userData);
-                } else {
-                    console.log('Invalid JSON in Gemini response, falling back to offline analysis');
-                    return enhancedOfflineAnalysis(userData);
-                }
-            } catch (parseError) {
-                console.error('Failed to parse Gemini response:', parseError);
-                console.log('Falling back to offline analysis');
+            const analysis = await parsePlainTextAnalysis(aiResponse, userData);
+
+            // ROBUSTNESS CHECK: If AI response is incomplete, use the reliable offline analysis.
+            if (!analysis.insights || analysis.insights.length === 0 || !analysis.recommendations || analysis.recommendations.length === 0) {
+                console.log('AI analysis was incomplete (missing insights or recommendations). Falling back to full offline analysis.');
                 return enhancedOfflineAnalysis(userData);
             }
+
+            return enhanceAIAnalysis(analysis, userData);
+
         } catch (apiError) {
             console.error('All API retries failed:', apiError);
             console.log('Falling back to offline analysis after all retries failed');
@@ -260,6 +200,74 @@ async function analyzeFinancialHealth(userData) {
     }
 }
 
+async function parsePlainTextAnalysis(text, userData) {
+    let analysis = {}; // Start with an empty object
+
+    try {
+        let jsonString = text.trim();
+        
+        // 1. Aggressively find and extract the JSON object from the raw text.
+        // First, look for a markdown block. If found, use its content.
+        const jsonBlockMatch = jsonString.match(/```json\s*(\{[\s\S]*?\})\s*```/s);
+        if (jsonBlockMatch && jsonBlockMatch[1]) {
+            jsonString = jsonBlockMatch[1];
+        } else {
+            // If not in a markdown block, find the first and last brace to extract the object.
+            const firstBrace = jsonString.indexOf('{');
+            const lastBrace = jsonString.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+                jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+            } else {
+                console.error("No valid JSON object could be extracted from the AI response.", {rawResponse: text});
+                throw new Error("No valid JSON object found in AI response.");
+            }
+        }
+
+        // 2. Clean up common JSON syntax errors from LLMs
+        let sanitizedString = jsonString
+            // Remove invalid control characters that can break JSON.parse.
+            // This leaves valid whitespace like \n, \r, \t.
+            .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+            // Remove comments, although the prompt should prevent this.
+            .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
+            // Remove trailing commas before closing braces or brackets. A frequent error.
+            .replace(/,\s*([\}\]])/g, '$1');
+
+        const parsedData = JSON.parse(sanitizedString);
+
+        // 3. Validate the structure of the parsed data to ensure it's usable
+        analysis = {
+            healthScore: parsedData.healthScore || 50,
+            summary: parsedData.summary || "AI summary was not provided.",
+            insights: Array.isArray(parsedData.insights) ? parsedData.insights : [],
+            recommendations: Array.isArray(parsedData.recommendations) ? parsedData.recommendations : [],
+            riskAssessment: { shortTerm: [], longTerm: [], mitigationStrategies: [] } // default this
+        };
+
+    } catch (error) {
+        console.error("Failed to parse final AI JSON analysis. The response was likely malformed beyond simple repair.", error);
+        console.error("Original malformed response for review:", text); // Log the original failing text
+        return { insights: [], recommendations: [] }; // Critical fallback
+    }
+
+    // 4. Manually calculate metrics and add them to the analysis
+    const { accounts, transactions } = userData;
+    const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0);
+    const monthlyTransactions = getMonthlyTransactions(transactions);
+    const monthlyIncome = calculateMonthlyIncome(monthlyTransactions);
+    const monthlyExpenses = calculateMonthlyExpenses(monthlyTransactions);
+    
+    analysis.metrics = {
+        savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0,
+        expenseRatio: monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 100,
+        emergencyFundMonths: monthlyExpenses > 0 ? totalBalance / monthlyExpenses : 0,
+        debtToIncome: 0,
+        investmentAllocation: 0,
+    };
+    
+    return analysis;
+}
+
 function generateFinancialPrompt(userData) {
     const { accounts, transactions } = userData;
     
@@ -269,82 +277,71 @@ function generateFinancialPrompt(userData) {
     const monthlyIncome = calculateMonthlyIncome(monthlyTransactions);
     const monthlyExpenses = calculateMonthlyExpenses(monthlyTransactions);
     
-    // Categorize transactions
-    const categories = categorizeTransactions(transactions);
+    // Sanitize user-generated strings to prevent breaking the prompt structure
+    const sanitizeForPrompt = (str) => (str || '').replace(/"/g, "'").replace(/\n/g, ' ').trim();
     
-    return `You are my personal Filipino financial health AI assistant, named "Kita-kita Coach". Your goal is to analyze my financial data and provide me with encouraging, clear, and actionable insights. Address me directly using "you" and "your".
+    const transactionData = monthlyTransactions.map(tx => ({
+        type: tx.type,
+        description: sanitizeForPrompt(tx.description),
+        category: tx.category,
+        amount: Math.abs(parseFloat(tx.amount || 0)),
+        date: tx.date,
+    }));
 
-    Here is my financial summary:
-    - Total Balance: PHP ${totalBalance.toFixed(2)}
-    - My Monthly Income: PHP ${monthlyIncome.toFixed(2)}
-    - My Monthly Expenses: PHP ${monthlyExpenses.toFixed(2)}
+    const accountData = accounts.map(acc => ({
+        name: sanitizeForPrompt(acc.name),
+        accountType: acc.accountType,
+        balance: parseFloat(acc.balance || 0),
+    }));
     
-    MY ACCOUNTS:
-    ${JSON.stringify(accounts, null, 2)}
+    // FINAL ROBUST PROMPT v4: Use JSON for data to prevent confusion.
+    return `You are a financial analyst AI. Your response MUST be a single, valid JSON object and nothing else.
+    
+**CRITICAL RULES:**
+1.  **JSON ONLY:** Your entire response must be a raw string representing a single JSON object, starting with \`{\` and ending with \`}\`.
+2.  **NO MARKDOWN OR COMMENTS:** Do NOT wrap the JSON in markdown blocks or include any comments.
+3.  **VALID JSON:** Ensure the JSON is valid. All keys and string values must use double quotes. No trailing commas.
 
-    MY TRANSACTION CATEGORIES:
-    ${JSON.stringify(categories, null, 2)}
+**FINANCIAL DATA (PHP):**
+This data is provided in JSON format.
+- Summary: { "totalBalance": ${totalBalance.toFixed(2)}, "monthlyIncome": ${monthlyIncome.toFixed(2)}, "monthlyExpenses": ${monthlyExpenses.toFixed(2)} }
+- Accounts: ${JSON.stringify(accountData)}
+- Transactions This Month: ${JSON.stringify(transactionData)}
 
-    MY RECENT TRANSACTIONS:
-    ${JSON.stringify(monthlyTransactions, null, 2)}
-
-    Please provide a comprehensive financial health analysis for me, considering the Filipino financial context. Your tone should be supportive and empowering.
-    1. Calculate my key financial metrics based on Filipino financial standards.
-    2. Consider local economic factors and cost of living in your analysis of my finances.
-    3. Provide me with culturally relevant recommendations that I can realistically follow.
-    4. Take into account common Filipino financial habits and challenges when giving advice.
-
-    Please respond in this exact JSON format, writing all descriptions and recommendations directly to me (the user):
-    {
-        "healthScore": number (0-100),
-        "summary": "A detailed summary of my current financial health status, written to me.",
-        "metrics": {
-            "savingsRate": number,
-            "debtToIncome": number,
-            "expenseRatio": number,
-            "emergencyFundMonths": number,
-            "investmentAllocation": number,
-            "discretionarySpending": number,
-            "basicNecessitiesRatio": number,
-            "financialSustainability": number
-        },
-        "insights": [
-            {
-                "type": "strength|weakness|opportunity|threat",
-                "title": "A specific insight title about my finances.",
-                "description": "A detailed description of the insight, using my specific numbers and context. Explain it to me clearly.",
-                "priority": "high|medium|low",
-                "impact": "A description of how this affects my long-term financial health.",
-                "trend": "improving|stable|declining"
-            }
-        ],
-        "recommendations": [
-            {
-                "title": "A specific, actionable recommendation for me.",
-                "description": "Detailed step-by-step guidance on how I can implement this.",
-                "impact": "high|medium|low",
-                "timeframe": "immediate|short_term|long_term",
-                "difficulty": "easy|moderate|challenging",
-                "expectedOutcome": "The specific results I can expect from following this recommendation.",
-                "alternativeSolutions": ["An alternative approach I could take.", "Another alternative solution."]
-            }
-        ],
-        "riskAssessment": {
-            "shortTerm": ["A specific short-term risk to my finances.", "Another short-term risk."],
-            "longTerm": ["A specific long-term risk to my finances.", "Another long-term risk."],
-            "mitigationStrategies": ["A specific strategy for me to mitigate these risks.", "Another mitigation strategy."]
-        }
-    }`;
+**JSON RESPONSE STRUCTURE:**
+Provide your analysis in the following JSON format.
+{
+  "healthScore": <Number 0-100>,
+  "summary": "<One-sentence summary>",
+  "insights": [
+    { "type": "<strength|weakness|opportunity|threat>", "priority": "<low|medium|high>", "title": "...", "description": "...", "impact": "..." }
+  ],
+  "recommendations": [
+    { "title": "...", "description": "...", "impact": "<low|medium|high>", "timeframe": "<immediate|short_term|long_term>", "difficulty": "<easy|moderate|challenging>", "expectedOutcome": "..." }
+  ]
+}
+`;
 }
 
 function getMonthlyTransactions(transactions) {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    if (!transactions || transactions.length === 0) {
+        return [];
+    }
+
+    // Find the date of the most recent transaction to ensure we analyze the correct month
+    const mostRecentDate = new Date(
+        Math.max.apply(
+            null,
+            transactions.map(t => new Date(t.date || t.timestamp))
+        )
+    );
     
+    const analysisMonth = mostRecentDate.getMonth();
+    const analysisYear = mostRecentDate.getFullYear();
+
     return transactions.filter(tx => {
         const txDate = new Date(tx.date || tx.timestamp);
-        return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        return txDate.getMonth() === analysisMonth && txDate.getFullYear() === analysisYear;
     });
 }
 
@@ -386,24 +383,38 @@ function categorizeTransactions(transactions) {
 }
 
 function enhanceAIAnalysis(analysis, userData) {
-    // Add any additional calculations or enhancements to the AI analysis
+    // Sanitize and enhance the analysis from the AI to prevent rendering errors
     const enhancedAnalysis = {
         ...analysis,
         metrics: {
-            ...analysis.metrics,
-            // Add any additional metrics not covered by AI
+            ...(analysis.metrics || {}),
             lastUpdated: new Date().toISOString()
+        },
+        // Sanitize insights to ensure all required fields are present
+        insights: (Array.isArray(analysis.insights) ? analysis.insights : []).map(insight => ({
+            type: insight.type || 'info',
+            priority: insight.priority || 'medium',
+            title: insight.title || 'Insight Not Available',
+            description: insight.description || 'The AI did not provide a description for this insight.',
+            impact: insight.impact || 'Not specified.',
+            trend: insight.trend || 'stable'
+        })),
+        // Sanitize recommendations to ensure all required fields are present for the Action Plan
+        recommendations: (Array.isArray(analysis.recommendations) ? analysis.recommendations : []).map(rec => ({
+            title: rec.title || 'Recommendation Not Available',
+            description: rec.description || 'The AI did not provide a description for this recommendation.',
+            impact: rec.impact || 'medium',
+            timeframe: rec.timeframe || 'short_term',
+            difficulty: rec.difficulty || 'moderate',
+            expectedOutcome: rec.expectedOutcome || 'Positive financial impact.',
+            alternativeSolutions: rec.alternativeSolutions || []
+        })),
+        riskAssessment: {
+            shortTerm: Array.isArray(analysis.riskAssessment?.shortTerm) ? analysis.riskAssessment.shortTerm : [],
+            longTerm: Array.isArray(analysis.riskAssessment?.longTerm) ? analysis.riskAssessment.longTerm : [],
+            mitigationStrategies: Array.isArray(analysis.riskAssessment?.mitigationStrategies) ? analysis.riskAssessment.mitigationStrategies : []
         }
     };
-
-    // Ensure all required fields are present
-    if (!enhancedAnalysis.riskAssessment) {
-        enhancedAnalysis.riskAssessment = {
-            shortTerm: [],
-            longTerm: [],
-            mitigationStrategies: []
-        };
-    }
 
     return enhancedAnalysis;
 }
@@ -442,7 +453,7 @@ function renderFinancialHealthWidget(analysis, userData) {
                     <div class="metric-content">
                         <div class="metric-title">Your Savings Rate</div>
                         <div class="metric-value ${analysis.metrics.savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget ? 'positive' : 'negative'}">
-                            ${analysis.metrics.savingsRate}%
+                            ${analysis.metrics.savingsRate.toFixed(1)}%
                         </div>
                         <div class="metric-target">Target: ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%</div>
                         <div class="metric-progress">
@@ -458,7 +469,7 @@ function renderFinancialHealthWidget(analysis, userData) {
                     <div class="metric-content">
                         <div class="metric-title">Your Expense Ratio</div>
                         <div class="metric-value ${analysis.metrics.expenseRatio <= FINANCIAL_HEALTH_CONFIG.expenseRatioMax ? 'positive' : 'negative'}">
-                            ${analysis.metrics.expenseRatio}%
+                            ${analysis.metrics.expenseRatio.toFixed(1)}%
                         </div>
                         <div class="metric-target">Your Target: < ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%</div>
                         <div class="metric-progress">
@@ -762,191 +773,68 @@ function enhancedOfflineAnalysis(userData) {
         
         // Calculate health score (0-100)
         let healthScore = 50; // Base score
-
-        // Adjust for savings rate (target: 20%)
         if (savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget) healthScore += 15;
         else if (savingsRate > 0) healthScore += (savingsRate / FINANCIAL_HEALTH_CONFIG.savingsRateTarget) * 15;
-
-        // Adjust for expense ratio (target: max 80%)
         if (expenseRatio <= FINANCIAL_HEALTH_CONFIG.expenseRatioMax) healthScore += 15;
         else healthScore -= ((expenseRatio - FINANCIAL_HEALTH_CONFIG.expenseRatioMax) / 20) * 15;
-
-        // Adjust for emergency fund (target: 6 months)
         if (emergencyFundMonths >= FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) healthScore += 20;
         else healthScore += (emergencyFundMonths / FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) * 20;
-
-        // Ensure score stays within 0-100
         healthScore = Math.min(100, Math.max(0, healthScore));
 
-        // Generate insights
-        const insights = [];
-        
-        // Savings insights
-        if (savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget) {
-            insights.push({
-                type: "strength",
-                title: "Excellent Savings Rate",
-                description: `You're doing a great job saving ${savingsRate.toFixed(1)}% of your income, which is above the recommended target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%. Keep up the great work!`,
-                priority: "high",
-                impact: "Maintaining this savings rate will significantly help you build long-term wealth and financial security.",
-                trend: "stable"
-            });
-        } else if (savingsRate > 0) {
-            insights.push({
-                type: "opportunity",
-                title: "Opportunity to Boost Your Savings",
-                description: `Your current savings rate is ${savingsRate.toFixed(1)}%. You're on the right track, and with a few adjustments, you can reach the target of ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%.`,
-                priority: "medium",
-                impact: "Increasing your savings will accelerate your progress towards your financial goals and improve your financial security.",
-                trend: "improving"
-            });
-        } else {
-            insights.push({
-                type: "weakness",
-                title: "Your Expenses are Higher Than Your Income",
-                description: "It looks like you're spending more than you earn right now. It's important to address this to get back on track.",
-                priority: "high",
-                impact: "This situation is unsustainable and can lead to debt. Taking action now is crucial for your financial well-being.",
-                trend: "declining"
-            });
-        }
-
-        // Emergency fund insights
-        if (emergencyFundMonths < FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) {
-            insights.push({
-                type: "threat",
-                title: "Build Up Your Emergency Fund",
-                description: `Your emergency fund currently covers ${emergencyFundMonths.toFixed(1)} months of your expenses. Aiming for the recommended ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months will give you a stronger safety net.`,
-                priority: "high",
-                impact: "A fully-funded emergency fund will protect you from unexpected financial shocks without derailing your long-term goals.",
-                trend: "stable"
-            });
-        }
-
-        // Generate recommendations
-        const recommendations = [];
-        
-        // Savings recommendations
-        if (savingsRate < FINANCIAL_HEALTH_CONFIG.savingsRateTarget) {
-            recommendations.push({
-                title: "Boost Your Savings Rate",
-                description: `A great first step is to set up an automatic transfer to your savings account. Try moving ${Math.min(20, FINANCIAL_HEALTH_CONFIG.savingsRateTarget - savingsRate).toFixed(0)}% of your income on payday. You won't even miss it!`,
-                impact: "high",
-                timeframe: "immediate",
-                difficulty: "moderate",
-                expectedOutcome: "You'll build your savings faster and improve your overall financial security.",
-                alternativeSolutions: [
-                    "Review your subscriptions and daily spending for easy cuts.",
-                    "Consider a side-hustle or freelance work for an income boost."
-                ]
-            });
-        }
-
-        // Emergency fund recommendations
-        if (emergencyFundMonths < FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) {
-            recommendations.push({
-                title: "Build Your Emergency Fund",
-                description: `Focus on allocating extra funds to your emergency savings until you reach the goal of ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months of expenses.`,
-                impact: "high",
-                timeframe: "short_term",
-                difficulty: "moderate",
-                expectedOutcome: "You will have a strong financial safety net to protect you against unexpected expenses.",
-                alternativeSolutions: [
-                    "Set up a recurring automatic transfer to your savings.",
-                    "Dedicate any windfalls, like bonuses or tax refunds, to your emergency fund."
-                ]
-            });
-        }
-
-        // Expense management recommendations
-        if (expenseRatio > FINANCIAL_HEALTH_CONFIG.expenseRatioMax) {
-            recommendations.push({
-                title: "Review and Reduce Your Expenses",
-                description: `Take a close look at your monthly spending to find areas where you can cut back. Your goal is to get your expense ratio below ${FINANCIAL_HEALTH_CONFIG.expenseRatioMax}%.`,
-                impact: "high",
-                timeframe: "immediate",
-                difficulty: "challenging",
-                expectedOutcome: "You'll free up more cash, which will improve your ability to save and invest.",
-                alternativeSolutions: [
-                    "Create a detailed budget to track every peso.",
-                    "Try negotiating your recurring bills like phone or internet."
-                ]
-            });
-        }
-
+        // Return a clear, non-hardcoded fallback analysis
         return {
             healthScore: Math.round(healthScore),
-            summary: `Your financial health score is ${Math.round(healthScore)}/100. ${
-                healthScore >= 80 ? "You're in excellent financial shape! Keep up the great work." :
-                healthScore >= 60 ? "You're on the right track. A few small changes will make a big difference." :
-                "There are opportunities for improvement, and I'm here to help you get started."
-            }`,
+            summary: `Your basic financial health score is ${Math.round(healthScore)}/100. AI analysis is currently unavailable, so this is a summary based on standard calculations.`,
             metrics: {
                 savingsRate: parseFloat(savingsRate.toFixed(1)),
-                debtToIncome: 0, // Not calculated in offline mode
+                debtToIncome: 0,
                 expenseRatio: parseFloat(expenseRatio.toFixed(1)),
                 emergencyFundMonths: parseFloat(emergencyFundMonths.toFixed(1)),
-                investmentAllocation: 0, // Not calculated in offline mode
-                discretionarySpending: 0, // Not calculated in offline mode
-                basicNecessitiesRatio: 0, // Not calculated in offline mode
-                financialSustainability: 0 // Not calculated in offline mode
-            },
-            insights,
-            recommendations,
-            riskAssessment: {
-                shortTerm: [
-                    "Insufficient emergency fund coverage",
-                    "High expense ratio"
-                ],
-                longTerm: [
-                    "Retirement savings may be delayed",
-                    "Limited investment growth"
-                ],
-                mitigationStrategies: [
-                    "Build emergency fund systematically",
-                    "Review and optimize monthly expenses",
-                    "Set up automatic savings transfers"
-                ]
-            }
-        };
-    } catch (error) {
-        console.error('Error in offline analysis:', error);
-        // Return a minimal valid structure if there's an error
-        return {
-            healthScore: 50,
-            summary: "Unable to calculate detailed metrics. Please try again later.",
-            metrics: {
-                savingsRate: 0,
-                debtToIncome: 0,
-                expenseRatio: 0,
-                emergencyFundMonths: 0,
                 investmentAllocation: 0,
                 discretionarySpending: 0,
                 basicNecessitiesRatio: 0,
                 financialSustainability: 0
             },
             insights: [{
-                type: "warning",
-                title: "Analysis Limited",
-                description: "Unable to perform complete analysis at this time",
+                type: "weakness",
+                title: "AI Analysis Unavailable",
+                description: "Could not connect to the AI for a detailed financial analysis. The metrics above are based on standard calculations, not personalized insights.",
                 priority: "high",
-                impact: "Please try again later",
+                impact: "You are not seeing personalized insights or a detailed action plan.",
                 trend: "stable"
             }],
             recommendations: [{
-                title: "Retry Analysis",
-                description: "Please refresh the page to try the analysis again",
+                title: "Retry AI Analysis",
+                description: "Please check your internet connection and refresh the page to get your full AI-powered financial analysis.",
                 impact: "high",
                 timeframe: "immediate",
                 difficulty: "easy",
-                expectedOutcome: "Complete financial analysis",
-                alternativeSolutions: ["Contact support if the issue persists"]
+                expectedOutcome: "A detailed analysis with personalized insights and an action plan.",
+                alternativeSolutions: ["If the problem persists, the AI service may be temporarily down. Please try again later."]
             }],
             riskAssessment: {
-                shortTerm: ["Analysis currently limited"],
-                longTerm: ["Unable to assess long-term risks"],
-                mitigationStrategies: ["Retry analysis later"]
+                shortTerm: ["AI-based risk assessment unavailable."],
+                longTerm: ["AI-based risk assessment unavailable."],
+                mitigationStrategies: ["Retry analysis to get risk assessment."]
             }
+        };
+    } catch (error) {
+        console.error('Error in offline analysis:', error);
+        // Return a minimal valid structure if there's an error in calculations
+        return {
+            healthScore: 0,
+            summary: "Unable to perform analysis due to an unexpected error. Please try again.",
+            metrics: { savingsRate: 0, debtToIncome: 0, expenseRatio: 0, emergencyFundMonths: 0, investmentAllocation: 0 },
+            insights: [{
+                type: "weakness",
+                title: "Error During Analysis",
+                description: "A calculation error occurred. Please refresh to try again.",
+                priority: "high",
+                impact: "Analysis could not be completed.",
+                trend: "stable"
+            }],
+            recommendations: [],
+            riskAssessment: { shortTerm: [], longTerm: [], mitigationStrategies: [] }
         };
     }
 }

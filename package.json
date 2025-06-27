@@ -14,13 +14,13 @@
     "security-check": "npm audit fix",
     "security-scan": "node scripts/security-check.js",
     "security-fix": "node scripts/security-check.js --fix",
-    "test": "mocha automated-testing-suite.js --timeout 30000",
-    "test:watch": "mocha automated-testing-suite.js --watch --timeout 30000",
-    "test:coverage": "nyc mocha automated-testing-suite.js --timeout 30000",
-    "test:agents": "mocha automated-testing-suite.js --grep 'Agent Autonomy' --timeout 30000",
-    "test:production": "mocha automated-testing-suite.js --grep 'Production Readiness' --timeout 30000",
-    "test:business": "mocha automated-testing-suite.js --grep 'Business Value' --timeout 30000",
-    "test:integration": "mocha automated-testing-suite.js --grep 'Integration' --timeout 30000",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:agents": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testNamePattern 'Agent Autonomy'",
+    "test:production": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testNamePattern 'Production Readiness'",
+    "test:business": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testNamePattern 'Business Value'",
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testNamePattern 'Integration'",
     "monitor": "npm run test:production && npm run audit"
   },
   "dependencies": {
@@ -40,12 +40,14 @@
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
-    "chai": "^4.3.10",
-    "mocha": "^10.2.0",
-    "nodemon": "^3.1.9",
-    "nyc": "^15.1.0",
-    "sinon": "^17.0.1",
-    "supertest": "^6.3.3"
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9"
+  },
+  "jest": {
+    "testMatch": [
+      "**/test-cases/**/*.js"
+    ]
   },
   "engines": {
     "node": ">=20.19.2",

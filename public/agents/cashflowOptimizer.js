@@ -47,13 +47,71 @@ async function initializeApp(user) {
 }
 
 async function processAndDisplayAIContent(transactions, accounts) {
-    // We don't need to create a manual summary; the prompts will handle the raw data.
-    const analysisPromises = [
-        findSubscriptions(transactions),
-        generateOptimizationTips(transactions, accounts),
-        analyzeAndDisplaySpending(transactions)
-    ];
-    await Promise.all(analysisPromises);
+    // --- CONSOLIDATED AI ANALYSIS ---
+    try {
+        const analysis = await getConsolidatedAnalysis(transactions, accounts);
+        if (analysis) {
+            displaySubscriptions(analysis.subscriptions || [], transactions);
+            displayOptimizationTips(analysis.optimizationTips || [], transactions, accounts);
+            displaySpendingAnalysis(analysis.spendingAnalysis || {}, transactions);
+        } else {
+            // If AI fails, run all fallbacks
+            runFallbackAnalyses(transactions, accounts);
+        }
+    } catch (error) {
+        console.error("Consolidated AI analysis failed:", error);
+        runFallbackAnalyses(transactions, accounts);
+    }
+}
+
+function runFallbackAnalyses(transactions, accounts) {
+    displaySubscriptions(null, transactions);
+    displayOptimizationTips(null, transactions, accounts);
+    displaySpendingAnalysis(null, transactions);
+}
+
+async function getConsolidatedAnalysis(transactions, accounts) {
+    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const topExpenses = getFallbackSpending(transactions);
+    const top5ExpenseCategories = Object.entries(topExpenses)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([cat, amt]) => `${cat}: ₱${amt.toFixed(2)}`)
+        .join(', ');
+
+    const prompt = `
+        You are an expert financial analyst AI. Your task is to analyze the user's financial summary and provide a consolidated analysis in a single JSON object.
+        
+        FINANCIAL SUMMARY:
+        - Total Monthly Income: ₱${totalIncome.toFixed(2)}
+        - Total Monthly Expenses: ₱${totalExpenses.toFixed(2)}
+        - Top 5 Expense Categories: ${top5ExpenseCategories}
+        - Total Transactions: ${transactions.length}
+
+        Based on the full transaction list provided below, perform three tasks:
+        1.  **Identify Subscriptions**: Find recurring monthly/yearly payments.
+        2.  **Generate Optimization Tips**: Provide 3-5 actionable tips to improve cashflow.
+        3.  **Analyze Spending**: Categorize all expenses and sum the totals.
+
+        Full Transaction Data:
+        ${JSON.stringify(transactions, null, 2)}
+
+        Return a single, valid JSON object with the following structure. Do not include any other text or markdown.
+        {
+          "subscriptions": [{"name": "Example Subscription", "amount": 100.00}],
+          "optimizationTips": ["Example tip 1.", "Example tip 2."],
+          "spendingAnalysis": {"Example Category": 1500.50, "Another Category": 800.75}
+        }
+    `;
+
+    try {
+        const responseText = await callGeminiAI(prompt);
+        return cleanAndParseJson(responseText);
+    } catch (error) {
+        console.error("Error in getConsolidatedAnalysis:", error);
+        return null; // Return null to trigger fallbacks
+    }
 }
 
 // --- UI State Management ---
@@ -75,7 +133,13 @@ function setUIState(state) {
 
 function cleanAndParseJson(jsonString) {
     if (!jsonString) return null;
-    const cleanedString = jsonString.replace(/```json|```/g, '').trim();
+    // Strip out JSON comments and any other markdown artifacts before parsing
+    const cleanedString = jsonString
+        .replace(/\/\/.*$/gm, '') // Remove single-line comments
+        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+        .replace(/```json|```/g, '')
+        .trim();
+        
     try {
         return JSON.parse(cleanedString);
     } catch (e) {
@@ -84,161 +148,65 @@ function cleanAndParseJson(jsonString) {
     }
 }
 
-async function findSubscriptions(transactions) {
-    const prompt = `
-        As a "Subscription Sleuth" AI, your task is to identify recurring payments from a list of financial transactions. 
-        Analyze the following transaction data and identify anything that looks like a monthly or yearly subscription.
-
-        Transactions:
-        ${JSON.stringify(transactions, null, 2)}
-
-        Look for patterns in transaction names (e.g., "Netflix", "Spotify", "AWS") and amounts that repeat over time.
-
-        Please return the response as a JSON array of objects, where each object has "name" and "amount" properties. The amount should be the monthly cost.
-        For example: [{"name": "Netflix", "amount": 15.99}, {"name": "Dopamine", "amount": 100.00}]
-        If no subscriptions are found, return an empty array.
-    `;
-    
-    try {
-        const responseText = await callGeminiAI(prompt);
-        const subscriptions = cleanAndParseJson(responseText);
-        
-        if (subscriptions && subscriptions.length > 0) {
-            subscriptionContent.innerHTML = `<ul>${subscriptions.map(item => `<li><i class="fas fa-receipt"></i><span>${item.name}</span><strong>₱${item.amount.toFixed(2)}/mo</strong></li>`).join('')}</ul>`;
-        } else {
-            subscriptionContent.innerHTML = '<p>No recurring subscriptions were automatically detected.</p>';
-        }
-    } catch (error) {
-        console.error("Error finding subscriptions:", error);
-        // Fallback to rule-based analysis
-        const fallbackSubscriptions = getFallbackSubscriptions(transactions);
+function displaySubscriptions(subscriptions, fallbackTransactions) {
+    if (subscriptions && subscriptions.length > 0) {
+        subscriptionContent.innerHTML = `<ul>${subscriptions.map(item => `<li><i class="fas fa-receipt"></i><span>${item.name}</span><strong>₱${(item.amount || 0).toFixed(2)}/mo</strong></li>`).join('')}</ul>`;
+    } else {
+        // Fallback to rule-based analysis if AI returns nothing or fails
+        const fallbackSubscriptions = getFallbackSubscriptions(fallbackTransactions);
         if (fallbackSubscriptions.length > 0) {
             subscriptionContent.innerHTML = `<ul>${fallbackSubscriptions.map(item => `<li><i class="fas fa-receipt"></i><span>${item.name}</span><strong>₱${item.amount.toFixed(2)}/mo</strong></li>`).join('')}</ul>`;
         } else {
-            subscriptionContent.innerHTML = '<p class="error-text">Could not analyze subscriptions at this time.</p>';
+            subscriptionContent.innerHTML = '<p>No recurring subscriptions were automatically detected.</p>';
         }
     }
 }
 
-async function generateOptimizationTips(transactions, accounts) {
-    const prompt = `
-        As a "Cashflow Optimizer" AI, your goal is to provide personalized, actionable tips to improve the user's financial health based on their real data.
-
-        User's Financial Data:
-        - Accounts: ${JSON.stringify(accounts, null, 2)}
-        - Transactions: ${JSON.stringify(transactions, null, 2)}
-
-        Analyze the data and provide 3-5 concise, actionable tips. Focus on:
-        1.  **Reducing Spending**: Identify categories with high or non-essential spending.
-        2.  **Increasing Savings**: Suggest ways to free up more cash.
-        3.  **Optimizing Bills**: Look for opportunities to lower recurring bills.
-
-        Please return the response as a simple JSON array of strings.
-        For example: ["Consider using a budgeting app to track your 'Food' spending, which seems high.", "You have a high balance in a low-interest account. Consider moving some to a high-yield savings account."]
-        If the user's finances look good, provide tips on accelerating wealth-building.
-    `;
-
-    try {
-        const responseText = await callGeminiAI(prompt);
-        const tips = cleanAndParseJson(responseText);
-
-        if (tips && tips.length > 0) {
-            optimizationTipsContent.innerHTML = `<ul>${tips.map(item => `<li><i class="fas fa-lightbulb"></i>${item}</li>`).join('')}</ul>`;
-        } else {
-            optimizationTipsContent.innerHTML = '<p>Your cashflow looks well-optimized already! Keep up the great work.</p>';
-        }
-    } catch (error) {
-        console.error("Error generating tips:", error);
+function displayOptimizationTips(tips, fallbackTransactions, fallbackAccounts) {
+    if (tips && tips.length > 0) {
+        optimizationTipsContent.innerHTML = `<ul>${tips.map(item => `<li><i class="fas fa-lightbulb"></i>${item}</li>`).join('')}</ul>`;
+    } else {
         // Fallback to rule-based analysis
-        const fallbackTips = getFallbackTips(transactions, accounts);
+        const fallbackTips = getFallbackTips(fallbackTransactions, fallbackAccounts);
         if (fallbackTips.length > 0) {
             optimizationTipsContent.innerHTML = `<ul>${fallbackTips.map(item => `<li><i class="fas fa-lightbulb"></i>${item}</li>`).join('')}</ul>`;
         } else {
-            optimizationTipsContent.innerHTML = '<p class="error-text">Could not generate tips at this time.</p>';
+            optimizationTipsContent.innerHTML = '<p>Your cashflow looks well-optimized already! Keep up the great work.</p>';
         }
     }
 }
 
-async function analyzeAndDisplaySpending(transactions) {
+function displaySpendingAnalysis(spendingData, fallbackTransactions) {
     const spendingSpotlightContent = document.getElementById('spending-spotlight-content');
     if (!spendingSpotlightContent) return;
 
-    const prompt = `
-        As a "Spending Analyst" AI, your task is to categorize a user's expenses and calculate the total for each category.
-        Analyze the following expense transactions and group them into logical categories (e.g., "Food & Dining", "Transportation", "Shopping", "Bills & Utilities", "Entertainment").
+    const dataToDisplay = (spendingData && Object.keys(spendingData).length > 0) ? spendingData : getFallbackSpending(fallbackTransactions);
 
-        Expense Transactions:
-        ${JSON.stringify(transactions.filter(t => t.type === 'expense'), null, 2)}
+    if (Object.keys(dataToDisplay).length > 0) {
+        const totalSpending = Object.values(dataToDisplay).reduce((sum, amount) => sum + amount, 0);
+        
+        const categories = Object.entries(dataToDisplay)
+            .sort(([, a], [, b]) => b - a) // Sort by amount descending
+            .slice(0, 5); // Show top 5
 
-        Please return the response as a JSON object where keys are the category names and values are the total spending for that category.
-        For example:
-        {
-          "Food & Dining": 4500.75,
-          "Transportation": 2250.00,
-          "Shopping": 1800.50
-        }
-        Only include categories with actual spending. Do not invent categories.
-    `;
-
-    try {
-        const responseText = await callGeminiAI(prompt);
-        const spendingData = cleanAndParseJson(responseText);
-
-        if (spendingData && Object.keys(spendingData).length > 0) {
-            const totalSpending = Object.values(spendingData).reduce((sum, amount) => sum + amount, 0);
-            
-            const categories = Object.entries(spendingData)
-                .sort(([, a], [, b]) => b - a) // Sort by amount descending
-                .slice(0, 5); // Show top 5
-
-            let contentHTML = '';
-            for (const [category, amount] of categories) {
-                const percentage = totalSpending > 0 ? (amount / totalSpending) * 100 : 0;
-                contentHTML += `
-                    <div class="spending-category">
-                        <div class="category-header">
-                            <span class="category-name">${category}</span>
-                            <span class="category-amount">₱${amount.toFixed(2)}</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${percentage}%;"></div>
-                        </div>
+        let contentHTML = '';
+        for (const [category, amount] of categories) {
+            const percentage = totalSpending > 0 ? (amount / totalSpending) * 100 : 0;
+            contentHTML += `
+                <div class="spending-category">
+                    <div class="category-header">
+                        <span class="category-name">${category}</span>
+                        <span class="category-amount">₱${amount.toFixed(2)}</span>
                     </div>
-                `;
-            }
-            spendingSpotlightContent.innerHTML = contentHTML;
-        } else {
-            spendingSpotlightContent.innerHTML = '<p>Not enough data to analyze spending patterns.</p>';
-        }
-    } catch (error) {
-        console.error("Error analyzing spending:", error);
-        // Fallback to rule-based analysis
-        const fallbackSpending = getFallbackSpending(transactions);
-        if (Object.keys(fallbackSpending).length > 0) {
-            const totalSpending = Object.values(fallbackSpending).reduce((sum, amount) => sum + amount, 0);
-            const categories = Object.entries(fallbackSpending)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 5);
-
-            let contentHTML = '';
-            for (const [category, amount] of categories) {
-                const percentage = totalSpending > 0 ? (amount / totalSpending) * 100 : 0;
-                contentHTML += `
-                    <div class="spending-category">
-                        <div class="category-header">
-                            <span class="category-name">${category}</span>
-                            <span class="category-amount">₱${amount.toFixed(2)}</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${percentage}%;"></div>
-                        </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${percentage}%;"></div>
                     </div>
-                `;
-            }
-            spendingSpotlightContent.innerHTML = contentHTML;
-        } else {
-            spendingSpotlightContent.innerHTML = '<p class="error-text">Could not analyze spending at this time.</p>';
+                </div>
+            `;
         }
+        spendingSpotlightContent.innerHTML = contentHTML;
+    } else {
+        spendingSpotlightContent.innerHTML = '<p>Not enough data to analyze spending patterns.</p>';
     }
 }
 
@@ -249,12 +217,15 @@ function getFallbackSubscriptions(transactions) {
     const candidates = transactions.filter(t => t.type === 'expense');
 
     candidates.forEach(t => {
-        const name = t.description.toLowerCase().replace(/\d/g, '').trim();
-        if (recurring[name]) {
-            recurring[name].count++;
-            recurring[name].amounts.push(t.amount);
-        } else {
-            recurring[name] = { count: 1, amounts: [t.amount], originalName: t.description };
+        // Defensive check for description
+        if (t.description) {
+            const name = t.description.toLowerCase().replace(/\\d/g, '').trim();
+            if (recurring[name]) {
+                recurring[name].count++;
+                recurring[name].amounts.push(t.amount);
+            } else {
+                recurring[name] = { count: 1, amounts: [t.amount], originalName: t.description };
+            }
         }
     });
 

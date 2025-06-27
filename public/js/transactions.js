@@ -104,12 +104,16 @@ function initializeEventListeners() {
             
             try {
                 const formData = new FormData(addTransactionForm);
+                const accountSelect = document.getElementById('transaction-account');
+                const selectedOption = accountSelect.options[accountSelect.selectedIndex];
+
                 const transactionData = {
                     type: formData.get('type'),
                     amount: parseFloat(formData.get('amount')),
-                    name: formData.get('description'),
+                    description: formData.get('description'),
                     category: formData.get('category'),
                     accountId: formData.get('account'),
+                    accountName: selectedOption.dataset.accountName || selectedOption.text,
                     date: formData.get('date'),
                     notes: formData.get('notes'),
                     id: addTransactionForm.dataset.editMode === 'true' ? 
@@ -156,7 +160,7 @@ function populateCategories() {
         'Entertainment', 'Housing', 'Health', 'Education', 'Other'
     ];
     const incomeCategories = [
-        'Salary', 'Freelance', 'Investments', 'Gifts', 'Other'
+        'Salary', 'Stipend', 'Freelance', 'Investments', 'Gifts', 'Other'
     ];
 
     categorySelect.innerHTML = ''; // Clear existing options
@@ -724,36 +728,72 @@ async function loadTransactions(userId) {
                 day: 'numeric' 
             });
 
-            // Format amount with proper sign
-            const amount = tx.type === 'expense' ? -tx.amount : tx.amount;
+            // Date cell
+            const dateCell = document.createElement('td');
+            dateCell.textContent = formattedDate;
+            row.appendChild(dateCell);
+
+            // Description cell
+            const descriptionCell = document.createElement('td');
+            descriptionCell.textContent = tx.description || 'No description';
+            row.appendChild(descriptionCell);
+
+            // Category cell
+            const categoryCell = document.createElement('td');
+            categoryCell.textContent = tx.category || 'Uncategorized';
+            row.appendChild(categoryCell);
+
+            // Amount cell
+            const amount = tx.amount; // Amount is already correctly signed
             const formattedAmount = new Intl.NumberFormat('en-PH', {
                 style: 'currency',
                 currency: 'PHP'
             }).format(Math.abs(amount));
+            const amountCell = document.createElement('td');
+            amountCell.className = `amount ${tx.type.toLowerCase()}`;
+            amountCell.textContent = formattedAmount;
+            row.appendChild(amountCell);
 
-            row.innerHTML = `
-                <td>${formattedDate}</td>
-                <td>${tx.description || 'No description'}</td>
-                <td>${tx.category || 'Uncategorized'}</td>
-                <td class="transaction-account-cell">
-                    <div class="account-name">${tx.accountName || 'N/A'}</div>
-                    ${tx.accountProvider ? `<div class="account-provider">${tx.accountProvider}</div>` : ''}
-                </td>
-                <td>
-                    <span class="transaction-type ${tx.type.toLowerCase()}">${
-                        tx.type.charAt(0).toUpperCase() + tx.type.slice(1)
-                    }</span>
-                </td>
-                <td class="amount ${tx.type.toLowerCase()}">${formattedAmount}</td>
-                <td class="actions">
-                    <button class="action-button edit-btn" data-id="${tx.id}" title="Edit transaction">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="action-button delete-btn" data-id="${tx.id}" title="Delete transaction">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
+            // Type cell
+            const typeCell = document.createElement('td');
+            const typeSpan = document.createElement('span');
+            typeSpan.className = `transaction-type ${tx.type.toLowerCase()}`;
+            typeSpan.textContent = tx.type.charAt(0).toUpperCase() + tx.type.slice(1);
+            typeCell.appendChild(typeSpan);
+            row.appendChild(typeCell);
+            
+            // Account cell
+            const accountCell = document.createElement('td');
+            accountCell.className = 'transaction-account-cell';
+            const accountNameDiv = document.createElement('div');
+            accountNameDiv.className = 'account-name';
+            accountNameDiv.textContent = tx.accountName || 'N/A';
+            accountCell.appendChild(accountNameDiv);
+            if (tx.accountProvider) {
+                const accountProviderDiv = document.createElement('div');
+                accountProviderDiv.className = 'account-provider';
+                accountProviderDiv.textContent = tx.accountProvider;
+                accountCell.appendChild(accountProviderDiv);
+            }
+            row.appendChild(accountCell);
+
+            // Actions cell
+            const actionsCell = document.createElement('td');
+            actionsCell.className = 'actions';
+            const editButton = document.createElement('button');
+            editButton.className = 'action-button edit-btn';
+            editButton.dataset.id = tx.id;
+            editButton.title = 'Edit transaction';
+            editButton.innerHTML = `<i class="fas fa-edit"></i>`;
+            actionsCell.appendChild(editButton);
+
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'action-button delete-btn';
+            deleteButton.dataset.id = tx.id;
+            deleteButton.title = 'Delete transaction';
+            deleteButton.innerHTML = `<i class="fas fa-trash"></i>`;
+            actionsCell.appendChild(deleteButton);
+            row.appendChild(actionsCell);
             
             tableBody.appendChild(row);
         });

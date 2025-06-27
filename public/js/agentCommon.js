@@ -78,8 +78,62 @@ async function retryWithBackoff(fn, maxRetries = 3, initialDelay = 1000) {
  * @returns {Promise<string>} The text response from the AI.
  */
 export async function callGeminiAI(prompt, options = {}) {
+    // --- DEVELOPMENT SWITCH: Set to true to use local model ---
+    const useLocalModel = true; 
+
+    if (useLocalModel) {
+        console.log('🤖 Calling LOCAL AI (Ollama) via agentCommon.js');
+        const endpoint = 'http://localhost:11434/api/generate';
+        const body = {
+            model: "phi3", // The model you just downloaded
+            prompt: prompt,
+            stream: false, // Receive the full response at once
+            options: {
+                temperature: options.temperature || 0.7,
+                top_p: options.topP || 0.95,
+                top_k: options.topK || 40,
+                num_predict: options.maxTokens || 1000,
+            }
+        };
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                console.error('Ollama API error response:', await response.text());
+                throw new Error(`Ollama API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('💬 Local AI Response preview:', data.response.substring(0, 100) + '...');
+            return data.response; // Ollama's response format is different
+
+        } catch (error) {
+            console.error('💥 Error calling local AI model:', error);
+            throw new Error('Local AI call failed. Is the Ollama server running in your terminal?');
+        }
+    }
+    // --- End of local model logic ---
+
     console.log('🤖 Calling Gemini AI via agentCommon.js');
     console.log('📝 Prompt preview:', prompt.substring(0, 150) + '...');
+    
+    // --- Caching Layer ---
+    const cacheKey = `gemini-cache-${JSON.stringify({prompt, options})}`;
+    try {
+        const cachedResponse = sessionStorage.getItem(cacheKey);
+        if (cachedResponse) {
+            console.log('✅ Returning cached response.');
+            return JSON.parse(cachedResponse);
+        }
+    } catch (error) {
+        console.warn('Could not read from session storage:', error);
+    }
+    // --- End Caching Layer ---
     
     if (!GEMINI_API_KEY) {
         throw new Error('Gemini API key is not configured');
@@ -163,6 +217,14 @@ export async function callGeminiAI(prompt, options = {}) {
             if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
                 const responseText = data.candidates[0].content.parts[0].text;
                 console.log('💬 Response preview:', responseText.substring(0, 100) + '...');
+                // --- Caching Layer ---
+                try {
+                    sessionStorage.setItem(cacheKey, JSON.stringify(responseText));
+                    console.log('✅ Response cached in session storage.');
+                } catch (error) {
+                    console.warn('Could not write to session storage:', error);
+                }
+                // --- End Caching Layer ---
                 return responseText;
             } else {
                 console.warn('Unexpected API response structure:', data);

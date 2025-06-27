@@ -43,19 +43,19 @@
                 <!-- Welcome Banner -->
                 <div class="welcome-banner">
                     <div class="welcome-content">
-                        <h1>Welcome, <span id="welcomeUsername">Adriel</span>!</h1>
+                        <h1>Welcome, <span id="welcomeUsername"></span>!</h1>
                         <p>Your financial dashboard is ready.</p>
                     </div>
                     <div class="balance-display">
                             <span class="balance-label">Total Balance:</span>
-                        <span id="welcome-balance-amount" class="balance-amount">₱51,750.75</span>
+                        <span id="welcome-balance-amount" class="balance-amount">...</span>
                     </div>
                 </div>
 
                 <!-- AI Agents Section -->
                 <section class="ai-agents-section">
                     <div class="section-header">
-                        <h2><i class="fas fa-robot"></i> Your AI Financial Assistants</h2>
+                        <h2><span class="fas fa-robot" aria-hidden="true"></span> Your AI Financial Assistants</h2>
                         <p>Choose your specialized AI coach to help with your financial journey</p>
                     </div>
                     
@@ -64,7 +64,7 @@
                         <a href="../agents/debtDemolisher.html" class="ai-agent-card" data-agent="debtDemolisher">
                             <div class="agent-card-header">
                                 <div class="agent-icon debt-demolisher">
-                                    <i class="fas fa-bomb"></i>
+                                    <span class="fas fa-bomb" aria-hidden="true"></span>
                                 </div>
                                 <div class="agent-status">
                                     <span class="status-dot"></span>
@@ -75,15 +75,15 @@
                                 <h3>Debt Demolisher</h3>
                                 <p>Your autonomous agent for creating and executing a personalized debt-elimination plan.</p>
                                 <div class="agent-features">
-                                    <span class="feature-tag"><i class="fas fa-calculator"></i> Payoff Strategy</span>
-                                    <span class="feature-tag"><i class="fas fa-chart-line"></i> Progress Tracking</span>
-                                    <span class="feature-tag"><i class="fas fa-bell"></i> Smart Alerts</span>
+                                    <span class="feature-tag"><span class="fas fa-calculator" aria-hidden="true"></span> Payoff Strategy</span>
+                                    <span class="feature-tag"><span class="fas fa-chart-line" aria-hidden="true"></span> Progress Tracking</span>
+                                    <span class="feature-tag"><span class="fas fa-bell" aria-hidden="true"></span> Smart Alerts</span>
                                 </div>
                             </div>
                             <div class="agent-card-footer">
                                 <div class="agent-cta-btn">
                                     <span>Build My Plan</span>
-                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="fas fa-arrow-right" aria-hidden="true"></span>
                                 </div>
                             </div>
                         </a>
@@ -92,7 +92,7 @@
                         <a href="../agents/cashflowOptimizer.html" class="ai-agent-card" data-agent="cashflowOptimizer">
                             <div class="agent-card-header">
                                 <div class="agent-icon cashflow-optimizer">
-                                    <i class="fas fa-search-dollar"></i>
+                                    <span class="fas fa-search-dollar" aria-hidden="true"></span>
                                 </div>
                                 <div class="agent-status">
                                     <span class="status-dot"></span>
@@ -103,15 +103,15 @@
                                 <h3>Cashflow Optimizer</h3>
                                 <p>Autonomous agent to analyze cashflow and find savings.</p>
                                 <div class="agent-features">
-                                    <span class="feature-tag"><i class="fas fa-receipt"></i> Bill Negotiation</span>
-                                    <span class="feature-tag"><i class="fas fa-user-secret"></i> Subscription Sleuth</span>
-                                    <span class="feature-tag"><i class="fas fa-tags"></i> Savings Finder</span>
+                                    <span class="feature-tag"><span class="fas fa-receipt" aria-hidden="true"></span> Bill Negotiation</span>
+                                    <span class="feature-tag"><span class="fas fa-user-secret" aria-hidden="true"></span> Subscription Sleuth</span>
+                                    <span class="feature-tag"><span class="fas fa-tags" aria-hidden="true"></span> Savings Finder</span>
                                 </div>
                             </div>
                             <div class="agent-card-footer">
                                 <div class="agent-cta-btn">
                                     <span>Optimize Now</span>
-                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="fas fa-arrow-right" aria-hidden="true"></span>
                                 </div>
                             </div>
                         </a>
@@ -120,7 +120,7 @@
                         <a href="../agents/wealthBuilder.html" class="ai-agent-card" data-agent="wealthBuilder">
                             <div class="agent-card-header">
                                 <div class="agent-icon wealth-builder">
-                                    <i class="fas fa-rocket"></i>
+                                    <span class="fas fa-rocket" aria-hidden="true"></span>
                                 </div>
                                 <div class="agent-status">
                                     <span class="status-dot"></span>
@@ -131,15 +131,15 @@
                                 <h3>WealthBuilder AI</h3>
                                 <p>Your AI partner for long-term investment and wealth growth.</p>
                                 <div class="agent-features">
-                                    <span class="feature-tag"><i class="fas fa-route"></i> Financial Roadmap</span>
-                                    <span class="feature-tag"><i class="fas fa-seedling"></i> Investment Guide</span>
-                                    <span class="feature-tag"><i class="fas fa-balance-scale"></i> Life Balance</span>
+                                    <span class="feature-tag"><span class="fas fa-route" aria-hidden="true"></span> Financial Roadmap</span>
+                                    <span class="feature-tag"><span class="fas fa-seedling" aria-hidden="true"></span> Investment Guide</span>
+                                    <span class="feature-tag"><span class="fas fa-balance-scale" aria-hidden="true"></span> Life Balance</span>
                                 </div>
                             </div>
                             <div class="agent-card-footer">
                                 <div class="agent-cta-btn">
                                     <span>Build Wealth</span>
-                                    <i class="fas fa-arrow-right"></i>
+                                    <span class="fas fa-arrow-right" aria-hidden="true"></span>
                                 </div>
                             </div>
                         </a>
@@ -148,31 +148,21 @@
 
                 <section class="ai-agents-section">
                     <div class="financial-health-card">
-                        <h2><i class="fas fa-heartbeat"></i> Financial Health</h2>
+                        <h2><span class="fas fa-heartbeat" aria-hidden="true"></span> Financial Health</h2>
                         <div class="financial-health-content" id="financial-health-content">
                             <!-- Financial Health component will be loaded here by JS -->
                         </div>
                     </div>
                 </section>
-
-                <div class="widgets-container">
-                    <!-- Spending Overview Widget -->
-                    <div class="dashboard-card">
-                        <h2><i class="fas fa-chart-pie"></i> Spending Overview</h2>
-                        <div class="spending-chart-container">
-                            <canvas id="spendingChart"></canvas>
-                        </div>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
 
     <!-- Chatbot -->
     <div class="chatbot-container">
-        <div class="chatbot-toggle" id="chatbotToggle">
-            <i class="fas fa-robot"></i>
-        </div>
+        <button type="button" class="chatbot-toggle" id="chatbotToggle" aria-label="Toggle Chatbot">
+            <span class="fas fa-robot" aria-hidden="true"></span>
+        </button>
         <div class="chatbot-window" id="chatbotWindow">
             <div class="chatbot-header">
                 <h3>AI Financial Assistant</h3>
@@ -191,23 +181,6 @@
     <script type="module" src="../js/dashboard.js"></script>
     <script type="module" src="../js/financialHealth.js"></script>
     <script type="module" src="../js/dashboardChatbot.js"></script>
-    <script type="module">
-        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-        
-        const logoutLink = document.getElementById('logout-link');
-        if (logoutLink) {
-            logoutLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                const auth = getAuth();
-                signOut(auth).then(() => {
-                    window.location.href = 'login.html';
-                }).catch((error) => {
-                    console.error('Sign out error:', error);
-                    alert('Error signing out.');
-                });
-            });
-        }
-    </script>
 </body>
 
 </html>

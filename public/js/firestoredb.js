@@ -202,8 +202,8 @@ export async function storeTransaction(userId, transactionData) {
         if (!transactionData.id) {
             throw new Error('Transaction ID is required');
         }
-        if (!transactionData.name || transactionData.name.trim() === '') {
-            throw new Error('Transaction name is required');
+        if (!transactionData.description || transactionData.description.trim() === '') {
+            throw new Error('Transaction description is required');
         }
         if (transactionData.amount === undefined || transactionData.amount === null) {
             throw new Error('Transaction amount is required');
@@ -281,7 +281,7 @@ export async function storeTransaction(userId, transactionData) {
             console.log('📊 AUDIT LOG - Transaction Created:', {
                 userId: userId,
                 transactionId: transactionData.id,
-                transactionName: transactionData.name,
+                transactionName: transactionData.description,
                 amount: transactionData.amount,
                 type: transactionData.type,
                 accountId: transactionData.accountId,
@@ -316,7 +316,7 @@ export async function storeTransaction(userId, transactionData) {
             action: 'STORAGE_ERROR',
             transactionData: { 
                 id: transactionData?.id, 
-                name: transactionData?.name,
+                name: transactionData?.description,
                 amount: transactionData?.amount,
                 type: transactionData?.type
             }
@@ -336,7 +336,7 @@ async function generateTransactionHash(data) {
     try {
         const encoder = new TextEncoder();
         const dataString = JSON.stringify({
-            name: data.name,
+            description: data.description,
             amount: data.amount,
             type: data.type,
             date: data.date,
