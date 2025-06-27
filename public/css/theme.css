@@ -836,4 +836,35 @@ body {
     .risk-column {
         margin-bottom: 1rem;
     }
+}
+
+/* Toast Notification Styles */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--dark-gray);
+    color: var(--white);
+    padding: 15px 25px;
+    border-radius: var(--border-radius-large);
+    box-shadow: var(--shadow-large);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s, bottom 0.3s;
+}
+
+.toast-notification.show {
+    opacity: 1;
+    visibility: visible;
+    bottom: 30px;
+}
+
+.toast-notification.error {
+    background-color: var(--red);
+}
+
+.toast-notification.success {
+    background-color: var(--green);
 } 

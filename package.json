@@ -14,7 +14,7 @@
     "security-check": "npm audit fix",
     "security-scan": "node scripts/security-check.js",
     "security-fix": "node scripts/security-check.js --fix",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:agents": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --testNamePattern 'Agent Autonomy'",
@@ -46,7 +46,7 @@
   },
   "jest": {
     "testMatch": [
-      "**/test-cases/**/*.js"
+      "**/test-cases/**/*.mjs"
     ]
   },
   "engines": {

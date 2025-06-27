@@ -72,7 +72,7 @@
                         <!-- Column 2: Financial Insights -->
                         <div class="analysis-card" id="financial-insights">
                             <h3 class="card-header"><i class="fas fa-search-dollar"></i> Financial Insights</h3>
-                            <div id="insights-list" class="insights-list">
+                            <div id="insights-list" class="timeline">
                                 <!-- AI-generated insights will be populated here -->
                             </div>
                         </div>
@@ -80,7 +80,7 @@
                         <!-- Column 3: Recommended Actions -->
                         <div class="analysis-card" id="recommended-actions">
                             <h3 class="card-header"><i class="fas fa-tasks"></i> Recommended Actions</h3>
-                            <div id="actions-list" class="actions-list">
+                            <div id="actions-list" class="timeline">
                                 <!-- AI-generated recommendations will be populated here -->
                             </div>
                         </div>
@@ -114,10 +114,16 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast-notification">
+        <span id="toast-message"></span>
+    </div>
 
-    <script type="module">
-        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-        
+    <script type="module" src="wealthBuilder.js"></script>
+    <script type="module" src="../js/auth.js"></script>
+    
+    <!-- Fallback for browsers that don't support modules -->
+    <script nomodule>
         const logoutLink = document.getElementById('logout-link');
         if (logoutLink) {
             logoutLink.addEventListener('click', (e) => {
@@ -133,7 +139,6 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" src="wealthBuilder.js"></script>
 </body>
 </html>
 

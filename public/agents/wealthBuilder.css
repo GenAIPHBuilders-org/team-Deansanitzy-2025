@@ -157,26 +157,28 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 4rem 2rem;
+    padding: 40px;
     text-align: center;
     color: var(--text-secondary);
     min-height: 40vh;
-    background-color: var(--bg-card);
-    border-radius: var(--radius-lg);
+    background-color: var(--dark-gray-blue);
+    border-radius: var(--border-radius-large);
+    margin-top: 20px;
 }
 
 .loading-spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid var(--primary-green-light);
-    border-top-color: var(--primary-green);
+    border: 4px solid var(--light-gray-blue);
+    border-top: 4px solid var(--primary-color);
     border-radius: 50%;
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
-    margin-bottom: 1.5rem;
+    margin: 0 auto 20px;
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .empty-icon {
@@ -197,14 +199,14 @@
 
 .analysis-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
 }
 
 .analysis-card {
-    background-color: transparent;
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
+    background-color: var(--dark-gray-blue);
+    padding: 20px;
+    border-radius: var(--border-radius-large);
 }
 
 .analysis-card h3 {
@@ -430,4 +432,43 @@
     max-width: 100%;
     margin: 1rem auto 0;
     display: block;
+}
+
+/* Timeline for Insights and Actions */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+    border-left: 2px solid var(--light-gray-blue);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -38px;
+    top: 5px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    border: 2px solid var(--dark-gray-blue);
+}
+
+.timeline-title {
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 5px;
+}
+
+.timeline-content {
+    font-size: 0.9rem;
+    color: var(--light-gray-blue);
 } 

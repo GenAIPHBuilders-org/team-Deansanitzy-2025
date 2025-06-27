@@ -115,17 +115,17 @@ function setUIState(state) {
 
     switch (state) {
         case 'loading':
-            loadingState().style.display = 'flex';
+            loadingState().style.display = 'block';
             break;
         case 'content':
             contentState().style.display = 'block';
             break;
         case 'empty':
-            emptyState().style.display = 'flex';
+            emptyState().style.display = 'block';
             emptyState().innerHTML = `<i class="fas fa-box-open empty-icon"></i><p>No data available. Please add accounts or transactions.</p>`;
             break;
         case 'error':
-            emptyState().style.display = 'flex';
+            emptyState().style.display = 'block';
             emptyState().innerHTML = `<i class="fas fa-exclamation-triangle"></i><p>Could not build your wealth plan. Please try again later.</p>`;
             break;
     }
@@ -142,16 +142,13 @@ function renderFinancialOverview(data) {
 function renderInsights(insights) {
     const insightsList = ui.insightsList();
     if (!insights || insights.length === 0) {
-        insightsList.innerHTML = '<li>No specific insights generated at this time.</li>';
+        insightsList.innerHTML = '<p>No specific insights generated at this time.</p>';
         return;
     }
     insightsList.innerHTML = insights
-        .map(item => `<div class="insight-item">
-                        <div class="insight-icon ${getPriorityClass(item.priority)}"><i class="fas ${getInsightIcon(item.category)}"></i></div>
-                        <div class="insight-content">
-                            <h4>${item.title}</h4>
-                            <p>${item.description}</p>
-                        </div>
+        .map(item => `<div class="timeline-item">
+                        <h4 class="timeline-title">${item.title}</h4>
+                        <p class="timeline-content">${item.description}</p>
                      </div>`)
         .join('');
 }
@@ -159,16 +156,13 @@ function renderInsights(insights) {
 function renderRecommendations(actions) {
     const actionsList = ui.actionsList();
     if (!actions || actions.length === 0) {
-        actionsList.innerHTML = '<li>No specific actions recommended at this time.</li>';
+        actionsList.innerHTML = '<p>No specific actions recommended at this time.</p>';
         return;
     }
     actionsList.innerHTML = actions
-        .map(item => `<div class="action-item">
-                        <div class="action-icon ${getPriorityClass(item.priority)}"><i class="fas fa-tasks"></i></div>
-                        <div class="action-content">
-                            <h4>${item.title}</h4>
-                            <p>${item.description}</p>
-                        </div>
+        .map(item => `<div class="timeline-item">
+                        <h4 class="timeline-title">${item.title}</h4>
+                        <p class="timeline-content">${item.description}</p>
                      </div>`)
         .join('');
 }

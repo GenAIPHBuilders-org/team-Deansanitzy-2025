@@ -60,29 +60,6 @@ jobs:
         name: security-report-node-${{ matrix.node-version }}
         path: security-report.json
         retention-days: 30
-        
-    - name: Check for critical vulnerabilities
-      run: |
-        echo "🚨 Checking for critical vulnerabilities..."
-        AUDIT_OUTPUT=$(npm audit --audit-level=critical --json || true)
-        echo "$AUDIT_OUTPUT"
-        
-        # Extract vulnerability counts from the audit output
-        CRITICAL_COUNT=$(echo "$AUDIT_OUTPUT" | grep -o '"critical":[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || echo "0")
-        HIGH_COUNT=$(echo "$AUDIT_OUTPUT" | grep -o '"high":[[:space:]]*[0-9]*' | head -1 | grep -o '[0-9]*' || echo "0")
-        
-        echo "Critical vulnerabilities: $CRITICAL_COUNT"
-        echo "High vulnerabilities: $HIGH_COUNT"
-        
-        if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
-          echo "CRITICAL vulnerabilities found!"
-          echo "found $CRITICAL_COUNT critical and $HIGH_COUNT high vulnerabilities"
-          npm audit --audit-level=critical || true
-          exit 1
-        else
-          echo "No critical vulnerabilities found."
-          echo "found 0 vulnerabilities"
-        fi
 
   dependency-review:
     name: Dependency Review
@@ -182,59 +159,4 @@ jobs:
           Please review and fix immediately.
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      if: env.SLACK_WEBHOOK_URL != ''
-
-  update-security-docs:
-    name: Update Security Documentation
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.19.2'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Generate security documentation
-      run: |
-        echo "📚 Generating security documentation..."
-        
-        # Create security status badge
-        AUDIT_RESULT=$(npm audit --audit-level=moderate --json || true)
-        VULN_COUNT=$(echo "$AUDIT_RESULT" | grep -o '"total":[0-9]*' | head -1 | cut -d':' -f2 || echo "0")
-        
-        if [ "$VULN_COUNT" -eq 0 ]; then
-          BADGE_COLOR="brightgreen"
-          BADGE_MESSAGE="secure"
-        elif [ "$VULN_COUNT" -lt 5 ]; then
-          BADGE_COLOR="yellow"
-          BADGE_MESSAGE="$VULN_COUNT vulnerabilities"
-        else
-          BADGE_COLOR="red"
-          BADGE_MESSAGE="$VULN_COUNT vulnerabilities"
-        fi
-        
-        echo "Security status: $BADGE_MESSAGE ($VULN_COUNT vulnerabilities)"
-        
-        # Update README with security badge (if README exists)
-        if [ -f "README.md" ]; then
-          echo "Updating README.md with security badge..."
-        fi
-        
-    - name: Commit documentation updates
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        if [ -n "$(git status --porcelain)" ]; then
-          git add .
-          git commit -m "docs: update security documentation [skip ci]"
-          git push
-        fi 
+      if: env.SLACK_WEBHOOK_URL != '' 

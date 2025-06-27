@@ -111,25 +111,14 @@
         </main>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast-notification">
+        <span id="toast-message"></span>
+    </div>
+
     <!-- Enhanced JavaScript Module -->
     <script type="module" src="debtDemolisher.js"></script>
-    <script type="module">
-        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-        
-        const logoutLink = document.getElementById('logout-link');
-        if (logoutLink) {
-            logoutLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                const auth = getAuth();
-                signOut(auth).then(() => {
-                    window.location.href = '../pages/login.html';
-                }).catch((error) => {
-                    console.error('Sign out error:', error);
-                    alert('Error signing out.');
-                });
-            });
-        }
-    </script>
+    <script type="module" src="../js/auth.js"></script>
     
     <!-- Fallback for browsers that don't support modules -->
     <script nomodule>
