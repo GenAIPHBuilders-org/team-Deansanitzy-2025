@@ -1,6 +1,6 @@
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getUserTransactions, getUserBankAccounts } from "../js/firestoredb.js";
-import { callGeminiAI } from "../js/agentCommon.js"; // Use the shared AI call function
+import { callGeminiAI, cleanAndParseJson } from "../js/agentCommon.js"; // Use the shared AI call function
 
 const auth = getAuth();
 
@@ -54,6 +54,7 @@ async function processAndDisplayAIContent(transactions, accounts) {
             displaySubscriptions(analysis.subscriptions || [], transactions);
             displayOptimizationTips(analysis.optimizationTips || [], transactions, accounts);
             displaySpendingAnalysis(analysis.spendingAnalysis || {}, transactions);
+            displayCashflowForecast(analysis.cashflowForecast || null);
         } else {
             // If AI fails, run all fallbacks
             runFallbackAnalyses(transactions, accounts);
@@ -68,6 +69,7 @@ function runFallbackAnalyses(transactions, accounts) {
     displaySubscriptions(null, transactions);
     displayOptimizationTips(null, transactions, accounts);
     displaySpendingAnalysis(null, transactions);
+    displayCashflowForecast(null);
 }
 
 async function getConsolidatedAnalysis(transactions, accounts) {
@@ -81,27 +83,24 @@ async function getConsolidatedAnalysis(transactions, accounts) {
         .join(', ');
 
     const prompt = `
-        You are an expert financial analyst AI. Your task is to analyze the user's financial summary and provide a consolidated analysis in a single JSON object.
+        Analyze the user's financial data provided below.
         
-        FINANCIAL SUMMARY:
-        - Total Monthly Income: ₱${totalIncome.toFixed(2)}
-        - Total Monthly Expenses: ₱${totalExpenses.toFixed(2)}
-        - Top 5 Expense Categories: ${top5ExpenseCategories}
-        - Total Transactions: ${transactions.length}
-
-        Based on the full transaction list provided below, perform three tasks:
-        1.  **Identify Subscriptions**: Find recurring monthly/yearly payments.
-        2.  **Generate Optimization Tips**: Provide 3-5 actionable tips to improve cashflow.
-        3.  **Analyze Spending**: Categorize all expenses and sum the totals.
-
-        Full Transaction Data:
+        DATA:
         ${JSON.stringify(transactions, null, 2)}
 
-        Return a single, valid JSON object with the following structure. Do not include any other text or markdown.
+        TASKS:
+        1. Identify recurring subscriptions.
+        2. Provide 3-5 actionable cashflow optimization tips.
+        3. Categorize all expenses and sum the totals for each category.
+        4. Provide a brief, one-sentence cashflow forecast for the next 3 months based on the data.
+
+        Your entire response MUST be a single, valid JSON object. Do not add any text, conversational filler, or markdown before or after the JSON object.
+        The JSON object must follow this exact structure:
         {
-          "subscriptions": [{"name": "Example Subscription", "amount": 100.00}],
-          "optimizationTips": ["Example tip 1.", "Example tip 2."],
-          "spendingAnalysis": {"Example Category": 1500.50, "Another Category": 800.75}
+          "subscriptions": [{"name": "string", "amount": "number"}],
+          "optimizationTips": ["string"],
+          "spendingAnalysis": { "category_name": "number" },
+          "cashflowForecast": "string"
         }
     `;
 
@@ -130,23 +129,6 @@ function setUIState(state) {
 }
 
 // --- AI Generation Functions ---
-
-function cleanAndParseJson(jsonString) {
-    if (!jsonString) return null;
-    // Strip out JSON comments and any other markdown artifacts before parsing
-    const cleanedString = jsonString
-        .replace(/\/\/.*$/gm, '') // Remove single-line comments
-        .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
-        .replace(/```json|```/g, '')
-        .trim();
-        
-    try {
-        return JSON.parse(cleanedString);
-    } catch (e) {
-        console.error("Failed to parse JSON:", e, "Response was:", cleanedString);
-        return null;
-    }
-}
 
 function displaySubscriptions(subscriptions, fallbackTransactions) {
     if (subscriptions && subscriptions.length > 0) {
@@ -207,6 +189,18 @@ function displaySpendingAnalysis(spendingData, fallbackTransactions) {
         spendingSpotlightContent.innerHTML = contentHTML;
     } else {
         spendingSpotlightContent.innerHTML = '<p>Not enough data to analyze spending patterns.</p>';
+    }
+}
+
+function displayCashflowForecast(forecastText) {
+    const forecastContent = document.getElementById('forecast-content');
+    if (!forecastContent) return;
+
+    if (forecastText) {
+        forecastContent.innerHTML = `<p>${forecastText}</p>`;
+    } else {
+        // Fallback message
+        forecastContent.innerHTML = '<p>Could not generate a forecast at this time. Please check back later.</p>';
     }
 }
 
@@ -274,13 +268,25 @@ function analyzeCashflow(transactions) {
         if (!acc[month]) {
             acc[month] = { income: 0, expenses: 0 };
         }
-        if (t.amount > 0) { // Assuming positive amount is income
+        if (t.type === 'income') {
             acc[month].income += t.amount;
-        } else { // Negative amount is expense
+        } else if (t.type === 'expense') {
             acc[month].expenses += Math.abs(t.amount);
         }
         return acc;
     }, {});
+
+    // --- Update Summary Cards ---
+    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const netCashflow = totalIncome - totalExpenses;
+
+    const formatAsCurrency = (amount) => `₱${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    document.getElementById('summary-income').textContent = formatAsCurrency(totalIncome);
+    document.getElementById('summary-expenses').textContent = formatAsCurrency(totalExpenses);
+    document.getElementById('summary-net').textContent = formatAsCurrency(netCashflow);
+    // --- End Update Summary Cards ---
 
     const sortedMonths = Object.keys(monthlyData).sort();
     const labels = sortedMonths;

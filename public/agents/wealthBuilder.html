@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../pages/css/dashboard.css">
     <link rel="stylesheet" href="wealthBuilder.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 </head>
 <body>
     <div class="dashboard-layout">
@@ -69,17 +71,37 @@
                             </div>
                         </div>
 
-                        <!-- Column 2: Financial Insights -->
-                        <div class="analysis-card" id="financial-insights">
-                            <h3 class="card-header"><i class="fas fa-search-dollar"></i> Financial Insights</h3>
-                            <div id="insights-list" class="timeline">
-                                <!-- AI-generated insights will be populated here -->
+                        <!-- NEW: AI Summary & Readiness Score -->
+                        <div class="analysis-card" id="ai-summary-card">
+                            <h3 class="card-header"><i class="fas fa-user-tie"></i> Your AI Advisor's Summary</h3>
+                            <div class="advisor-grid">
+                                <div class="readiness-gauge">
+                                    <canvas id="readiness-gauge-chart"></canvas>
+                                </div>
+                                <div class="summary-content">
+                                    <h4 id="user-persona"></h4>
+                                    <p id="ai-summary-text"></p>
+                                    <div id="ai-risk-analysis"></div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Column 3: Recommended Actions -->
+                        <!-- Column 2: Strategic Plan & Allocation -->
+                        <div class="analysis-card" id="financial-insights">
+                            <h3 class="card-header"><i class="fas fa-chess-board"></i> Your Strategic Wealth Plan</h3>
+                            <div class="strategy-grid">
+                                <div class="allocation-chart">
+                                    <canvas id="allocation-chart"></canvas>
+                                </div>
+                                <div id="insights-list" class="timeline">
+                                    <!-- AI-generated strategic recommendations will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Column 3: Tactical Steps -->
                         <div class="analysis-card" id="recommended-actions">
-                            <h3 class="card-header"><i class="fas fa-tasks"></i> Recommended Actions</h3>
+                            <h3 class="card-header"><i class="fas fa-shoe-prints"></i> Your Immediate Tactical Steps</h3>
                             <div id="actions-list" class="timeline">
                                 <!-- AI-generated recommendations will be populated here -->
                             </div>
@@ -138,7 +160,6 @@
             });
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
 

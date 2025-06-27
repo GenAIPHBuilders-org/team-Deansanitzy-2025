@@ -9,7 +9,7 @@ import { GEMINI_API_KEY, GEMINI_MODEL } from "./config.js";
 import { 
     formatCurrency, 
     formatDate, 
-    callGeminiAI 
+    callLocalAI 
 } from "./agentCommon.js";
 import { 
     getTransactionInsights, 
@@ -572,8 +572,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Use a try-catch block to handle potential AI errors gracefully
                 try {
                     // Use the globally defined callGeminiAI function for consistency
-                    console.log('Calling shared callGeminiAI function...');
-                    responseText = await callGeminiAI(contextualPrompt, { maxTokens: 500 });
+                    console.log('Calling shared callLocalAI function...');
+                    responseText = await callLocalAI(contextualPrompt, { maxTokens: 500 });
                 } catch (error) {
                     console.error('Error getting AI response:', error);
                     responseText = generateFallbackResponse(message, {
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const contextualPrompt = `As a financial assistant, respond to: "${message}"\n\nProvide general financial advice since you don't have access to this user's specific financial data.`;
                 
                 try {
-                    responseText = await callGeminiAI(contextualPrompt, {
+                    responseText = await callLocalAI(contextualPrompt, {
                         temperature: 0.7,
                         maxTokens: 800
                     });
@@ -819,7 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function testAIConnection() {
         try {
             console.log('🧪 Testing AI connection...');
-            const testResponse = await callGeminiAI('Hello! Please respond with "AI connection successful" to confirm you are working.', {
+            const testResponse = await callLocalAI('Hello! Please respond with "AI connection successful" to confirm you are working.', {
                 temperature: 0.1,
                 maxTokens: 50
             });

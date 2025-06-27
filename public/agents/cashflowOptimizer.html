@@ -12,6 +12,7 @@
     <!-- Main theme stylesheet -->
     <link rel="stylesheet" href="../css/theme.css">
     <!-- Page-specific stylesheet -->
+    <link rel="stylesheet" href="../css/chatbot.css">
     <link rel="stylesheet" href="cashflowOptimizer.css">
 </head>
 
@@ -38,7 +39,7 @@
             <!-- Page Header -->
             <div class="page-header">
                 <h1>Cashflow Optimizer AI</h1>
-                <p>Your autonomous agent for financial efficiency.</p>
+                <p>Your autonomous financial assistant for maximizing cash flow efficiency.</p>
             </div>
 
             <!-- Optimizer Dashboard Content -->
@@ -46,7 +47,7 @@
                 <!-- Loading State -->
                 <div id="loading-state" class="loading-state">
                     <div class="loading-spinner"></div>
-                    <p>Optimizer AI is analyzing your cash flow...</p>
+                    <p>Optimizer AI is analyzing your cash flow patterns...</p>
                 </div>
 
                 <!-- Empty State -->
@@ -61,44 +62,83 @@
 
                 <!-- Main Content -->
                 <div id="content-state" style="display: none;">
-                    <div class="content-grid">
-                        <!-- Cashflow Analysis Card -->
-                        <div class="dashboard-card chart-card">
-                            <h3><i class="fas fa-chart-line"></i> Cashflow Analysis</h3>
-                            <div class="chart-container">
-                                <canvas id="cashflow-chart"></canvas>
+                    <div class="main-grid">
+                        <div class="left-column">
+                            <div class="dashboard-card chart-card">
+                                <h3><i class="fas fa-chart-bar"></i> Monthly Cashflow Analysis</h3>
+                                <div class="chart-summary">
+                                    <div class="summary-item income">
+                                        <span>Total Income</span>
+                                        <strong id="summary-income">₱0.00</strong>
+                                    </div>
+                                    <div class="summary-item expenses">
+                                        <span>Total Expenses</span>
+                                        <strong id="summary-expenses">₱0.00</strong>
+                                    </div>
+                                    <div class="summary-item net">
+                                        <span>Net Cashflow</span>
+                                        <strong id="summary-net">₱0.00</strong>
+                                    </div>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="cashflow-chart"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div class="dashboard-card">
+                                <h3><i class="fas fa-lightbulb"></i> AI-Powered Optimization Plan</h3>
+                                <div class="analysis-content" id="optimization-tips-content">
+                                    <p>Generating your personalized cashflow plan...</p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Grid for the analysis cards -->
-                        <div class="analysis-cards-grid">
-                            <!-- Subscription Sleuth Card -->
+                        <div class="right-column">
                             <div class="dashboard-card">
                                 <h3><i class="fas fa-user-secret"></i> Subscription Sleuth</h3>
                                 <div class="analysis-content" id="subscription-content">
                                     <p>Scanning for recurring payments...</p>
                                 </div>
                             </div>
-
-                            <!-- Optimization Tips Card -->
-                            <div class="dashboard-card">
-                                <h3><i class="fas fa-lightbulb"></i> Optimization Tips</h3>
-                                <div class="analysis-content" id="optimization-tips-content">
-                                    <p>Generating personalized tips...</p>
-                                </div>
-                            </div>
-
-                            <!-- Spending Spotlight Card -->
+                            
                             <div class="dashboard-card">
                                 <h3><i class="fas fa-search-dollar"></i> Spending Spotlight</h3>
                                 <div class="analysis-content" id="spending-spotlight-content">
                                     <p>Analyzing your spending patterns...</p>
                                 </div>
                             </div>
+
+                            <div class="dashboard-card">
+                                <h3><i class="fas fa-magic"></i> AI Cashflow Forecast</h3>
+                                <div class="analysis-content" id="forecast-content">
+                                    <p>Predicting your future cashflow...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
+            
+            <div class="chatbot-container">
+                <div id="chatbot-window" class="chatbot-window active">
+                    <div class="chatbot-header">
+                        <h3><i class="fas fa-brain"></i> AI Personal Assistant</h3>
+                    </div>
+                    <div id="chatbot-body" class="chatbot-body">
+                        <div id="chatbot-messages" class="chatbot-messages">
+                            <div class="chatbot-message assistant">
+                                Hello! I'm your Cashflow AI Assistant, powered by Phi-3. Ask me anything about your income, expenses, or how to improve your financial standing.
+                            </div>
+                        </div>
+                        <div class="chatbot-input-container">
+                            <textarea id="chatbot-input" class="chatbot-input" placeholder="e.g., 'Where did most of my money go last month?'"></textarea>
+                            <button id="chatbot-send-btn" class="chatbot-send-btn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 

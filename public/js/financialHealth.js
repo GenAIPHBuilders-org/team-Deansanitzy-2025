@@ -148,11 +148,21 @@ async function processFinancialData(userData) {
             return;
         }
 
-        // Get AI-powered analysis
-        const analysis = await analyzeFinancialHealth(userData);
+        // Attempt to get a detailed analysis from the AI.
+        const aiAnalysis = await analyzeFinancialHealth(userData);
+        
+        // If AI analysis is not valid, show an error and stop.
+        if (!aiAnalysis || !aiAnalysis.insights || aiAnalysis.insights.length === 0) {
+            console.error("AI analysis failed or returned no insights.");
+            showError("Could not retrieve AI-powered financial analysis. The AI may be offline or unable to process your data. Please try again later.");
+            return;
+        }
+        
+        // AI analysis is valid, enhance it.
+        const finalAnalysis = enhanceAIAnalysis(aiAnalysis, userData);
         
         // Render the financial health widget
-        renderFinancialHealthWidget(analysis, userData);
+        renderFinancialHealthWidget(finalAnalysis, userData);
         
         // Initialize interactions and animations
         initializeInteractions();
@@ -166,8 +176,8 @@ async function processFinancialData(userData) {
 
 async function analyzeFinancialHealth(userData) {
     if (!GEMINI_API_KEY) {
-        console.log('Gemini API key not configured, using offline analysis');
-        return enhancedOfflineAnalysis(userData);
+        console.log('Gemini API key not configured, returning null for AI analysis.');
+        return null; // Return null instead of calling offline analysis here
     }
 
     try {
@@ -177,29 +187,19 @@ async function analyzeFinancialHealth(userData) {
             const aiResponse = await callGeminiAI(prompt, { maxOutputTokens: 2048 });
             
             if (!aiResponse) {
-                console.log('Invalid Gemini API response, falling back to offline analysis');
-                return enhancedOfflineAnalysis(userData);
+                console.log('Invalid Gemini API response, AI analysis skipped.');
+                return null;
             }
 
-            const analysis = await parsePlainTextAnalysis(aiResponse, userData);
-
-            // ROBUSTNESS CHECK: If AI response is incomplete, use the reliable offline analysis.
-            if (!analysis.insights || analysis.insights.length === 0 || !analysis.recommendations || analysis.recommendations.length === 0) {
-                console.log('AI analysis was incomplete (missing insights or recommendations). Falling back to full offline analysis.');
-                return enhancedOfflineAnalysis(userData);
-            }
-
-            return enhanceAIAnalysis(analysis, userData);
+            return await parsePlainTextAnalysis(aiResponse, userData);
 
         } catch (apiError) {
             console.error('All API retries failed:', apiError);
-            console.log('Falling back to offline analysis after all retries failed');
-            return enhancedOfflineAnalysis(userData);
+            return null; // Return null if API fails
         }
     } catch (error) {
         console.error('Failed to get AI analysis:', error);
-        console.log('Falling back to offline analysis due to error');
-        return enhancedOfflineAnalysis(userData);
+        return null; // Return null on other errors
     }
 }
 
@@ -781,7 +781,6 @@ function initializeAnimations() {
         metric.style.animation = `slideInUp ${FINANCIAL_HEALTH_CONFIG.animationDuration}ms ease-out ${index * 200}ms`;
     });
 }
-
 function enhancedOfflineAnalysis(userData) {
     try {
         const { accounts, transactions, profile } = userData;
@@ -820,11 +819,14 @@ function enhancedOfflineAnalysis(userData) {
         const expenseTransactions = monthlyTransactions.filter(tx => tx.type === 'expense');
         if (expenseTransactions.length > 0) {
             const categorizedExpenses = categorizeTransactions(expenseTransactions);
-            const topCategory = Object.keys(categorizedExpenses).reduce((a, b) => categorizedExpenses[a].total > categorizedExpenses[b].total ? a : b);
-            if (topCategory && topCategory !== 'uncategorized') {
-                const topCategoryTotal = categorizedExpenses[topCategory].total;
-                const percentageOfExpenses = monthlyExpenses > 0 ? (topCategoryTotal / monthlyExpenses) * 100 : 0;
-                insights.push({ type: "opportunity", priority: "medium", title: `Review '${topCategory}' Spending`, description: `Your spending on '${topCategory}' was ₱${topCategoryTotal.toFixed(2)} this month, making up ${percentageOfExpenses.toFixed(0)}% of your total expenses. Reviewing this could unlock savings.`, impact: "medium", trend: "stable" });
+            // Ensure categorizedExpenses is not empty before reducing
+            if (Object.keys(categorizedExpenses).length > 0) {
+                const topCategory = Object.keys(categorizedExpenses).reduce((a, b) => categorizedExpenses[a].total > categorizedExpenses[b].total ? a : b);
+                if (topCategory && topCategory !== 'uncategorized') {
+                    const topCategoryTotal = categorizedExpenses[topCategory].total;
+                    const percentageOfExpenses = monthlyExpenses > 0 ? (topCategoryTotal / monthlyExpenses) * 100 : 0;
+                    insights.push({ type: "opportunity", priority: "medium", title: `Review '${topCategory}' Spending`, description: `Your spending on '${topCategory}' was ₱${topCategoryTotal.toFixed(2)} this month, making up ${percentageOfExpenses.toFixed(0)}% of your total expenses. Reviewing this could unlock savings.`, impact: "medium", trend: "stable" });
+                }
             }
         }
 

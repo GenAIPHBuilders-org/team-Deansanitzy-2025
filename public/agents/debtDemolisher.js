@@ -202,7 +202,7 @@ class DebtDemolisherAI extends BaseAgent {
             
         } catch (error) {
             console.error("❌ Error starting Debt Demolisher AI:", error);
-            this.showErrorMessage("Failed to initialize the Debt Demolisher. Please try again.");
+            this.showToast("Failed to initialize the Debt Demolisher. Please try again.", "error");
         }
     }
 
@@ -258,12 +258,18 @@ class DebtDemolisherAI extends BaseAgent {
 
     // Run the main analysis
     async runAnalysis() {
-        this.logAgentAction('analysis_started');
         try {
-            console.log("🧠 Running hybrid debt analysis...");
+            console.log("🧠 Running full debt analysis and strategy simulation...");
+            this.showToast("Analyzing your debt portfolio...", "info");
 
-            // Step 1: Run local simulations for Avalanche and Snowball strategies.
-        const engine = new StrategyEngine(this.debtAccounts, this.extraPayment);
+            // Show loaders in cards
+            const cardLoaderHTML = '<div class="card-loader"><div class="spinner"></div></div>';
+            this.elements.debtPortfolioContent.innerHTML = cardLoaderHTML;
+            this.elements.strategyContent.innerHTML = cardLoaderHTML;
+            this.elements.insightsContent.innerHTML = cardLoaderHTML;
+
+            // 1. Simulate strategies
+            const engine = new StrategyEngine(this.debtAccounts, this.extraPayment);
             const avalanchePlan = engine.simulate('avalanche');
         
         const engine2 = new StrategyEngine(this.debtAccounts, this.extraPayment);
@@ -297,7 +303,7 @@ class DebtDemolisherAI extends BaseAgent {
 
         } catch (error) {
             this.handleError('analysis_failed', error);
-            this.showErrorMessage("A critical error occurred during the AI analysis. We're showing a standard plan for now.");
+            this.showToast("A critical error occurred during the AI analysis. We're showing a standard plan for now.", "error");
             
             // Critical Fallback: run the simple simulation so the page still works
             const engine = new StrategyEngine(this.debtAccounts, this.extraPayment);
@@ -729,13 +735,15 @@ Based on the plan comparison, choose the best plan and provide a concise reasoni
         }
     }
 
-    showErrorMessage(message) {
-        console.error(message);
-        // In a real app, you'd show this in the UI
-        if(this.elements.insightsContent) {
-            this.elements.insightsContent.innerHTML = this.renderAlert('Error', message, 'high');
-        }
-        this.showContentState(); // Show content area so error is visible
+    showToast(message, type = 'info', duration = 3000) {
+        if (!this.elements.toast) return;
+
+        this.elements.toastMessage.textContent = message;
+        this.elements.toast.className = `toast-notification show ${type}`;
+
+        setTimeout(() => {
+            this.elements.toast.className = 'toast-notification';
+        }, duration);
     }
 
     async handleChatbotInput() {
@@ -744,53 +752,41 @@ Based on the plan comparison, choose the best plan and provide a concise reasoni
 
         this.appendMessage(userInput, 'user');
         this.elements.chatbotInput.value = '';
-        this.elements.chatbotInput.focus();
 
         // Show typing indicator
-        this.showTypingIndicator();
+        this.appendMessage('<span></span><span></span><span></span>', 'typing-indicator');
 
         try {
             const aiResponse = await this.getAIResponse(userInput);
             this.appendMessage(aiResponse, 'assistant');
         } catch (error) {
-            console.error("Error getting AI response:", error);
-            this.appendMessage("Sorry, I'm having trouble connecting to my brain right now. Please try again later.", 'assistant');
-        } finally {
-            // Remove typing indicator
-            this.hideTypingIndicator();
+            console.error("Chatbot AI Error:", error);
+            this.appendMessage("Sorry, I encountered an error. Please try again.", 'assistant error');
         }
     }
 
     appendMessage(message, sender) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('chatbot-message', sender);
-        messageElement.textContent = message;
-        this.elements.chatbotMessages.appendChild(messageElement);
-        this.elements.chatbotBody.scrollTop = this.elements.chatbotBody.scrollHeight;
-    }
-
-    showTypingIndicator() {
-        // Prevent multiple typing indicators
-        if (this.elements.chatbotMessages.querySelector('.typing-indicator')) return;
-        
-        const typingIndicator = document.createElement('div');
-        typingIndicator.classList.add('chatbot-message', 'assistant', 'typing-indicator');
-        typingIndicator.innerHTML = '<span></span><span></span><span></span>';
-        this.elements.chatbotMessages.appendChild(typingIndicator);
-        this.elements.chatbotBody.scrollTop = this.elements.chatbotBody.scrollHeight;
-    }
-
-    hideTypingIndicator() {
+        // Remove existing typing indicator before adding a new message
         const typingIndicator = this.elements.chatbotMessages.querySelector('.typing-indicator');
         if (typingIndicator) {
-            this.elements.chatbotMessages.removeChild(typingIndicator);
+            typingIndicator.remove();
         }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chatbot-message ${sender}`;
+        messageDiv.innerHTML = message;
+        this.elements.chatbotMessages.appendChild(messageDiv);
+        this.elements.chatbotBody.scrollTop = this.elements.chatbotBody.scrollHeight;
     }
 
     async getAIResponse(userInput) {
+        if (this.offlineMode) {
+            this.log('Using offline chatbot response.');
+            return this._getOfflineResponse(userInput);
+        }
+
         try {
             const prompt = this._generateChatPrompt(userInput);
-            // Reconnect the chatbot to the local AI
             const aiResponse = await callGeminiAI(prompt);
             
             if (!aiResponse) {
@@ -802,7 +798,6 @@ Based on the plan comparison, choose the best plan and provide a concise reasoni
 
         } catch (error) {
             console.error("Error calling AI for chat response:", error);
-            // Use the base agent's error handler
             this.handleError('chatbot_ai_call_failed', error, { userInput });
             return this._getOfflineResponse(userInput);
         }
@@ -890,69 +885,23 @@ Based on the plan comparison, choose the best plan and provide a concise reasoni
 
     async parseAIResponse(response) {
         try {
-            // The response can be a string, an object with a 'conclusion' or 'text' property.
-            let text = '';
-            if (typeof response === 'string') {
-                text = response;
-            } else if (response && response.conclusion) {
-                text = response.conclusion;
-            } else if (response && response.text) {
-                text = response.text;
-            } else {
-                console.warn("AI response is not in a recognized format, attempting to stringify.", response)
-                text = JSON.stringify(response); // Fallback for unexpected structures
+            console.log('Parsing AI response for debt analysis plan...');
+
+            // Clean the response to extract only the JSON part
+            const jsonMatch = response.match(/```json\n([\s\S]*?)\n```|({[\s\S]*})/);
+            if (!jsonMatch) {
+                throw new Error("No valid JSON object found in the AI response.");
             }
+            
+            // The actual JSON string is in one of the capturing groups
+            const jsonString = jsonMatch[1] || jsonMatch[2];
 
-            // --- The Ultimate JSON Repair and Reconstruction Engine (from financialHealth.js) ---
-
-            // 1. Find the first '{' to start the JSON string and discard any preamble.
-            const firstBraceIndex = text.indexOf('{');
-            if (firstBraceIndex === -1) throw new Error("No '{' found in AI response.");
-            let jsonString = text.substring(firstBraceIndex);
-
-            // 2. Aggressively remove markdown and comments.
-            jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '');
-            jsonString = jsonString.replace(/\/\/.*$/gm, ''); 
-
-            // 3. Find the last meaningful character to discard trailing garbage.
-            const lastBracket = jsonString.lastIndexOf(']');
-            const lastBrace = jsonString.lastIndexOf('}');
-            const lastCharIndex = Math.max(lastBracket, lastBrace);
-            if (lastCharIndex === -1) throw new Error("No closing bracket/brace found after cleaning.");
-            jsonString = jsonString.substring(0, lastCharIndex + 1);
-
-            // 4. Reconstruct the object by adding missing closing brackets using a stack.
-            const stack = [];
-            let inString = false;
-            for (let i = 0; i < jsonString.length; i++) {
-                const char = jsonString[i];
-                if (char === '"' && (i === 0 || jsonString[i-1] !== '\\')) {
-                    inString = !inString;
-                } else if (!inString) {
-                    if (char === '{' || char === '[') {
-                        stack.push(char);
-                    } else if (char === '}') {
-                        if (stack.length > 0 && stack[stack.length - 1] === '{') stack.pop();
-                    } else if (char === ']') {
-                        if (stack.length > 0 && stack[stack.length - 1] === '[') stack.pop();
-                    }
-                }
-            }
-            while (stack.length > 0) {
-                const openChar = stack.pop();
-                jsonString += (openChar === '{') ? '}' : ']';
-            }
-
-            // 5. Perform final syntax repairs.
-            jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":'); // Add quotes to unquoted keys.
-            jsonString = jsonString.replace(/,\s*([}\]])/g, '$1'); // Remove trailing commas.
-
-            const parsedData = JSON.parse(jsonString);
-            return parsedData;
-
+            const parsed = JSON.parse(jsonString);
+            console.log('Successfully parsed AI response.');
+            return parsed;
         } catch (error) {
-            this.handleError('ai_response_parsing_failed', error, { rawResponse: response });
-            return null; // Return null to indicate a parsing failure
+            this.handleError('ai_response_parsing_failed', error, { response });
+            return null; // Return null to indicate parsing failure
         }
     }
 }

@@ -450,71 +450,12 @@ function updateSpendingChart(transactions) {
 
 // Add new function to handle transaction history and add transaction functionality
 function initializeTransactionHistory() {
-  const addTransactionBtn = document.getElementById('add-transaction-btn');
-  const transactionModal = document.getElementById('transaction-modal');
-  const closeTransactionModal = document.getElementById('close-transaction-modal');
-  const transactionForm = document.getElementById('transaction-form');
   const transactionsList = document.getElementById('transactions-list');
   
   // Check if any required elements are missing
-  if (!addTransactionBtn || !transactionModal || !closeTransactionModal || !transactionForm || !transactionsList) {
-    console.warn('Some transaction UI elements not found - skipping transaction history initialization');
+  if (!transactionsList) {
     return;
   }
-
-  // Show add transaction modal
-  if (addTransactionBtn) {
-    addTransactionBtn.addEventListener('click', () => {
-      transactionModal.style.display = 'block';
-    });
-  }
-
-  // Close transaction modal
-  if (closeTransactionModal) {
-    closeTransactionModal.addEventListener('click', () => {
-      transactionModal.style.display = 'none';
-    });
-  }
-
-  // Handle transaction form submission
-  if (transactionForm) {
-    transactionForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const user = auth.currentUser;
-      if (!user) {
-        console.error('No user logged in');
-        return;
-      }
-
-      const transaction = {
-        name: document.getElementById('transaction-description').value,
-        amount: document.getElementById('transaction-amount').value,
-        date: document.getElementById('transaction-date').value,
-        category: document.getElementById('transaction-category').value,
-        type: document.getElementById('transaction-type').value || 'expense',
-        id: `trans_${Date.now()}`
-      };
-
-      try {
-        // Store transaction in Firestore
-        await storeTransaction(user.uid, transaction);
-        
-        // Load updated transactions and refresh the UI
-        await loadTransactions();
-        
-        // Reset form and close modal
-        transactionForm.reset();
-        transactionModal.style.display = 'none';
-      } catch (error) {
-        console.error('Error adding transaction:', error);
-        alert('Failed to add transaction: ' + error.message);
-      }
-    });
-  }
-
-  // Load transactions from Firestore
-  loadTransactions();
 }
 
 function renderRecentTransactionsList(transactions) {

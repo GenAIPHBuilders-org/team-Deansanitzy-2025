@@ -1,53 +1,17 @@
 /**
- * WealthBuilder AI - Long-term Investment and Wealth Growth Assistant
- * 
- * An AI agent designed for personal financial planning and wealth building in the Filipino context.
- * Focuses on practical investment guidance and long-term strategy.
- * 
- * Key Features:
- * - Investment portfolio analysis
- * - Personalized wealth-building recommendations
- * - Long-term goal tracking and forecasting
- * - Market insights and opportunities
- * - Progress notifications and milestone alerts
- * 
- * @version 3.0.0
- * @license MIT
+ * WealthBuilder AI - V4.0
+ * An AI agent designed for sophisticated, personalized financial planning and wealth building.
+ * This version uses a unified prompt to generate a comprehensive wealth plan with visual charts.
  */
 
-import { GEMINI_API_KEY, GEMINI_MODEL, isConfigured, firebaseConfig } from "../js/config.js";
+import { firebaseConfig } from "../js/config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
-import { getUserData, getUserTransactions, getUserBankAccounts, storeUserData, updateFinancialProfile } from "../js/firestoredb.js";
-import { BaseAgent } from "./BaseAgent.js";
+import { getUserTransactions, getUserBankAccounts } from "../js/firestoredb.js";
 import { callGeminiAI } from "../js/agentCommon.js";
-import { getApiBaseUrl } from "../js/utils/environment.js";
 
-// Initialize Firebase if it hasn't been initialized yet
-let app;
-try {
-    app = initializeApp(firebaseConfig);
-} catch (error) {
-    if (error.code !== 'app/duplicate-app') {
-        console.error('Firebase initialization error:', error);
-        throw error;
-    }
-}
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
-// Constants for financial planning
-const FINANCIAL_CONSTANTS = {
-    EMERGENCY_FUND_MONTHS: 6,
-    MIN_SAVINGS_RATE: 0.2,
-    PLANNING_HORIZONS: ['short_term', 'medium_term', 'long_term'],
-    GOAL_TYPES: {
-        EMERGENCY_FUND: 'emergency_fund',
-        SAVINGS: 'savings',
-        INVESTMENT: 'investment',
-        DEBT_PAYMENT: 'debt_payment',
-        MAJOR_PURCHASE: 'major_purchase'
-    }
-};
 
 // --- UI Element Getters ---
 const getElement = (id) => document.getElementById(id);
@@ -59,9 +23,20 @@ const ui = {
     monthlyExpenses: () => getElement('monthly-expenses'),
     totalBalance: () => getElement('total-balance'),
     savingsRate: () => getElement('savings-rate'),
-    insightsList: () => getElement('insights-list'),
-    actionsList: () => getElement('actions-list'),
+    strategicPlanList: () => getElement('insights-list'),
+    tacticalStepsList: () => getElement('actions-list'),
+    financialInsightsHeader: () => getElement('financial-insights').querySelector('.card-header'),
+    recommendedActionsHeader: () => getElement('recommended-actions').querySelector('.card-header'),
+    userPersona: () => getElement('user-persona'),
+    aiSummaryText: () => getElement('ai-summary-text'),
+    aiRiskAnalysis: () => getElement('ai-risk-analysis'),
+    readinessGaugeChart: () => getElement('readiness-gauge-chart'),
+    allocationChart: () => getElement('allocation-chart'),
 };
+
+// Chart instances to prevent duplicates
+let readinessChart = null;
+let allocationChart = null;
 
 // --- Main Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -74,10 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-/**
- * Main function to orchestrate the analysis and rendering of the wealth builder plan.
- * @param {object} user The authenticated Firebase user object.
- */
 async function analyzeAndRender(user) {
     try {
         setUIState('loading');
@@ -95,19 +66,25 @@ async function analyzeAndRender(user) {
         const financialData = calculateFinancialOverview(accounts, transactions);
         renderFinancialOverview(financialData);
 
-        // Run AI analysis in parallel
-        generateInsightsAndRecommendations(financialData, accounts, transactions);
+        // Generate the full wealth plan from the AI
+        const wealthPlan = await generateWealthPlan(financialData, accounts, transactions);
+
+        if (wealthPlan) {
+            renderWealthPlan(wealthPlan);
+        } else {
+            // Handle cases where the AI might fail
+            setUIState('error', 'Could not generate an AI-powered wealth plan at this time.');
+        }
 
         setUIState('content');
     } catch (error) {
         console.error("WealthBuilder Analysis Failed:", error);
-        setUIState('error');
+        setUIState('error', 'Could not build your wealth plan due to an unexpected error. Please try again later.');
     }
 }
 
 // --- UI State & Rendering ---
-
-function setUIState(state) {
+function setUIState(state, message = '') {
     const { loadingState, contentState, emptyState } = ui;
     loadingState().style.display = 'none';
     contentState().style.display = 'none';
@@ -122,69 +99,186 @@ function setUIState(state) {
             break;
         case 'empty':
             emptyState().style.display = 'block';
-            emptyState().innerHTML = `<i class="fas fa-box-open empty-icon"></i><p>No data available. Please add accounts or transactions.</p>`;
+            emptyState().innerHTML = `<i class="fas fa-box-open empty-icon"></i><p>${message || 'No data available. Please add accounts or transactions.'}</p>`;
             break;
         case 'error':
             emptyState().style.display = 'block';
-            emptyState().innerHTML = `<i class="fas fa-exclamation-triangle"></i><p>Could not build your wealth plan. Please try again later.</p>`;
+            emptyState().innerHTML = `<i class="fas fa-exclamation-triangle error-icon"></i><p>${message}</p>`;
             break;
     }
 }
 
 function renderFinancialOverview(data) {
-    const { monthlyIncome, monthlyExpenses, totalBalance, savingsRate } = ui;
-    monthlyIncome().textContent = `₱${data.monthlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    monthlyExpenses().textContent = `₱${data.monthlyExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    totalBalance().textContent = `₱${data.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    savingsRate().textContent = `${data.savingsRate.toFixed(1)}%`;
+    const format = (num) => `₱${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    ui.monthlyIncome().textContent = format(data.monthlyIncome);
+    ui.monthlyExpenses().textContent = format(data.monthlyExpenses);
+    ui.totalBalance().textContent = format(data.totalBalance);
+    ui.savingsRate().textContent = `${data.savingsRate.toFixed(1)}%`;
 }
 
-function renderInsights(insights) {
-    const insightsList = ui.insightsList();
-    if (!insights || insights.length === 0) {
-        insightsList.innerHTML = '<p>No specific insights generated at this time.</p>';
-        return;
-    }
-    insightsList.innerHTML = insights
-        .map(item => `<div class="timeline-item">
-                        <h4 class="timeline-title">${item.title}</h4>
-                        <p class="timeline-content">${item.description}</p>
-                     </div>`)
-        .join('');
+function renderWealthPlan(plan) {
+    // Update text content
+    ui.userPersona().textContent = plan.persona || 'Your Financial Profile';
+    ui.aiSummaryText().textContent = plan.summary || 'No summary available.';
+    ui.aiRiskAnalysis().innerHTML = `<strong>Risk Analysis:</strong> ${plan.riskAnalysis || 'Not available.'}`;
+
+    // Render charts
+    renderInvestmentReadinessGauge(plan.investmentReadinessScore || 0);
+    renderPortfolioAllocationChart(plan.portfolioSuggestion);
+
+    // Render text lists
+    renderStrategicRecommendations(plan.strategicRecommendations);
+    renderTacticalSteps(plan.tacticalSteps);
 }
 
-function renderRecommendations(actions) {
-    const actionsList = ui.actionsList();
-    if (!actions || actions.length === 0) {
-        actionsList.innerHTML = '<p>No specific actions recommended at this time.</p>';
+function renderInvestmentReadinessGauge(score) {
+    const ctx = ui.readinessGaugeChart().getContext('2d');
+    const scoreColor = score > 75 ? '#2ed573' : score > 50 ? '#ff9f43' : '#ff4757';
+
+    if (readinessChart) {
+        readinessChart.destroy();
+    }
+
+    readinessChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Readiness', ''],
+            datasets: [{
+                data: [score, 100 - score],
+                backgroundColor: [scoreColor, '#394056'],
+                borderWidth: 0,
+                circumference: 180,
+                rotation: 270,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false },
+                datalabels: {
+                    formatter: (value, context) => {
+                        if (context.dataIndex === 0) {
+                            return `${value}%`;
+                        }
+                        return '';
+                    },
+                    color: '#fff',
+                    font: { size: 24, weight: 'bold' }
+                }
+            },
+            elements: { arc: { cornerRadius: 5 } }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
+
+function renderPortfolioAllocationChart(allocation) {
+    if (!allocation || !allocation.labels || !allocation.data) {
+        ui.allocationChart().style.display = 'none';
         return;
     }
-    actionsList.innerHTML = actions
-        .map(item => `<div class="timeline-item">
-                        <h4 class="timeline-title">${item.title}</h4>
-                        <p class="timeline-content">${item.description}</p>
-                     </div>`)
-        .join('');
+    const ctx = ui.allocationChart().getContext('2d');
+    const backgroundColors = ['#1e90ff', '#2ed573', '#ff9f43', '#ff6384', '#a4b0be'];
+
+    if (allocationChart) {
+        allocationChart.destroy();
+    }
+
+    allocationChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: allocation.labels,
+            datasets: [{
+                data: allocation.data,
+                backgroundColor: backgroundColors,
+                borderColor: '#2a2d3e',
+                borderWidth: 3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#fff', boxWidth: 15, padding: 15 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                label += `${context.parsed}%`;
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderStrategicRecommendations(recommendations) {
+    const list = ui.strategicPlanList();
+    if (!recommendations || recommendations.length === 0) {
+        list.innerHTML = '<p>No strategic recommendations available.</p>';
+        return;
+    }
+    list.innerHTML = recommendations.map(rec => `
+        <div class="timeline-item strategic">
+            <h4>${rec.title}</h4>
+            <p>${rec.description}</p>
+            <div class="details-grid">
+                <div><strong>Type:</strong> ${rec.investmentType}</div>
+                <div><strong>Risk:</strong> <span class="risk-${rec.riskLevel?.toLowerCase()}">${rec.riskLevel}</span></div>
+                <div><strong>Horizon:</strong> ${rec.timeHorizon}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderTacticalSteps(steps) {
+    const list = ui.tacticalStepsList();
+    if (!steps || steps.length === 0) {
+        list.innerHTML = '<p>No tactical steps available.</p>';
+        return;
+    }
+    list.innerHTML = steps.map(step => `
+        <div class="timeline-item tactical">
+            <h4>${step.title}</h4>
+            <p>${step.description}</p>
+            <div class="details-grid">
+                <div><strong>Difficulty:</strong> ${step.difficulty}</div>
+                <div><strong>Impact:</strong> <span class="impact-${step.impact?.toLowerCase()}">${step.impact}</span></div>
+            </div>
+        </div>
+    `).join('');
 }
 
 // --- Data Calculation ---
-
 function calculateFinancialOverview(accounts, transactions) {
     const monthlyIncome = calculateMonthlyAverage(transactions, 'income');
     const monthlyExpenses = calculateMonthlyAverage(transactions, 'expense');
-    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0);
     const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
     
     return { monthlyIncome, monthlyExpenses, totalBalance, savingsRate };
 }
 
 function calculateMonthlyAverage(transactions, type) {
-    const relevantTransactions = transactions.filter(t => t.type === type);
+    const relevantTransactions = transactions.filter(t => t.type === type && t.amount > 0);
     if (relevantTransactions.length === 0) return 0;
 
     const monthMap = relevantTransactions.reduce((acc, t) => {
         const month = new Date(t.date).toISOString().slice(0, 7);
-        acc[month] = (acc[month] || 0) + t.amount;
+        acc[month] = (acc[month] || 0) + (parseFloat(t.amount) || 0);
         return acc;
     }, {});
 
@@ -194,132 +288,115 @@ function calculateMonthlyAverage(transactions, type) {
     return numMonths > 0 ? total / numMonths : 0;
 }
 
+function categorizeAndSummarizeTransactions(transactions, limit = 5) {
+    const expenseCategories = transactions
+        .filter(t => t.type === 'expense' && t.category)
+        .reduce((acc, t) => {
+            const category = t.category || 'Uncategorized';
+            acc[category] = (acc[category] || 0) + (parseFloat(t.amount) || 0);
+            return acc;
+        }, {});
+
+    return Object.entries(expenseCategories)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, limit)
+        .map(([name, total]) => ({ name, total: total.toFixed(2) }));
+}
 
 // --- AI Generation & Logic ---
+function cleanAndParseJson(text) {
+    if (!text) return null;
+    
+    // Find the start of the JSON object
+    const startIndex = text.indexOf('{');
+    if (startIndex === -1) {
+        console.error("No JSON object found in response:", text);
+        return null;
+    }
 
-function cleanAndParseJson(jsonString) {
-    if (!jsonString) return null;
-    const cleanedString = jsonString.replace(/```json|```/g, '').trim();
+    // Attempt to repair the JSON string
+    let jsonString = text.substring(startIndex);
+    // Find the last closing brace or bracket
+    const lastBrace = jsonString.lastIndexOf('}');
+    const lastBracket = jsonString.lastIndexOf(']');
+    const lastIndex = Math.max(lastBrace, lastBracket);
+    if (lastIndex > -1) {
+        jsonString = jsonString.substring(0, lastIndex + 1);
+    }
+    
     try {
-        return JSON.parse(cleanedString);
+        return JSON.parse(jsonString);
     } catch (e) {
-        console.error("Failed to parse JSON:", e, "Response was:", cleanedString);
+        console.error("Failed to parse JSON:", e, "Attempted to parse:", jsonString);
         return null;
     }
 }
 
-async function generateInsightsAndRecommendations(financialData, accounts, transactions) {
-    // Generate insights and recommendations in parallel
-    const insightsPromise = generateInsights(financialData, transactions);
-    const recommendationsPromise = generateRecommendations(financialData, accounts, transactions);
-
-    const [insights, recommendations] = await Promise.all([
-        insightsPromise,
-        recommendationsPromise,
-    ]);
-
-    renderInsights(insights);
-    renderRecommendations(recommendations);
-}
-
-async function generateRecommendations(financialData, accounts, transactions) {
-    const prompt = buildRecommendationsPrompt(financialData, accounts, transactions);
+async function generateWealthPlan(financialData, accounts, transactions) {
+    const prompt = buildWealthBuilderPrompt(financialData, accounts, transactions);
     try {
-        const response = await callGeminiAI(prompt);
-        return cleanAndParseJson(response) || getDefaultRecommendations();
+        const response = await callGeminiAI(prompt, { maxOutputTokens: 2048 });
+        return cleanAndParseJson(response);
     } catch (error) {
-        console.error("Failed to generate recommendations:", error);
-        return getDefaultRecommendations(); // Fallback
-    }
-}
-
-async function generateInsights(financialData, transactions) {
-    const prompt = buildInsightsPrompt(financialData, transactions);
-    try {
-        const response = await callGeminiAI(prompt);
-        return cleanAndParseJson(response) || getDefaultInsights();
-    } catch (error) {
-        console.error("Failed to generate insights:", error);
-        return getDefaultInsights(); // Fallback
+        console.error("Failed to generate wealth plan:", error);
+        // Return a structured error object or null
+        return null;
     }
 }
 
 // --- Prompt Engineering ---
+function buildWealthBuilderPrompt(financialData, accounts, transactions) {
+    const topExpenses = categorizeAndSummarizeTransactions(transactions);
+    const accountSummary = accounts.map(acc => ({
+        name: acc.name,
+        type: acc.accountType,
+        balance: acc.balance.toFixed(2)
+    }));
 
-function buildRecommendationsPrompt(financialData, accounts, transactions) {
-    return `As WealthBuilder AI, your goal is to guide a user in the Philippines from saving to strategic investing. Based on the following financial data, provide personalized, actionable recommendations for building long-term wealth.
+    // FINAL PROMPT v4.0 - Sophisticated Wealth Advisor with Visuals
+    return `You are "WealthBuilder AI," an expert wealth management advisor for the Philippine market. Your analysis must be personalized, detailed, and encouraging. Your entire response must be a single, valid JSON object. Do not include any other text or markdown.
 
-Financial Snapshot:
-- Monthly Income: ₱${financialData.monthlyIncome.toLocaleString()}
-- Monthly Expenses: ₱${financialData.monthlyExpenses.toLocaleString()}
-- Current Investment/Savings Rate: ${financialData.savingsRate.toFixed(2)}%
-- Total Liquid Assets: ₱${accounts.reduce((sum, acc) => acc.type === 'savings' || acc.type === 'checking' ? sum + acc.balance : sum, 0).toLocaleString()}
+**User's Financial Profile (PHP):**
+- **Core Metrics:**
+  - Average Monthly Income: ${financialData.monthlyIncome.toFixed(2)}
+  - Average Monthly Expenses: ${financialData.monthlyExpenses.toFixed(2)}
+  - Calculated Savings Rate: ${financialData.savingsRate.toFixed(1)}%
+- **Assets:**
+  - Total Liquid Balance: ${financialData.totalBalance.toFixed(2)}
+  - Accounts: ${JSON.stringify(accountSummary)}
+- **Spending Habits:**
+  - Top 5 Expense Categories (Monthly Average): ${JSON.stringify(topExpenses)}
 
-Account Balances:
-${accounts.map(acc => `- ${acc.accountType} (${acc.name}): ₱${acc.balance.toLocaleString()}`).join('\n')}
+**Your Task:**
+Based *only* on the data above, generate a comprehensive wealth-building plan.
 
-Please provide 3-4 high-impact recommendations. Focus on:
-1. Investment Strategy: Suggest a diversified portfolio (e.g., mix of Philippine stocks via index funds/UITFs, Pag-IBIG MP2, digital bank savings for high yield).
-2. Increasing Investable Capital: Pinpoint areas in spending to optimize.
-3. Debt Management: If loans are present, suggest strategies like the avalanche or snowball method.
-
-Return the response as a valid JSON array of objects. Each object must have "title", "description", and "priority" ('high', 'medium', 'low').
-Example: [{"title": "Start a Diversified UITF", "description": "Invest in a local equity index UITF to capture market growth.", "priority": "high"}]`;
-}
-
-
-function buildInsightsPrompt(financialData, transactions) {
-    return `As a sharp financial analyst AI, your task is to identify key insights from a user's financial data. Provide a concise analysis of their spending habits, income patterns, and savings behavior.
-
-Financial Snapshot:
-- Monthly Income: ₱${financialData.monthlyIncome.toLocaleString()}
-- Monthly Expenses: ₱${financialData.monthlyExpenses.toLocaleString()}
-- Savings Rate: ${financialData.savingsRate.toFixed(2)}%
-
-Recent Transactions (sample):
-${transactions.slice(0, 20).map(t => `- ${t.name}: ₱${t.amount.toLocaleString()} (${t.type})`).join('\n')}
-
-Based on this, generate 3-4 critical insights.
-Focus on:
-1. Spending Habits: Where is the money going? Is there a concentration in a specific category?
-2. Income Stability: Is income regular or fluctuating?
-3. Savings Potential: How does their savings rate compare to a benchmark (e.g., 20%)?
-
-Return the response as a valid JSON array of objects. Each object must have "title", "description", "category" ('spending', 'income', 'savings'), and "priority" ('high', 'medium', 'low').
-Example: [{"title": "High Discretionary Spending", "description": "A significant portion of your expenses is on non-essentials.", "category": "spending", "priority": "high"}]`;
-}
-
-
-// --- Fallback Data & Helpers ---
-
-function getDefaultRecommendations() {
-    return [
-        { title: "Build an Emergency Fund", description: "Aim to save 3-6 months of living expenses in a high-yield savings account.", priority: "high" },
-        { title: "Explore Low-Cost Investments", description: "Consider starting with Pag-IBIG MP2 or a local index fund UITF.", priority: "medium" },
-    ];
-}
-
-function getDefaultInsights() {
-    return [
-        { title: "Track Your Spending", description: "Get a clearer picture of where your money goes by categorizing every expense.", category: "spending", priority: "high" },
-    ];
-}
-
-function getPriorityClass(priority) {
-    switch (priority) {
-        case 'high': return 'priority-high';
-        case 'medium': return 'priority-medium';
-        case 'low': return 'priority-low';
-        default: return '';
+**Required JSON Output Structure:**
+{
+  "persona": "<A short, encouraging persona title for the user, e.g., 'The Emerging Investor', 'The Disciplined Saver'>",
+  "investmentReadinessScore": <Number, 0-100, assessing readiness based on savings, balance, and positive cash flow>,
+  "summary": "<A 2-3 sentence personalized and encouraging summary of their wealth-building potential, directly referencing their data>",
+  "riskAnalysis": "<A 1-2 sentence analysis of their current financial risk exposure based on their savings rate and emergency funds.>",
+  "portfolioSuggestion": {
+    "labels": ["<e.g., Stocks>", "<e.g., Bonds>", "<e.g., Emergency Fund>"],
+    "data": [<Number, e.g., 50>, <Number, e.g., 30>, <Number, e.g., 20>]
+  },
+  "strategicRecommendations": [
+    {
+      "title": "<Specific, actionable title, e.g., 'Establish a Core Equity Investment via UITF'>",
+      "description": "<Detailed explanation of why this strategy fits their profile, mentioning specific data points. Explain the 'what' and 'why'.>",
+      "investmentType": "<Stocks|Bonds|UITF|MP2|Real Estate|REITs|Emergency Fund>",
+      "riskLevel": "<Low|Medium|High>",
+      "timeHorizon": "<1-3 Years|3-5 Years|5+ Years>"
     }
-}
-
-function getInsightIcon(category) {
-    switch (category) {
-        case 'spending': return 'fa-shopping-cart';
-        case 'income': return 'fa-wallet';
-        case 'savings': return 'fa-piggy-bank';
-        default: return 'fa-info-circle';
+  ],
+  "tacticalSteps": [
+    {
+      "title": "<Specific, actionable title, e.g., 'Automate ₱1,000 Monthly to Savings'>",
+      "description": "<Clear, step-by-step guidance on how to execute this. Link it to their data, e.g., 'Given your ₱${financialData.monthlyIncome.toFixed(0)} income...'>",
+      "difficulty": "<Easy|Moderate>",
+      "impact": "<Medium|High>"
     }
+  ]
+}`;
 }
 

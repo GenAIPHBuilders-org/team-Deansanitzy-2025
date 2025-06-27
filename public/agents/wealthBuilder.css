@@ -8,7 +8,8 @@
 .analysis-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 1.5rem;
+    gap: 24px;
+    align-items: start;
 }
 
 .analysis-card {
@@ -471,4 +472,84 @@
 .timeline-content {
     font-size: 0.9rem;
     color: var(--light-gray-blue);
+}
+
+#ai-summary-card, #financial-insights {
+    grid-column: span 2; /* Make summary and strategy cards wider */
+}
+
+#recommended-actions {
+    grid-column: span 1;
+}
+
+.advisor-grid, .strategy-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+    align-items: center;
+}
+
+.strategy-grid {
+    grid-template-columns: 1fr 1.5fr; /* Adjust for allocation chart */
+}
+
+.readiness-gauge, .allocation-chart {
+    position: relative;
+    width: 100%;
+    max-width: 250px;
+    margin: 0 auto;
+}
+
+.summary-content h4 {
+    color: var(--primary-color);
+    margin-top: 0;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+#ai-risk-analysis {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: rgba(255, 149, 0, 0.1);
+    border-left: 3px solid var(--warning-color);
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+/* --- Timeline Item Styling --- */
+.timeline-item.strategic .details-grid,
+.timeline-item.tactical .details-grid {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.85em;
+    gap: 10px;
+}
+
+.timeline-item .details-grid > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.timeline-item .details-grid strong {
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+/* Risk and Impact Level Colors */
+.risk-low, .impact-small { color: var(--success-color); font-weight: bold; }
+.risk-medium, .impact-medium { color: var(--warning-color); font-weight: bold; }
+.risk-high, .impact-high { color: var(--danger-color); font-weight: bold; }
+.risk-challenging { color: var(--danger-color); font-weight: bold; }
+
+@media (max-width: 1200px) {
+    #ai-summary-card, #financial-insights {
+        grid-column: span 1;
+    }
+    .advisor-grid, .strategy-grid {
+        grid-template-columns: 1fr;
+    }
 } 
