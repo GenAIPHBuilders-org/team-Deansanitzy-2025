@@ -1,5 +1,5 @@
 // Enhanced Financial Health Module using Gemini AI
-import { GEMINI_API_KEY, GEMINI_MODEL } from "./config.js";
+import { callLocalAI } from '../js/agentCommon.js';
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { 
     getUserBankAccounts,
@@ -9,7 +9,6 @@ import {
     db,
     getDocs
 } from "./firestoredb.js";
-import { callGeminiAI } from '../js/agentCommon.js';
 
 // Financial Health Configuration
 const FINANCIAL_HEALTH_CONFIG = {
@@ -175,19 +174,14 @@ async function processFinancialData(userData) {
 }
 
 async function analyzeFinancialHealth(userData) {
-    if (!GEMINI_API_KEY) {
-        console.log('Gemini API key not configured, returning null for AI analysis.');
-        return null; // Return null instead of calling offline analysis here
-    }
-
     try {
         const prompt = generateFinancialPrompt(userData);
         
         try {
-            const aiResponse = await callGeminiAI(prompt, { maxOutputTokens: 2048 });
+            const aiResponse = await callLocalAI(prompt, { maxOutputTokens: 2048 });
             
             if (!aiResponse) {
-                console.log('Invalid Gemini API response, AI analysis skipped.');
+                console.log('Invalid Local AI response, AI analysis skipped.');
                 return null;
             }
 
@@ -781,6 +775,7 @@ function initializeAnimations() {
         metric.style.animation = `slideInUp ${FINANCIAL_HEALTH_CONFIG.animationDuration}ms ease-out ${index * 200}ms`;
     });
 }
+
 function enhancedOfflineAnalysis(userData) {
     try {
         const { accounts, transactions, profile } = userData;

@@ -8,7 +8,7 @@ import { firebaseConfig } from "../js/config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getUserTransactions, getUserBankAccounts } from "../js/firestoredb.js";
-import { callGeminiAI } from "../js/agentCommon.js";
+import { callLocalAI } from "../js/agentCommon.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -335,7 +335,7 @@ function cleanAndParseJson(text) {
 async function generateWealthPlan(financialData, accounts, transactions) {
     const prompt = buildWealthBuilderPrompt(financialData, accounts, transactions);
     try {
-        const response = await callGeminiAI(prompt, { maxOutputTokens: 2048 });
+        const response = await callLocalAI(prompt, { maxOutputTokens: 2048 });
         return cleanAndParseJson(response);
     } catch (error) {
         console.error("Failed to generate wealth plan:", error);

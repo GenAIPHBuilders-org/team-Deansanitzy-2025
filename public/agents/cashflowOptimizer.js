@@ -1,6 +1,6 @@
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { getUserTransactions, getUserBankAccounts } from "../js/firestoredb.js";
-import { callGeminiAI, cleanAndParseJson } from "../js/agentCommon.js"; // Use the shared AI call function
+import { callLocalAI, cleanAndParseJson } from "../js/agentCommon.js"; // Use the shared AI call function
 
 const auth = getAuth();
 
@@ -105,7 +105,7 @@ async function getConsolidatedAnalysis(transactions, accounts) {
     `;
 
     try {
-        const responseText = await callGeminiAI(prompt);
+        const responseText = await callLocalAI(prompt);
         return cleanAndParseJson(responseText);
     } catch (error) {
         console.error("Error in getConsolidatedAnalysis:", error);

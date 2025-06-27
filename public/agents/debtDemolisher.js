@@ -5,9 +5,9 @@
 
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth.js";
 import { BaseAgent } from "./BaseAgent.js";
-import { GEMINI_API_KEY, GEMINI_MODEL, OFFLINE_MODE, configStatus } from "../js/config.js";
+import { OFFLINE_MODE } from "../js/config.js";
 import { getUserTransactions, getUserBankAccounts } from "../js/firestoredb.js";
-import { callGeminiAI } from "../js/agentCommon.js";
+import { callLocalAI } from "../js/agentCommon.js";
 
 // API configuration for potential future use (e.g., financial data aggregation APIs)
 const API_CONFIG = {
@@ -107,8 +107,6 @@ class DebtDemolisherAI extends BaseAgent {
             planningHorizon: 'long_term',
             learningRate: 0.2, // Lower learning rate for stable financial planning
             riskTolerance: 'low', // Debt elimination is typically risk-averse
-            geminiApiKey: GEMINI_API_KEY,
-            geminiModel: GEMINI_MODEL,
             offlineMode: OFFLINE_MODE
         });
         
@@ -279,7 +277,7 @@ class DebtDemolisherAI extends BaseAgent {
 
             // Step 2: Ask the AI to analyze the pre-calculated results and provide insights.
             const prompt = this._generateAnalysisPrompt(avalanchePlan, snowballPlan);
-            const aiResponse = await callGeminiAI(prompt, { max_tokens: 1024 }); 
+            const aiResponse = await callLocalAI(prompt, { maxTokens: 1024 }); 
 
             const parsedInsights = this.parseAIResponse(aiResponse);
 
@@ -787,7 +785,7 @@ Based on the plan comparison, choose the best plan and provide a concise reasoni
 
         try {
             const prompt = this._generateChatPrompt(userInput);
-            const aiResponse = await callGeminiAI(prompt);
+            const aiResponse = await callLocalAI(prompt);
             
             if (!aiResponse) {
                 console.warn("AI response was empty or invalid. Falling back to offline response.");
