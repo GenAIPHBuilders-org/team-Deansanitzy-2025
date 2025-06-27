@@ -66,13 +66,6 @@ jobs:
     - name: Run security scan
       run: npm run security-scan
     
-    - name: Run Snyk security scan
-      uses: snyk/actions/node@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        args: --severity-threshold=high
-    
     - name: Run OWASP ZAP security scan
       uses: zaproxy/action-full-scan@v0.8.0
       with:

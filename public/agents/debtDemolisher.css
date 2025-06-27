@@ -964,9 +964,147 @@ body {
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {
     * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        animation: none !important;
+        transition: none !important;
     }
+}
+
+/*- Chatbot styles specific additions -*/
+.model-badge {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #8b949e;
+    background-color: #30363d;
+    padding: 2px 6px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-left: 8px;
+    text-transform: capitalize;
+}
+
+/*- Strategy UI Specifics ---------------------------------------*/
+.strategy-comparison, .ai-strategy-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.strategy-card {
+    background: rgba(48, 54, 61, 0.3);
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    position: relative;
+    transition: all 0.2s ease-in-out;
+}
+
+.strategy-card.recommended {
+    border-color: #2ea043;
+    box-shadow: 0 0 15px rgba(46, 160, 67, 0.3);
+}
+
+.strategy-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: #f0f6fc;
+}
+
+.strategy-card p {
+    margin: 0 0 1rem 0;
+    color: #8b949e;
+    font-size: 0.9rem;
+}
+
+.strategy-metrics {
+    display: flex;
+    justify-content: space-around;
+    gap: 1rem;
+    text-align: center;
+}
+
+.strategy-metrics > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.strategy-metrics span {
+    font-size: 0.8rem;
+    color: #8b949e;
+}
+
+.strategy-metrics strong {
+    font-size: 1.1rem;
+    color: #f0f6fc;
+    font-weight: 600;
+}
+
+.ribbon {
+    position: absolute;
+    top: -1px;
+    right: 15px;
+    background: #2ea043;
+    color: white;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 0 0 4px 4px;
+}
+
+.ai-strategy-card {
+    background-color: var(--card-bg-darker, #161b22);
+    border-left: 4px solid var(--success-color, #2ea043);
+    padding: 1.5rem;
+    border-radius: var(--border-radius, 8px);
+    height: 100%;
+}
+
+.ai-strategy-card h4 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: var(--text-primary, #f0f6fc);
+    display: flex;
+    align-items: center;
+}
+
+.ai-strategy-card h4 .fas {
+    margin-right: 0.75rem;
+    color: var(--success-color, #2ea043);
+}
+
+.strategy-reasoning {
+    color: var(--text-secondary, #8b949e);
+    margin: 1rem 0;
+    padding: 1rem;
+    border-left: 3px solid var(--success-color, #2ea043);
+    background-color: rgba(46, 160, 67, 0.05);
+    border-radius: 4px;
+    font-size: 0.95rem;
+}
+
+.action-plan-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.action-plan-list li {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #30363d;
+}
+.action-plan-list li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.action-plan-list strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #c9d1d9;
+}
+
+.action-plan-list p {
+    font-size: 0.9rem;
+    color: #8b949e;
+    margin: 0;
 }
 

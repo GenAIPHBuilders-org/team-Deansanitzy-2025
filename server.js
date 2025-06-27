@@ -9,6 +9,8 @@ const xss = require('xss-clean');
 const path = require('path');
 const fs = require('fs');
 
+const AIEngine = require('./lib/ai-engine.js');
+
 // Load environment variables
 dotenv.config();
 
@@ -124,6 +126,26 @@ app.get('/api/config', (req, res) => {
     res.json({
         gemini_api_key: process.env.GEMINI_API_KEY
     });
+});
+
+// AI Chat Endpoint
+app.post('/api/v1/ai/chat', aiLimiter, async (req, res) => {
+    try {
+        const { agentType, message, context } = req.body;
+
+        if (!agentType || !message) {
+            return res.status(400).json({ error: 'Missing agentType or message in request body' });
+        }
+
+        const aiEngine = new AIEngine();
+        const aiResponse = await aiEngine.getChatResponse(agentType, message, context || {});
+        
+        res.json({ response: aiResponse });
+
+    } catch (error) {
+        console.error('AI Chat Endpoint Error:', error);
+        res.status(500).json({ error: 'Failed to get AI response' });
+    }
 });
 
 // Configure multer for file uploads with size limits and filters

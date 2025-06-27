@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="../css/theme.css">
     <!-- Page-specific stylesheet -->
     <link rel="stylesheet" href="debtDemolisher.css">
+    <!-- Chatbot stylesheet -->
+    <link rel="stylesheet" href="../css/chatbot.css">
 </head>
 
 <body>
@@ -98,16 +100,38 @@
                             </div>
                         </div>
 
-                        <!-- Smart Alerts Card -->
+                        <!-- Strategic Insights Card -->
                         <div class="dashboard-card">
-                            <h3><i class="fas fa-bell"></i> Smart Alerts</h3>
-                            <div class="analysis-content" id="alerts-content">
-                                <!-- Alerts will be dynamically inserted here -->
+                            <h3><i class="fas fa-lightbulb"></i> Strategic Insights</h3>
+                            <div class="analysis-content" id="insights-content">
+                                <!-- AI-driven insights will be dynamically inserted here -->
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
+
+            <!-- Chatbot Section -->
+            <div class="chatbot-container">
+                <div id="chatbot-window" class="chatbot-window active">
+                    <div class="chatbot-header">
+                        <h3 id="chatbot-title">AI Debt Assistant</h3>
+                    </div>
+                    <div id="chatbot-body" class="chatbot-body">
+                        <div id="chatbot-messages" class="chatbot-messages">
+                            <div class="chatbot-message assistant">
+                                Hello! I'm your AI Debt Assistant. Ask me anything about your debt reduction plan.
+                            </div>
+                        </div>
+                        <div class="chatbot-input-container">
+                            <textarea id="chatbot-input" class="chatbot-input" placeholder="Ask your question..."></textarea>
+                            <button id="chatbot-send-btn" class="chatbot-send-btn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 

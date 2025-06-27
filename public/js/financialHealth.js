@@ -4,6 +4,7 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth
 import { 
     getUserBankAccounts,
     getUserTransactions,
+    getUserData,
     collection,
     db,
     getDocs
@@ -83,15 +84,17 @@ async function getUserFinancialData(user) {
     try {
         console.log('Fetching financial data for user:', user.uid);
         
-        // Get accounts and transactions in parallel
-        const [accounts, transactions] = await Promise.all([
+        // Get accounts, transactions, and profile in parallel
+        const [accounts, transactions, profileData] = await Promise.all([
             getUserBankAccounts(user.uid),
-            getUserTransactions(user.uid)
+            getUserTransactions(user.uid),
+            getUserData(user.uid)
         ]);
         
         return {
             accounts: accounts || [],
-            transactions: transactions || []
+            transactions: transactions || [],
+            profile: profileData || {}
         };
     } catch (error) {
         console.error('Error fetching financial data:', error);
@@ -204,44 +207,70 @@ async function parsePlainTextAnalysis(text, userData) {
     let analysis = {}; // Start with an empty object
 
     try {
-        let jsonString = text.trim();
-        
-        // 1. Aggressively find and extract the JSON object from the raw text.
-        // First, look for a markdown block. If found, use its content.
-        const jsonBlockMatch = jsonString.match(/```json\s*(\{[\s\S]*?\})\s*```/s);
-        if (jsonBlockMatch && jsonBlockMatch[1]) {
-            jsonString = jsonBlockMatch[1];
-        } else {
-            // If not in a markdown block, find the first and last brace to extract the object.
-            const firstBrace = jsonString.indexOf('{');
+        // --- The Ultimate JSON Repair and Reconstruction Engine ---
+
+        // 1. Find the first '{' to start the JSON string and discard any preamble.
+        const firstBraceIndex = text.indexOf('{');
+        if (firstBraceIndex === -1) throw new Error("No '{' found in AI response.");
+        let jsonString = text.substring(firstBraceIndex);
+
+        // 2. Aggressively remove common non-JSON patterns from the AI response.
+        jsonString = jsonString.replace(/\/\/.*$/gm, ''); // Remove single-line comments.
+        jsonString = jsonString.replace(/\*\*.*\*\*[\s\S]*/, ''); // Remove markdown headers and all subsequent text.
+
+        // 3. Find the last meaningful character (brace or bracket) to discard trailing garbage.
+        const lastBracket = jsonString.lastIndexOf(']');
             const lastBrace = jsonString.lastIndexOf('}');
-            if (firstBrace !== -1 && lastBrace > firstBrace) {
-                jsonString = jsonString.substring(firstBrace, lastBrace + 1);
-            } else {
-                console.error("No valid JSON object could be extracted from the AI response.", {rawResponse: text});
-                throw new Error("No valid JSON object found in AI response.");
+        const lastCharIndex = Math.max(lastBracket, lastBrace);
+        if (lastCharIndex === -1) throw new Error("No closing bracket found after cleaning.");
+        jsonString = jsonString.substring(0, lastCharIndex + 1);
+
+        // 4. Reconstruct the object by adding missing closing brackets using a stack.
+        const stack = [];
+        let inString = false;
+        for (let i = 0; i < jsonString.length; i++) {
+            const char = jsonString[i];
+            if (char === '"' && (i === 0 || jsonString[i-1] !== '\\')) {
+                inString = !inString;
+            } else if (!inString) {
+                if (char === '{' || char === '[') {
+                    stack.push(char);
+                } else if (char === '}') {
+                    if (stack.length > 0 && stack[stack.length - 1] === '{') stack.pop();
+                } else if (char === ']') {
+                    if (stack.length > 0 && stack[stack.length - 1] === '[') stack.pop();
+                }
             }
         }
+        while (stack.length > 0) {
+            const openChar = stack.pop();
+            jsonString += (openChar === '{') ? '}' : ']';
+        }
 
-        // 2. Clean up common JSON syntax errors from LLMs
-        let sanitizedString = jsonString
-            // Remove invalid control characters that can break JSON.parse.
-            // This leaves valid whitespace like \n, \r, \t.
-            .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
-            // Remove comments, although the prompt should prevent this.
-            .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
-            // Remove trailing commas before closing braces or brackets. A frequent error.
-            .replace(/,\s*([\}\]])/g, '$1');
+        // 5. Perform final syntax repairs on the reconstructed string.
+        jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3'); // Add quotes to unquoted keys.
+        
+        // This regex finds colon-separated values that are unquoted strings and adds quotes.
+        // It avoids quoting numbers, true, false, null, objects, or arrays.
+        jsonString = jsonString.replace(/:\s*([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, p1) => {
+            if (p1 === 'true' || p1 === 'false' || p1 === 'null') {
+                return `: ${p1}`;
+            }
+            return `: "${p1}"`;
+        });
 
-        const parsedData = JSON.parse(sanitizedString);
+        jsonString = jsonString.replace(/,\s*([\}\]])/g, '$1'); // Remove trailing commas.
+        jsonString = jsonString.replace(/\}\s*\{/g, '},{'); // Add missing commas between objects.
 
-        // 3. Validate the structure of the parsed data to ensure it's usable
+        const parsedData = JSON.parse(jsonString);
+
+        // 6. Validate the structure of the parsed data to ensure it's usable.
         analysis = {
             healthScore: parsedData.healthScore || 50,
             summary: parsedData.summary || "AI summary was not provided.",
             insights: Array.isArray(parsedData.insights) ? parsedData.insights : [],
             recommendations: Array.isArray(parsedData.recommendations) ? parsedData.recommendations : [],
-            riskAssessment: { shortTerm: [], longTerm: [], mitigationStrategies: [] } // default this
+            riskAssessment: parsedData.riskAssessment || { shortTerm: [], longTerm: [], mitigationStrategies: [] }
         };
 
     } catch (error) {
@@ -250,7 +279,7 @@ async function parsePlainTextAnalysis(text, userData) {
         return { insights: [], recommendations: [] }; // Critical fallback
     }
 
-    // 4. Manually calculate metrics and add them to the analysis
+    // 7. Manually calculate metrics and add them to the analysis.
     const { accounts, transactions } = userData;
     const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0);
     const monthlyTransactions = getMonthlyTransactions(transactions);
@@ -269,13 +298,14 @@ async function parsePlainTextAnalysis(text, userData) {
 }
 
 function generateFinancialPrompt(userData) {
-    const { accounts, transactions } = userData;
+    const { accounts, transactions, profile } = userData;
     
     // Calculate some basic metrics to help the AI
     const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0);
     const monthlyTransactions = getMonthlyTransactions(transactions);
     const monthlyIncome = calculateMonthlyIncome(monthlyTransactions);
     const monthlyExpenses = calculateMonthlyExpenses(monthlyTransactions);
+    const statedMonthlyIncome = profile?.financialProfile?.monthlyIncome || 0;
     
     // Sanitize user-generated strings to prevent breaking the prompt structure
     const sanitizeForPrompt = (str) => (str || '').replace(/"/g, "'").replace(/\n/g, ' ').trim();
@@ -294,31 +324,43 @@ function generateFinancialPrompt(userData) {
         balance: parseFloat(acc.balance || 0),
     }));
     
-    // FINAL ROBUST PROMPT v4: Use JSON for data to prevent confusion.
-    return `You are a financial analyst AI. Your response MUST be a single, valid JSON object and nothing else.
-    
-**CRITICAL RULES:**
-1.  **JSON ONLY:** Your entire response must be a raw string representing a single JSON object, starting with \`{\` and ending with \`}\`.
-2.  **NO MARKDOWN OR COMMENTS:** Do NOT wrap the JSON in markdown blocks or include any comments.
-3.  **VALID JSON:** Ensure the JSON is valid. All keys and string values must use double quotes. No trailing commas.
+    // FINAL ROBUST PROMPT v6: Ask for a specific quantity of smarter, non-hardcoded analysis.
+    return `You are a world-class financial analyst AI, specializing in providing hyper-personalized, actionable advice. Your response MUST be a single, valid JSON object and nothing else.
 
-**FINANCIAL DATA (PHP):**
+**CRITICAL INSTRUCTIONS:**
+1.  **JSON ONLY:** Your entire response must be a raw string representing a single JSON object, starting with \`{\` and ending with \`}\`.
+2.  **NO MARKDOWN OR COMMENTS:** Do NOT wrap the JSON in markdown blocks, comments, or any other text.
+3.  **VALID & COMPLETE JSON:** Ensure the JSON is valid. All keys and string values must use double quotes. No trailing commas. Fill all fields.
+4.  **DEEPLY PERSONALIZED ANALYSIS (NO GENERIC ADVICE):** Analyze the provided data deeply. Do NOT provide hardcoded, generic, or placeholder advice. Every insight and recommendation must be directly derived from the user's specific data. For example, if you suggest saving money, pinpoint the exact expense categories (e.g., "Your 'Dining Out' spending of ₱5,000 is high relative to your income") rather than saying "spend less."
+5.  **QUANTITY & DIVERSITY:** You MUST generate AT LEAST 6 detailed and diverse insights and AT LEAST 4 actionable recommendations. The insights should cover various financial areas like spending, saving, income, and account health. This is a mandatory requirement.
+
+**USER'S FINANCIAL DATA (in PHP):**
 This data is provided in JSON format.
-- Summary: { "totalBalance": ${totalBalance.toFixed(2)}, "monthlyIncome": ${monthlyIncome.toFixed(2)}, "monthlyExpenses": ${monthlyExpenses.toFixed(2)} }
-- Accounts: ${JSON.stringify(accountData)}
-- Transactions This Month: ${JSON.stringify(transactionData)}
+- Core Profile: { "statedMonthlyIncome": ${statedMonthlyIncome.toFixed(2)}, "employmentStatus": "${profile?.financialProfile?.employmentStatus || 'Not specified'}" }
+- Account Summary: { "totalBalance": ${totalBalance.toFixed(2)}, "transactionalMonthlyIncome": ${monthlyIncome.toFixed(2)}, "monthlyExpenses": ${monthlyExpenses.toFixed(2)} }
+- Accounts Details: ${JSON.stringify(accountData)}
+- Recent Transactions (Current Month): ${JSON.stringify(transactionData)}
+
+**YOUR TASK:**
+Based *only* on the data above, perform a detailed financial health analysis and generate the JSON response below.
 
 **JSON RESPONSE STRUCTURE:**
-Provide your analysis in the following JSON format.
 {
-  "healthScore": <Number 0-100>,
-  "summary": "<One-sentence summary>",
+  "healthScore": <Number 0-100, calculated based on savings rate, emergency fund, and debt (if available)>,
+  "summary": "<One-sentence, personalized summary of their current financial status>",
   "insights": [
-    { "type": "<strength|weakness|opportunity|threat>", "priority": "<low|medium|high>", "title": "...", "description": "...", "impact": "..." }
+    // REQUIRED: Generate at least 6 diverse and detailed insights here.
+    { "type": "<strength|weakness|opportunity>", "priority": "<low|medium|high>", "title": "<Specific, data-driven title>", "description": "<Detailed description that references specific numbers or transactions from the user's data>", "impact": "<low|medium|high>" }
   ],
   "recommendations": [
-    { "title": "...", "description": "...", "impact": "<low|medium|high>", "timeframe": "<immediate|short_term|long_term>", "difficulty": "<easy|moderate|challenging>", "expectedOutcome": "..." }
-  ]
+    // REQUIRED: Generate at least 4 actionable recommendations here.
+    { "title": "<Actionable, specific title>", "description": "<Clear, step-by-step guidance on what to do, referencing their data>", "impact": "<low|medium|high>", "timeframe": "<immediate|short_term|long_term>", "difficulty": "<easy|moderate|challenging>", "expectedOutcome": "<A quantifiable outcome, e.g., 'Increase savings by ₱1,500/month'>" }
+  ],
+  "riskAssessment": {
+    "shortTerm": ["<A specific, personalized short-term risk based on the user's data>", "<Another risk>"],
+    "longTerm": ["<A specific, personalized long-term risk based on the user's data>", "<Another risk>"],
+    "mitigationStrategies": ["<An actionable mitigation strategy for the identified risks>", "<Another strategy>"]
+  }
 }
 `;
 }
@@ -742,81 +784,134 @@ function initializeAnimations() {
 
 function enhancedOfflineAnalysis(userData) {
     try {
-        const { accounts, transactions } = userData;
+        const { accounts, transactions, profile } = userData;
         
         // Calculate total balances and monthly flows
         const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance || 0), 0);
-        
-        // Get current month's transactions
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-        
-        const monthlyTransactions = transactions.filter(tx => {
-            const txDate = new Date(tx.date || tx.timestamp);
-            return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
-        });
-
-        // Calculate monthly income and expenses
-        const monthlyIncome = monthlyTransactions
-            .filter(tx => tx.type === 'income')
-            .reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-
-        const monthlyExpenses = monthlyTransactions
-            .filter(tx => tx.type === 'expense')
-            .reduce((sum, tx) => sum + Math.abs(parseFloat(tx.amount || 0)), 0);
+        const monthlyTransactions = getMonthlyTransactions(transactions);
+        const monthlyIncome = calculateMonthlyIncome(monthlyTransactions);
+        const monthlyExpenses = calculateMonthlyExpenses(monthlyTransactions);
 
         // Calculate key metrics
         const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : 0;
-        const expenseRatio = monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 100;
         const emergencyFundMonths = monthlyExpenses > 0 ? totalBalance / monthlyExpenses : 0;
+
+        // --- Generate a guaranteed set of 6+ offline insights ---
+        const insights = [];
+
+        // Insight 1: AI Status
+        insights.push({ type: "weakness", priority: "high", title: "AI Analysis Offline", description: "You're seeing a standard analysis because the AI engine is currently offline. Key metrics are calculated, but personalized insights are unavailable.", impact: "low", trend: "stable" });
+
+        // Insight 2: Savings Rate
+        if (savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget) {
+            insights.push({ type: "strength", priority: "high", title: "Excellent Savings Rate", description: `Your savings rate of ${savingsRate.toFixed(1)}% is above the recommended ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}%, which is fantastic for building wealth.`, impact: "high", trend: "stable" });
+        } else {
+            insights.push({ type: "opportunity", priority: "medium", title: "Opportunity to Boost Savings", description: `Your current savings rate is ${savingsRate.toFixed(1)}%. Aiming for the recommended ${FINANCIAL_HEALTH_CONFIG.savingsRateTarget}% could significantly accelerate your financial goals.`, impact: "medium", trend: "stable" });
+        }
         
-        // Calculate health score (0-100)
-        let healthScore = 50; // Base score
-        if (savingsRate >= FINANCIAL_HEALTH_CONFIG.savingsRateTarget) healthScore += 15;
-        else if (savingsRate > 0) healthScore += (savingsRate / FINANCIAL_HEALTH_CONFIG.savingsRateTarget) * 15;
-        if (expenseRatio <= FINANCIAL_HEALTH_CONFIG.expenseRatioMax) healthScore += 15;
-        else healthScore -= ((expenseRatio - FINANCIAL_HEALTH_CONFIG.expenseRatioMax) / 20) * 15;
-        if (emergencyFundMonths >= FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) healthScore += 20;
-        else healthScore += (emergencyFundMonths / FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) * 20;
-        healthScore = Math.min(100, Math.max(0, healthScore));
+        // Insight 3: Emergency Fund
+        if (emergencyFundMonths >= FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) {
+            insights.push({ type: "strength", priority: "high", title: "Strong Emergency Fund", description: `You have ${emergencyFundMonths.toFixed(1)} months of expenses saved, exceeding the ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget}-month target. This provides a strong financial safety net.`, impact: "high", trend: "stable" });
+        } else {
+            insights.push({ type: "weakness", priority: "high", title: "Grow Your Emergency Fund", description: `Your emergency fund currently covers ${emergencyFundMonths.toFixed(1)} months of expenses. Building this up to the recommended ${FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget} months is crucial for financial security.`, impact: "high", trend: "stable" });
+        }
+
+        // Insight 4: Top Expense Category
+        const expenseTransactions = monthlyTransactions.filter(tx => tx.type === 'expense');
+        if (expenseTransactions.length > 0) {
+            const categorizedExpenses = categorizeTransactions(expenseTransactions);
+            const topCategory = Object.keys(categorizedExpenses).reduce((a, b) => categorizedExpenses[a].total > categorizedExpenses[b].total ? a : b);
+            if (topCategory && topCategory !== 'uncategorized') {
+                const topCategoryTotal = categorizedExpenses[topCategory].total;
+                const percentageOfExpenses = monthlyExpenses > 0 ? (topCategoryTotal / monthlyExpenses) * 100 : 0;
+                insights.push({ type: "opportunity", priority: "medium", title: `Review '${topCategory}' Spending`, description: `Your spending on '${topCategory}' was ₱${topCategoryTotal.toFixed(2)} this month, making up ${percentageOfExpenses.toFixed(0)}% of your total expenses. Reviewing this could unlock savings.`, impact: "medium", trend: "stable" });
+            }
+        }
+
+        // Insight 5: Income vs. Expenses
+        if (monthlyIncome > monthlyExpenses) {
+            insights.push({ type: "strength", priority: "medium", title: "Positive Cash Flow", description: `This month, your income of ₱${monthlyIncome.toFixed(2)} exceeded your expenses of ₱${monthlyExpenses.toFixed(2)}, resulting in a surplus. This is key to growing savings.`, impact: "high", trend: "stable" });
+        } else {
+            insights.push({ type: "weakness", priority: "high", title: "Negative Cash Flow Alert", description: `This month, your expenses (₱${monthlyExpenses.toFixed(2)}) were higher than your income (₱${monthlyIncome.toFixed(2)}). It's important to address this to avoid debt.`, impact: "high", trend: "stable" });
+        }
+
+        // Insight 6: Account Diversity
+        if (accounts.length > 3) {
+             insights.push({ type: "opportunity", priority: "low", title: "Simplify Your Accounts", description: `You have ${accounts.length} different bank accounts. Consolidating them could simplify your financial management and potentially lead to better interest rates.`, impact: "low", trend: "stable" });
+        } else {
+            insights.push({ type: "strength", priority: "low", title: "Focused Financial Accounts", description: `With ${accounts.length} bank accounts, your finances are streamlined and easy to manage.`, impact: "low", trend: "stable" });
+        }
+
+        // Calculate health score
+        let healthScore = 10;
+        healthScore += Math.max(0, Math.min(35, (savingsRate / FINANCIAL_HEALTH_CONFIG.savingsRateTarget) * 35));
+        healthScore += Math.max(0, Math.min(40, (emergencyFundMonths / FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) * 40));
+        healthScore = Math.round(Math.min(100, Math.max(0, healthScore)));
+
+        // --- Generate data-driven risk assessment ---
+        const riskAssessment = {
+            shortTerm: [],
+            longTerm: [],
+            mitigationStrategies: []
+        };
+
+        if (emergencyFundMonths < FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget / 2) {
+            riskAssessment.shortTerm.push(`Critically low emergency fund (${emergencyFundMonths.toFixed(1)} months) poses an immediate risk from unexpected expenses (e.g., medical, job loss).`);
+            riskAssessment.mitigationStrategies.push("Prioritize building your emergency fund to at least 3 months of expenses immediately.");
+        } else if (emergencyFundMonths < FINANCIAL_HEALTH_CONFIG.emergencyFundMonthsTarget) {
+            riskAssessment.shortTerm.push(`Insufficient emergency fund (${emergencyFundMonths.toFixed(1)} months) increases vulnerability to financial shocks.`);
+            riskAssessment.mitigationStrategies.push("Automate monthly transfers to your emergency savings account.");
+        }
+
+        if (savingsRate < 10) {
+            riskAssessment.shortTerm.push("Very low savings rate may lead to reliance on debt for minor unexpected costs.");
+            riskAssessment.longTerm.push("Current savings rate is insufficient for long-term goals like retirement or major purchases.");
+            riskAssessment.mitigationStrategies.push("Review your budget for non-essential expenses that can be redirected to savings.");
+        }
+
+        const offlineExpenseTransactions = monthlyTransactions.filter(tx => tx.type === 'expense');
+        if (offlineExpenseTransactions.length > 0) {
+            const categorizedExpenses = categorizeTransactions(offlineExpenseTransactions);
+            const topCategory = Object.keys(categorizedExpenses).reduce((a, b) => categorizedExpenses[a].total > categorizedExpenses[b].total ? a : b, '');
+            if (topCategory) {
+                const topCategoryPercentage = monthlyExpenses > 0 ? (categorizedExpenses[topCategory].total / monthlyExpenses) * 100 : 0;
+                if (topCategoryPercentage > 30) {
+                    riskAssessment.shortTerm.push(`High spending concentration in '${topCategory}' (${topCategoryPercentage.toFixed(0)}%) creates budget vulnerability if this category's costs rise.`);
+                    riskAssessment.mitigationStrategies.push(`Set a specific budget for the '${topCategory}' category and track your spending against it.`);
+                }
+            }
+        }
+        
+        riskAssessment.longTerm.push("Without dedicated investment accounts, your savings may lose purchasing power to inflation over time.");
+        riskAssessment.mitigationStrategies.push("Consider opening a low-cost index fund or consulting a financial advisor to start investing.");
 
         // Return a clear, non-hardcoded fallback analysis
         return {
-            healthScore: Math.round(healthScore),
-            summary: `Your basic financial health score is ${Math.round(healthScore)}/100. AI analysis is currently unavailable, so this is a summary based on standard calculations.`,
+            healthScore: healthScore,
+            summary: `Your standard financial health score is ${healthScore}/100. This is based on key metrics, as AI analysis is currently unavailable.`,
             metrics: {
                 savingsRate: parseFloat(savingsRate.toFixed(1)),
                 debtToIncome: 0,
-                expenseRatio: parseFloat(expenseRatio.toFixed(1)),
+                expenseRatio: monthlyIncome > 0 ? (monthlyExpenses / monthlyIncome) * 100 : 100,
                 emergencyFundMonths: parseFloat(emergencyFundMonths.toFixed(1)),
                 investmentAllocation: 0,
                 discretionarySpending: 0,
                 basicNecessitiesRatio: 0,
                 financialSustainability: 0
             },
-            insights: [{
-                type: "weakness",
-                title: "AI Analysis Unavailable",
-                description: "Could not connect to the AI for a detailed financial analysis. The metrics above are based on standard calculations, not personalized insights.",
-                priority: "high",
-                impact: "You are not seeing personalized insights or a detailed action plan.",
-                trend: "stable"
-            }],
+            insights: insights, // Use the dynamically generated insights
             recommendations: [{
-                title: "Retry AI Analysis",
-                description: "Please check your internet connection and refresh the page to get your full AI-powered financial analysis.",
-                impact: "high",
-                timeframe: "immediate",
-                difficulty: "easy",
-                expectedOutcome: "A detailed analysis with personalized insights and an action plan.",
-                alternativeSolutions: ["If the problem persists, the AI service may be temporarily down. Please try again later."]
+                title: "Review Your Key Metrics",
+                description: "The scores above for Savings Rate and Emergency Fund are based on standard financial guidelines. Use them as a starting point to assess your financial standing.",
+                impact: "medium", timeframe: "immediate", difficulty: "easy",
+                expectedOutcome: "Gain a clearer understanding of your current financial health.",
+            }, {
+                title: "Categorize Your Spending",
+                description: "For a clearer picture of your finances, ensure all your transactions are categorized correctly. This will improve the quality of both standard and AI-powered analyses.",
+                impact: "medium", timeframe: "short_term", difficulty: "easy",
+                expectedOutcome: "More accurate financial insights and better spending awareness.",
             }],
-            riskAssessment: {
-                shortTerm: ["AI-based risk assessment unavailable."],
-                longTerm: ["AI-based risk assessment unavailable."],
-                mitigationStrategies: ["Retry analysis to get risk assessment."]
-            }
+            riskAssessment: riskAssessment
         };
     } catch (error) {
         console.error('Error in offline analysis:', error);

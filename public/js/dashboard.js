@@ -265,23 +265,26 @@ async function updateUserInterface(user) {
 
 // Initialize dashboard functionality
 async function initializeDashboard() {
-    try {
-        // Initialize spending chart
-        initializeSpendingChart();
-        
-        // Load transaction data for the chart
-        await loadTransactionData();
-        
-        // Initialize financial health section
-        refreshFinancialHealth();
-        
-        // Initialize chatbot
-        if (typeof initializeChatbot === 'function') {
-            initializeChatbot();
-        }
-    } catch (error) {
-        console.error('Error initializing dashboard:', error);
+  console.log('🚀 Initializing dashboard components...');
+  try {
+    // These functions set up the initial state of the dashboard components
+    initializeTransactionHistory();
+    initializeBankModalToggles();
+    initializeTransactionForm();
+    initializeBankForm();
+    
+    // Add sample data for new users
+    const sampleDataAdded = await secureStorage.getItem('sampleDataAdded');
+    if (!sampleDataAdded) {
+      console.log("First time login detected, adding sample data...");
+      await addSampleTransactions();
+      await secureStorage.setItem('sampleDataAdded', 'true');
     }
+    
+    console.log('✅ Dashboard components initialized');
+  } catch (error) {
+    console.error('Error in initializeDashboard:', error);
+  }
 }
 
 function initializeSpendingChart() {
@@ -381,7 +384,10 @@ function initializeSpendingChart() {
 // New function to load transaction data and update the chart
 async function loadTransactionData() {
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) {
+    console.error('User not authenticated, cannot load transaction data');
+    return;
+  }
   
   try {
     const transactions = await getUserTransactions(user.uid);

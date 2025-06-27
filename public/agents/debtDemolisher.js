@@ -7,6 +7,7 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-auth
 import { BaseAgent } from "./BaseAgent.js";
 import { GEMINI_API_KEY, GEMINI_MODEL, OFFLINE_MODE, configStatus } from "../js/config.js";
 import { getUserTransactions, getUserBankAccounts } from "../js/firestoredb.js";
+import { callGeminiAI } from "../js/agentCommon.js";
 
 // API configuration for potential future use (e.g., financial data aggregation APIs)
 const API_CONFIG = {
@@ -117,8 +118,8 @@ class DebtDemolisherAI extends BaseAgent {
         this.repaymentStrategies = {}; // To store strategies like Avalanche, Snowball
         this.activeAlerts = [];
         this.totalDebt = 0;
-        this.userIncome = 0;
-        this.extraPayment = 5000; // Default extra payment, can be made user-configurable
+        this.userIncome = 0; // Default or fetched value
+        this.extraPayment = 5000; // Default or user-defined value
         
         this.initializeElements();
         this.initializeEventListeners();
@@ -128,17 +129,24 @@ class DebtDemolisherAI extends BaseAgent {
     initializeElements() {
         this.elements = {
             loadingState: document.getElementById('loading-state'),
-            contentLoaded: document.getElementById('content-loaded'),
             emptyState: document.getElementById('empty-state'),
-            // Financial Overview
+            contentLoaded: document.getElementById('content-loaded'),
             totalDebt: document.getElementById('total-debt'),
             debtReductionProgress: document.getElementById('debt-reduction-progress'),
             estimatedPayoffDate: document.getElementById('estimated-payoff-date'),
             interestSaved: document.getElementById('interest-saved'),
-            // Card Content
             debtPortfolioContent: document.getElementById('debt-portfolio-content'),
             strategyContent: document.getElementById('strategy-content'),
-            alertsContent: document.getElementById('alerts-content'),
+            insightsContent: document.getElementById('insights-content'),
+            toast: document.getElementById('toast-notification'),
+            toastMessage: document.getElementById('toast-message'),
+            // Chatbot elements
+            chatbotWindow: document.getElementById('chatbot-window'),
+            chatbotBody: document.getElementById('chatbot-body'),
+            chatbotMessages: document.getElementById('chatbot-messages'),
+            chatbotInput: document.getElementById('chatbot-input'),
+            chatbotSendBtn: document.getElementById('chatbot-send-btn'),
+            chatbotTitle: document.getElementById('chatbot-title'),
         };
 
         // Validate elements
@@ -151,7 +159,15 @@ class DebtDemolisherAI extends BaseAgent {
 
     // Initialize event listeners (can be expanded later)
     initializeEventListeners() {
-        // Placeholder for future event listeners like strategy toggles
+        if (this.elements.chatbotSendBtn) {
+            this.elements.chatbotSendBtn.addEventListener('click', () => this.handleChatbotInput());
+            this.elements.chatbotInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.handleChatbotInput();
+                }
+            });
+        }
     }
 
     // Start the Debt Demolisher agent
@@ -174,11 +190,15 @@ class DebtDemolisherAI extends BaseAgent {
                 this.showEmptyState("No debt accounts found. Link your liability accounts to get started.");
                 return;
             }
-
-            await this.runAnalysis();
             
             this.showContentState();
+            if (this.elements.chatbotTitle) {
+                this.elements.chatbotTitle.innerHTML = `AI Debt Assistant <span class="model-badge">Powered by Phi-3</span>`;
+            }
             console.log("✅ Debt Demolisher AI initialized successfully");
+            
+            // Automatically run the analysis after initialization
+            await this.runAnalysis();
             
         } catch (error) {
             console.error("❌ Error starting Debt Demolisher AI:", error);
@@ -238,49 +258,313 @@ class DebtDemolisherAI extends BaseAgent {
 
     // Run the main analysis
     async runAnalysis() {
-        console.log("🧠 Running Debt Demolisher Analysis...");
+        this.logAgentAction('analysis_started');
+        try {
+            console.log("🧠 Running hybrid debt analysis...");
 
-        // Instantiate and run the strategy engine
+            // Step 1: Run local simulations for Avalanche and Snowball strategies.
         const engine = new StrategyEngine(this.debtAccounts, this.extraPayment);
-        this.repaymentStrategies.avalanche = engine.simulate('avalanche');
+            const avalanchePlan = engine.simulate('avalanche');
         
-        // We need a new instance of the engine for the second simulation
         const engine2 = new StrategyEngine(this.debtAccounts, this.extraPayment);
-        this.repaymentStrategies.snowball = engine2.simulate('snowball');
+            const snowballPlan = engine2.simulate('snowball');
 
-        console.log('Avalanche Plan:', this.repaymentStrategies.avalanche);
-        console.log('Snowball Plan:', this.repaymentStrategies.snowball);
+            console.log("📊 Local simulations complete:", { avalanchePlan, snowballPlan });
+
+            // Step 2: Ask the AI to analyze the pre-calculated results and provide insights.
+            const prompt = this._generateAnalysisPrompt(avalanchePlan, snowballPlan);
+            const aiResponse = await callGeminiAI(prompt, { max_tokens: 1024 }); 
+
+            const parsedInsights = this.parseAIResponse(aiResponse);
+
+            // Step 3: Translate the AI's insights and the calculated data into the final plan.
+            const structuredPlan = this._structureAIGeneratedPlan(parsedInsights, avalanchePlan, snowballPlan);
+
+            if (!structuredPlan || !structuredPlan.recommendedStrategy || !structuredPlan.recommendedStrategy.name) {
+                throw new Error("AI analysis response was invalid, incomplete, or could not be structured.");
+            }
+            
+            // Store the AI-generated plan
+            this.repaymentStrategies.ai_driven_plan = structuredPlan;
+            this.activeAlerts = structuredPlan.smartAlerts || [];
+            
+            this.logAgentAction('analysis_ai_completed', { strategy: structuredPlan.recommendedStrategy.name });
 
         this.updateFinancialOverview();
         this.updateDebtPortfolioUI();
         this.updateStrategyUI();
-        this.updateSmartAlertsUI();
+        this.updateInsightsUI();
+
+        } catch (error) {
+            this.handleError('analysis_failed', error);
+            this.showErrorMessage("A critical error occurred during the AI analysis. We're showing a standard plan for now.");
+            
+            // Critical Fallback: run the simple simulation so the page still works
+            const engine = new StrategyEngine(this.debtAccounts, this.extraPayment);
+            this.repaymentStrategies.avalanche = engine.simulate('avalanche');
+            this.repaymentStrategies.snowball = engine.simulate('snowball');
+            
+            this.updateFinancialOverview();
+            this.updateDebtPortfolioUI();
+            this.updateStrategyUI();
+            this.updateInsightsUI(); // Clear any old insights
+        }
+    }
+
+    /**
+     * Generates a sophisticated prompt to guide the AI in creating a full debt demolition plan.
+     * @param {object} avalanchePlan - The pre-calculated avalanche plan data.
+     * @param {object} snowballPlan - The pre-calculated snowball plan data.
+     * @returns {string} The prompt for the AI.
+     * @private
+     */
+    _generateAnalysisPrompt(avalanchePlan, snowballPlan) {
+        return `You are a helpful financial AI assistant. Your goal is to compare two debt repayment plans and recommend the best one.
+
+**CRITICAL INSTRUCTIONS:**
+- Your response must be ONLY a valid, flat JSON object.
+- Do not add any text or markdown before or after the JSON.
+- You must provide a value for every key in the example.
+
+**PLAN COMPARISON:**
+*   **Plan A (Debt Avalanche):**
+    *   Saves more money on interest.
+    *   Total Interest: ₱${avalanchePlan.totalInterestPaid.toFixed(2)}
+    *   Payoff Time: ${avalanchePlan.payoffTimeMonths} months
+*   **Plan B (Debt Snowball):**
+    *   Provides psychological wins by clearing small debts first.
+    *   Total Interest: ₱${snowballPlan.totalInterestPaid.toFixed(2)}
+    *   Payoff Time: ${snowballPlan.payoffTimeMonths} months
+
+**YOUR TASK:**
+Based on the plan comparison, choose the best plan and provide a concise reasoning for your choice.
+
+**JSON OUTPUT EXAMPLE:**
+\`\`\`json
+{
+  "recommendedStrategyName": "Debt Avalanche",
+  "reasoning": "The Avalanche plan saves more money in interest, making it the most cost-effective path to becoming debt-free."
+}
+\`\`\`
+
+**YOUR JSON RESPONSE:**
+`;
+    }
+
+    /**
+     * Structures the flat plan from the AI into the nested object required by the UI.
+     * @param {object} insights - The flat JSON object of insights from the AI, which may be incomplete.
+     * @param {object} avalanchePlan - The pre-calculated avalanche plan data.
+     * @param {object} snowballPlan - The pre-calculated snowball plan data.
+     * @returns {object|null} A structured plan object or null if input is invalid.
+     * @private
+     */
+    _structureAIGeneratedPlan(insights, avalanchePlan, snowballPlan) {
+        // Even if AI insights are null or empty, we can still build a plan.
+        const safeInsights = insights || {};
+
+        try {
+            // Default to Avalanche if AI gives no recommendation, as it's usually the most financially optimal.
+            const recommendedName = safeInsights.recommendedStrategyName || 'Debt Avalanche';
+            const chosenPlan = recommendedName === 'Debt Snowball' ? snowballPlan : avalanchePlan;
+            const focusAccount = chosenPlan.paymentSchedule[0];
+
+            // Generate a smarter default reasoning if the AI doesn't provide one.
+            let reasoning = safeInsights.reasoning;
+            if (!reasoning) {
+                // Check if a valid focus account was found in the simulation
+                if (focusAccount && focusAccount.name && typeof focusAccount.interestRate === 'number') {
+                    if (recommendedName === 'Debt Avalanche') {
+                        reasoning = `The <strong>Debt Avalanche</strong> method is recommended. By focusing on your <strong>${focusAccount.name}</strong> with its high interest rate of <strong>${(focusAccount.interestRate * 100).toFixed(1)}%</strong>, you will save the most money on interest charges over the long term.`;
+                    } else {
+                        reasoning = `The <strong>Debt Snowball</strong> method is recommended. Focusing on your smallest debt, the <strong>${focusAccount.name}</strong>, will give you a quick win and build powerful momentum to keep you motivated on your debt-free journey.`;
+                    }
+                } else {
+                    // Fallback to a more generic but still helpful explanation if the focus account is invalid
+                     if (recommendedName === 'Debt Avalanche') {
+                        reasoning = `The <strong>Debt Avalanche</strong> method is recommended. This plan prioritizes your highest-interest debts first, which will save you the most money in interest charges over time.`;
+                    } else {
+                        reasoning = `The <strong>Debt Snowball</strong> method is recommended. This plan focuses on paying off your smallest debts first, which can provide powerful motivation through quick wins.`;
+                    }
+                }
+            }
+
+            const structuredPlan = {
+                recommendedStrategy: {
+                    name: recommendedName,
+                    reasoning: reasoning,
+                    payoffTimeMonths: chosenPlan.payoffTimeMonths,
+                    totalInterestPaid: chosenPlan.totalInterestPaid,
+                    focusAccount: chosenPlan.paymentSchedule[0]?.name || "Not specified",
+                },
+                actionPlan: [],
+                insights: []
+            };
+
+            // Reconstruct action plan with a smart fallback based on the *first* insight.
+            if (safeInsights.insight1_title && safeInsights.insight1_description) {
+                 structuredPlan.actionPlan.push({
+                    step: 1,
+                    title: safeInsights.insight1_title,
+                    description: safeInsights.insight1_description,
+                    priority: 'high'
+                });
+            } else {
+                // Create a default, but still useful, action step
+                structuredPlan.actionPlan.push({
+                    step: 1,
+                    title: `Target Your ${recommendedName === 'Debt Avalanche' ? 'Highest-Interest' : 'Smallest'} Debt`,
+                    description: `Pay the minimum on all debts, and aggressively channel all extra money towards the account with the ${recommendedName === 'Debt Avalanche' ? 'highest interest rate' : 'smallest balance'} to accelerate your progress.`,
+                    priority: 'high'
+                });
+            }
+            structuredPlan.actionPlan.push({
+                step: 2,
+                title: "Automate Extra Payments",
+                description: `Set up an automatic transfer of at least ₱${this.extraPayment.toFixed(2)} to your focus account each month to accelerate your progress.`,
+                priority: "high"
+            });
+
+
+            // Reconstruct insights from the flat JSON response
+            for (let i = 1; i <= 4; i++) {
+                if (safeInsights[`insight${i}_title`] && safeInsights[`insight${i}_description`]) {
+                    structuredPlan.insights.push({
+                        title: safeInsights[`insight${i}_title`],
+                        description: safeInsights[`insight${i}_description`],
+                        priority: 'opportunity'
+                    });
+                }
+            }
+            
+            // If AI provides no insights, create smart, calculated ones.
+            if (structuredPlan.insights.length === 0) {
+                structuredPlan.insights = this._generateStrategicInsights(avalanchePlan, snowballPlan, recommendedName);
+            }
+
+
+            return structuredPlan;
+        } catch (error) {
+            console.error("Error structuring AI plan:", error);
+            this.handleError('ai_plan_structuring_failed', error, { insights: safeInsights });
+            return null;
+        }
+    }
+
+    /**
+     * Generates a list of context-aware fallback insights if the AI fails to provide them.
+     * @param {object} avalanchePlan - The pre-calculated avalanche plan data.
+     * @param {object} snowballPlan - The pre-calculated snowball plan data.
+     * @param {string} recommendedName - The name of the recommended strategy.
+     * @returns {Array<object>} A list of insight objects.
+     * @private
+     */
+    _generateStrategicInsights(avalanchePlan, snowballPlan, recommendedName) {
+        const insights = [];
+        const chosenPlan = recommendedName === 'Debt Avalanche' ? avalanchePlan : snowballPlan;
+
+        // --- Insight 1: Payment Power Analysis ---
+        const paymentPowerDescription = [
+            'Here is how increasing your extra monthly payments could accelerate your journey to being debt-free:'
+        ];
+        const scenarios = [1000, 2500, 5000];
+        scenarios.forEach(extra => {
+            const increasedExtraPayment = this.extraPayment + extra;
+            const tempEngine = new StrategyEngine(this.debtAccounts, increasedExtraPayment);
+            const fasterPlan = tempEngine.simulate(recommendedName.toLowerCase().replace(' ', ''));
+            const monthsSaved = chosenPlan.payoffTimeMonths - fasterPlan.payoffTimeMonths;
+            if (monthsSaved > 0) {
+                paymentPowerDescription.push(`- <strong>+₱${extra.toLocaleString()}/mo:</strong> Pay off debt ${monthsSaved} months sooner!`);
+            }
+        });
+        if (paymentPowerDescription.length > 1) {
+            insights.push({
+                title: 'Payment Power-Up',
+                description: paymentPowerDescription.join('<br>'),
+                priority: 'opportunity'
+            });
+        }
+
+        // --- Insight 2: Debt-to-Income (DTI) Ratio Analysis ---
+        if (this.userIncome > 0) {
+            const dti = (this.totalDebt / (this.userIncome * 12)) * 100;
+            let dtiDesc = `Your Debt-to-Income (DTI) ratio is approximately <strong>${dti.toFixed(0)}%</strong>. `;
+            let priority = 'low';
+            if (dti > 43) {
+                dtiDesc += 'This is considered high and could make it difficult to get new loans. Focusing on your debt plan is crucial.';
+                priority = 'high';
+            } else if (dti > 36) {
+                dtiDesc += 'This is manageable, but reducing it will improve your financial flexibility.';
+                priority = 'medium';
+            } else {
+                dtiDesc += 'This is generally considered healthy. Keep up the great work!';
+            }
+            insights.push({ title: 'Debt-to-Income Analysis', description: dtiDesc, priority: priority });
+        }
+        
+        // --- Insight 3: Interest Rate Review ---
+        const highInterestAccount = this.debtAccounts.find(acc => acc.interestRate > 0.10); // 10% is a high threshold
+        if (highInterestAccount) {
+            insights.push({
+                title: `High-Interest Rate Review: ${highInterestAccount.name}`,
+                description: `Your ${highInterestAccount.name} has an interest rate of <strong>${(highInterestAccount.interestRate * 100).toFixed(1)}%</strong>. This is significantly increasing your cost of debt. Have you considered looking for refinancing options to secure a lower rate?`,
+                priority: 'high'
+            });
+        }
+
+        // --- Insight 4: Emergency Fund ---
+        insights.push({
+            title: "Build an Emergency Buffer",
+            description: "To prevent future debt, it's critical to have a safety net. Aim to build an emergency fund that covers 3-6 months of essential living expenses. Start small and be consistent.",
+            priority: 'medium'
+        });
+
+        return insights.slice(0, 4);
     }
 
     // Update the main metric cards
     updateFinancialOverview() {
-        if (this.elements.totalDebt) {
-            this.elements.totalDebt.textContent = `₱${this.totalDebt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-        }
+        if (!this.elements.totalDebt) return;
 
-        // Use the most efficient strategy (Avalanche) for the main display
-        const preferredStrategy = this.repaymentStrategies.avalanche;
-        if (!preferredStrategy) return;
+        this.elements.totalDebt.textContent = `₱${this.totalDebt.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
 
-        // Calculate original total interest to find savings
-        const originalEngine = new StrategyEngine(this.debtAccounts, 0); // No extra payments
-        const originalPlan = originalEngine.simulate('snowball'); // Strategy doesn't matter w/ no extra payment
-        const interestSaved = originalPlan.totalInterestPaid - preferredStrategy.totalInterestPaid;
+        let payoffMonths = 0;
+        let interestSaved = 0;
         
-        const years = Math.floor(preferredStrategy.payoffTimeMonths / 12);
-        const months = preferredStrategy.payoffTimeMonths % 12;
-        const payoffDate = `${years} yrs, ${months} mos`;
+        if (this.repaymentStrategies.ai_driven_plan) {
+            // If we have an AI plan, use it as the primary source of truth
+            const aiPlan = this.repaymentStrategies.ai_driven_plan.recommendedStrategy;
+            payoffMonths = aiPlan.payoffTimeMonths;
 
-        if (this.elements.debtReductionProgress) this.elements.debtReductionProgress.textContent = '0%'; // Needs real progress tracking later
-        if (this.elements.estimatedPayoffDate) this.elements.estimatedPayoffDate.textContent = payoffDate;
-        if (this.elements.interestSaved) {
-            this.elements.interestSaved.textContent = `₱${interestSaved > 0 ? interestSaved.toLocaleString('en-PH', { minimumFractionDigits: 2 }) : '0.00'}`;
+            // To calculate interest saved, we need a baseline. Let's run a quick "minimum payments only" simulation.
+            const baselineEngine = new StrategyEngine(this.debtAccounts, 0); // 0 extra payment
+            const baselineSim = baselineEngine.simulate('snowball'); // Strategy doesn't matter with 0 extra payment
+            interestSaved = baselineSim.totalInterestPaid - aiPlan.totalInterestPaid;
+
+        } else if (this.repaymentStrategies.avalanche) {
+            // Fallback for offline or failed AI analysis
+            const bestStrategy = this.repaymentStrategies.avalanche.totalInterestPaid < this.repaymentStrategies.snowball.totalInterestPaid
+                ? this.repaymentStrategies.avalanche
+                : this.repaymentStrategies.snowball;
+            payoffMonths = bestStrategy.payoffTimeMonths;
+            interestSaved = Math.abs(this.repaymentStrategies.avalanche.totalInterestPaid - this.repaymentStrategies.snowball.totalInterestPaid);
         }
+
+        const formatMonths = (m) => {
+            if (m <= 0) return 'N/A';
+            const years = Math.floor(m / 12);
+            const months = m % 12;
+            let result = '';
+            if (years > 0) result += `${years}y `;
+            if (months > 0) result += `${months}m`;
+            return result.trim();
+        };
+
+        this.elements.estimatedPayoffDate.textContent = formatMonths(payoffMonths);
+        this.elements.interestSaved.textContent = `₱${interestSaved > 0 ? interestSaved.toLocaleString('en-PH', { maximumFractionDigits: 0 }) : '0'}`;
+        
+        // Placeholder for progress
+        this.elements.debtReductionProgress.textContent = "0%";
     }
 
     // Display the list of identified debts
@@ -307,99 +591,115 @@ class DebtDemolisherAI extends BaseAgent {
     updateStrategyUI() {
         if (!this.elements.strategyContent) return;
 
-        const avalanche = this.repaymentStrategies.avalanche;
-        const snowball = this.repaymentStrategies.snowball;
-
-        if (!avalanche || !snowball) {
-            this.elements.strategyContent.innerHTML = '<p>Could not calculate repayment strategies.</p>';
-            return;
-        }
-        
+        if (this.repaymentStrategies.ai_driven_plan) {
+            // Render the new AI-driven plan
+            const plan = this.repaymentStrategies.ai_driven_plan;
+            const strategy = plan.recommendedStrategy;
+            const formatCurrency = (c) => `₱${c.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
         const formatMonths = (m) => `${Math.floor(m / 12)}y ${m % 12}m`;
-        const formatCurrency = (c) => `₱${c.toLocaleString('en-PH', {maximumFractionDigits: 0})}`;
 
-        const isAvalancheCheaper = avalanche.totalInterestPaid < snowball.totalInterestPaid;
-
-        const content = `
-            <div class="strategy-comparison">
-                <!-- Avalanche Card -->
-                <div class="strategy-card ${isAvalancheCheaper ? 'recommended' : ''}">
-                    ${isAvalancheCheaper ? '<div class="recommended-badge"><i class="fas fa-star"></i> Most Savings</div>' : ''}
-                    <h4>Debt Avalanche</h4>
-                    <p>Focuses on highest interest rate first.</p>
+            this.elements.strategyContent.innerHTML = `
+                <div class="ai-strategy-card">
+                    <h4><i class="fas fa-brain"></i> Your AI-Powered Plan: ${strategy.name}</h4>
+                    <p class="strategy-reasoning">${strategy.reasoning}</p>
                     <div class="strategy-metrics">
                         <div>
-                            <span class="metric-label">Payoff Time</span>
-                            <span class="metric-value">${formatMonths(avalanche.payoffTimeMonths)}</span>
+                            <span>Est. Payoff Time</span>
+                            <strong>${formatMonths(strategy.payoffTimeMonths)}</strong>
                         </div>
                         <div>
-                            <span class="metric-label">Total Interest</span>
-                            <span class="metric-value">${formatCurrency(avalanche.totalInterestPaid)}</span>
+                            <span>Total Interest</span>
+                            <strong>${formatCurrency(strategy.totalInterestPaid)}</strong>
                         </div>
                     </div>
+                    <hr>
+                    <h5><i class="fas fa-bullseye"></i> Your Action Plan</h5>
+                    <ul class="action-plan-list">
+                        ${plan.actionPlan.map(step => `
+                            <li>
+                                <strong>Step ${step.step}: ${step.title}</strong>
+                                <p>${step.description}</p>
+                            </li>
+                        `).join('')}
+                    </ul>
+                 </div>
+            `;
+        } else if (this.repaymentStrategies.avalanche) {
+            // Fallback to the original comparison view
+            const avalanche = this.repaymentStrategies.avalanche;
+            const snowball = this.repaymentStrategies.snowball;
+            const formatMonths = (m) => `${Math.floor(m / 12)}y ${m % 12}m`;
+            const formatCurrency = (c) => `₱${c.toLocaleString('en-PH', {maximumFractionDigits: 0})}`;
+
+            const bestStrategy = avalanche.totalInterestPaid < snowball.totalInterestPaid ? 'avalanche' : 'snowball';
+
+            this.elements.strategyContent.innerHTML = `
+                <div class="strategy-comparison">
+                    <div class="strategy-card ${bestStrategy === 'avalanche' ? 'recommended' : ''}">
+                        ${bestStrategy === 'avalanche' ? '<div class="ribbon">Recommended</div>' : ''}
+                        <h4>Debt Avalanche</h4>
+                        <p>Focuses on highest interest rate first.</p>
+                        <div class="strategy-metrics">
+                            <div><span>Payoff Time</span> <strong>${formatMonths(avalanche.payoffTimeMonths)}</strong></div>
+                            <div><span>Total Interest</span> <strong>${formatCurrency(avalanche.totalInterestPaid)}</strong></div>
+                    </div>
                 </div>
-                <!-- Snowball Card -->
-                <div class="strategy-card ${!isAvalancheCheaper ? 'recommended' : ''}">
-                    ${!isAvalancheCheaper ? '<div class="recommended-badge"><i class="fas fa-star"></i> Quickest Wins</div>' : ''}
+                    <div class="strategy-card ${bestStrategy === 'snowball' ? 'recommended' : ''}">
+                        ${bestStrategy === 'snowball' ? '<div class="ribbon">Recommended</div>' : ''}
                     <h4>Debt Snowball</h4>
                     <p>Focuses on smallest balance first.</p>
                     <div class="strategy-metrics">
-                        <div>
-                            <span class="metric-label">Payoff Time</span>
-                            <span class="metric-value">${formatMonths(snowball.payoffTimeMonths)}</span>
-                        </div>
-                        <div>
-                            <span class="metric-label">Total Interest</span>
-                            <span class="metric-value">${formatCurrency(snowball.totalInterestPaid)}</span>
-                        </div>
+                            <div><span>Payoff Time</span> <strong>${formatMonths(snowball.payoffTimeMonths)}</strong></div>
+                            <div><span>Total Interest</span> <strong>${formatCurrency(snowball.totalInterestPaid)}</strong></div>
                     </div>
                 </div>
             </div>
         `;
-
-        this.elements.strategyContent.innerHTML = content;
+        } else {
+             this.elements.strategyContent.innerHTML = `<p>Run analysis to see repayment strategies.</p>`;
+        }
     }
     
-    // Display relevant alerts for the user's debt situation
-    updateSmartAlertsUI() {
-        if (!this.elements.alertsContent) return;
-        this.activeAlerts = []; // Clear previous alerts
+    // Display relevant insights for the user's debt situation
+    updateInsightsUI() {
+        if (!this.elements.insightsContent) return;
+        
+        const insights = this.repaymentStrategies.ai_driven_plan?.insights || [];
 
-        // Example Alert: High Debt-to-Income Ratio
-        if (this.userIncome > 0) {
-            const dtiRatio = this.totalDebt / this.userIncome;
-            if (dtiRatio > 0.4) { // Threshold for high DTI
-                this.activeAlerts.push({
-                    title: 'High Debt-to-Income Ratio',
-                    desc: `Your debt is high compared to your income (${(dtiRatio * 100).toFixed(0)}%), which could impact your financial health.`,
-                    priority: 'high',
-                    icon: 'fa-exclamation-triangle'
-                });
-            }
+        if (insights.length > 0) {
+            this.elements.insightsContent.innerHTML = insights.map(insight =>
+                this.renderAlert(insight.title, insight.description, insight.priority || 'opportunity')
+            ).join('');
+        } else {
+            this.elements.insightsContent.innerHTML = this.renderAlert(
+                'All Clear!',
+                'Our AI found no specific strategic insights at this time. Sticking to the recommended plan is your best move.',
+                'low',
+                'fa-check-circle'
+            );
         }
-        
-        // Alert to encourage plan personalization
-        if(this.debtAccounts.length > 0) {
-             this.activeAlerts.push({
-                title: 'Review Your Repayment Plan',
-                desc: `We've simulated your payoff using an estimated ₱${this.extraPayment.toLocaleString('en-PH')} extra per month. Adjust this to personalize your forecast.`,
-                priority: 'medium',
-                icon: 'fa-cogs'
-            });
-        }
-        
-        const alertsContent = this.activeAlerts.map(alert => this.renderAlert(alert.title, alert.desc, alert.priority, alert.icon)).join('');
-        this.elements.alertsContent.innerHTML = alertsContent || this.renderAlert('All Clear!', 'No urgent debt alerts for you right now.', 'low', 'fa-check-circle');
     }
 
-    renderAlert(title, desc, priority, icon = 'fa-exclamation-circle') {
+    // Renders a single alert item. Can be used for insights, alerts, or info.
+    renderAlert(title, description, priority, icon) {
         const priorityClasses = { high: 'severity-high', medium: 'severity-medium', low: 'severity-low' };
+        // Logic to choose the right icon based on priority if not provided
+        if (!icon) {
+            switch (priority) {
+                case 'high': icon = 'fas fa-exclamation-triangle'; break;
+                case 'medium': icon = 'fas fa-info-circle'; break;
+                case 'opportunity': icon = 'fas fa-lightbulb'; break;
+                case 'low': 
+                default:
+                    icon = 'fas fa-check-circle'; break;
+            }
+        }
         return `
             <div class="alert-item ${priorityClasses[priority]}">
                 <i class="fas ${icon} alert-icon"></i>
                 <div class="alert-content">
                     <div class="alert-title">${title}</div>
-                    <div class="alert-desc">${desc}</div>
+                    <div class="alert-desc">${description}</div>
                 </div>
             </div>
         `;
@@ -432,14 +732,234 @@ class DebtDemolisherAI extends BaseAgent {
     showErrorMessage(message) {
         console.error(message);
         // In a real app, you'd show this in the UI
-        if(this.elements.alertsContent) {
-            this.elements.alertsContent.innerHTML = this.renderAlert('Error', message, 'high');
+        if(this.elements.insightsContent) {
+            this.elements.insightsContent.innerHTML = this.renderAlert('Error', message, 'high');
         }
         this.showContentState(); // Show content area so error is visible
+    }
+
+    async handleChatbotInput() {
+        const userInput = this.elements.chatbotInput.value.trim();
+        if (!userInput) return;
+
+        this.appendMessage(userInput, 'user');
+        this.elements.chatbotInput.value = '';
+        this.elements.chatbotInput.focus();
+
+        // Show typing indicator
+        this.showTypingIndicator();
+
+        try {
+            const aiResponse = await this.getAIResponse(userInput);
+            this.appendMessage(aiResponse, 'assistant');
+        } catch (error) {
+            console.error("Error getting AI response:", error);
+            this.appendMessage("Sorry, I'm having trouble connecting to my brain right now. Please try again later.", 'assistant');
+        } finally {
+            // Remove typing indicator
+            this.hideTypingIndicator();
+        }
+    }
+
+    appendMessage(message, sender) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chatbot-message', sender);
+        messageElement.textContent = message;
+        this.elements.chatbotMessages.appendChild(messageElement);
+        this.elements.chatbotBody.scrollTop = this.elements.chatbotBody.scrollHeight;
+    }
+
+    showTypingIndicator() {
+        // Prevent multiple typing indicators
+        if (this.elements.chatbotMessages.querySelector('.typing-indicator')) return;
+        
+        const typingIndicator = document.createElement('div');
+        typingIndicator.classList.add('chatbot-message', 'assistant', 'typing-indicator');
+        typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+        this.elements.chatbotMessages.appendChild(typingIndicator);
+        this.elements.chatbotBody.scrollTop = this.elements.chatbotBody.scrollHeight;
+    }
+
+    hideTypingIndicator() {
+        const typingIndicator = this.elements.chatbotMessages.querySelector('.typing-indicator');
+        if (typingIndicator) {
+            this.elements.chatbotMessages.removeChild(typingIndicator);
+        }
+    }
+
+    async getAIResponse(userInput) {
+        try {
+            const prompt = this._generateChatPrompt(userInput);
+            // Reconnect the chatbot to the local AI
+            const aiResponse = await callGeminiAI(prompt);
+            
+            if (!aiResponse) {
+                console.warn("AI response was empty or invalid. Falling back to offline response.");
+                return this._getOfflineResponse(userInput);
+            }
+
+            return aiResponse;
+
+        } catch (error) {
+            console.error("Error calling AI for chat response:", error);
+            // Use the base agent's error handler
+            this.handleError('chatbot_ai_call_failed', error, { userInput });
+            return this._getOfflineResponse(userInput);
+        }
+    }
+
+    /**
+     * Generates a detailed prompt for the AI chatbot.
+     * @param {string} userInput The user's latest message.
+     * @returns {string} A comprehensive prompt for the AI.
+     * @private
+     */
+    _generateChatPrompt(userInput) {
+        const debtData = this.debtAccounts.map(acc => ({
+            name: acc.name,
+            balance: acc.balance,
+            interestRate: acc.interestRate,
+            minimumPayment: acc.minimumPayment
+        }));
+
+        const strategiesData = {
+            avalanche: {
+                payoffTimeMonths: this.repaymentStrategies.avalanche?.payoffTimeMonths,
+                totalInterestPaid: this.repaymentStrategies.avalanche?.totalInterestPaid,
+            },
+            snowball: {
+                payoffTimeMonths: this.repaymentStrategies.snowball?.payoffTimeMonths,
+                totalInterestPaid: this.repaymentStrategies.snowball?.totalInterestPaid,
+            }
+        };
+
+        // Construct a history of the conversation for context
+        const chatHistory = Array.from(this.elements.chatbotMessages.children)
+            .filter(node => node.classList.contains('chatbot-message') && !node.classList.contains('typing-indicator'))
+            .map(node => {
+                const role = node.classList.contains('user') ? 'user' : 'model';
+                return { role, parts: [{ text: node.textContent }] };
+            })
+            .slice(-6); // Get last 6 messages for context
+
+        const prompt = `You are the "Debt Demolisher AI", a specialized financial assistant within the "Kita-kita" app. Your personality is encouraging, expert, and focused on helping the user eliminate their debt. Your responses must be concise, helpful, and directly related to debt management. Do not answer off-topic questions.
+
+        **CRITICAL CONTEXT - DO NOT DISCLOSE TO THE USER:**
+        - **User's Total Debt:** ₱${this.totalDebt.toFixed(2)}
+        - **User's Debt Accounts:** ${JSON.stringify(debtData)}
+        - **Calculated Repayment Strategies:** ${JSON.stringify(strategiesData)}
+        - **Agent's Goal:** Provide clear, actionable advice to help the user understand and pay off their debt.
+
+        **Conversation History:**
+        ${JSON.stringify(chatHistory)}
+
+        **Current User Question:**
+        "${userInput}"
+
+        **Your Task:**
+        Based on the user's question and the financial context provided, generate a helpful and encouraging response. Keep it brief and to the point. If the question is off-topic, politely decline to answer.`;
+
+        return prompt;
+    }
+
+    /**
+     * Provides a fallback response when the AI is offline or fails.
+     * @param {string} userInput The user's message.
+     * @returns {string} A canned response based on keywords.
+     * @private
+     */
+    _getOfflineResponse(userInput) {
+        // Basic keyword matching from the original implementation
+        if (userInput.toLowerCase().includes('avalanche')) {
+            return "The Debt Avalanche method focuses on paying off debts with the highest interest rates first. This approach usually saves you the most money on interest in the long run.";
+        } else if (userInput.toLowerCase().includes('snowball')) {
+            return "The Debt Snowball method involves paying off your smallest debts first, regardless of their interest rate. This can create powerful psychological momentum and keep you motivated.";
+        } else if (userInput.toLowerCase().includes('which is better')) {
+            const avalancheInterest = this.repaymentStrategies.avalanche?.totalInterestPaid || 0;
+            const snowballInterest = this.repaymentStrategies.snowball?.totalInterestPaid || 0;
+            if (avalancheInterest < snowballInterest && avalancheInterest > 0) {
+                return `For your specific debts, the Avalanche method is estimated to save you ₱${(snowballInterest - avalancheInterest).toFixed(2)} more in interest compared to the Snowball method.`;
+            } else {
+                return "Mathematically, the Avalanche method is often better for saving on interest. However, the best method is the one you can stick with. The Snowball method's small wins can be very powerful for motivation.";
+            }
+        }
+
+        // Default response
+        return "I'm here to help with your debt plan. Ask about 'Debt Snowball', 'Debt Avalanche', or 'which is better?' to compare strategies for your situation.";
+    }
+
+    async parseAIResponse(response) {
+        try {
+            // The response can be a string, an object with a 'conclusion' or 'text' property.
+            let text = '';
+            if (typeof response === 'string') {
+                text = response;
+            } else if (response && response.conclusion) {
+                text = response.conclusion;
+            } else if (response && response.text) {
+                text = response.text;
+            } else {
+                console.warn("AI response is not in a recognized format, attempting to stringify.", response)
+                text = JSON.stringify(response); // Fallback for unexpected structures
+            }
+
+            // --- The Ultimate JSON Repair and Reconstruction Engine (from financialHealth.js) ---
+
+            // 1. Find the first '{' to start the JSON string and discard any preamble.
+            const firstBraceIndex = text.indexOf('{');
+            if (firstBraceIndex === -1) throw new Error("No '{' found in AI response.");
+            let jsonString = text.substring(firstBraceIndex);
+
+            // 2. Aggressively remove markdown and comments.
+            jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '');
+            jsonString = jsonString.replace(/\/\/.*$/gm, ''); 
+
+            // 3. Find the last meaningful character to discard trailing garbage.
+            const lastBracket = jsonString.lastIndexOf(']');
+            const lastBrace = jsonString.lastIndexOf('}');
+            const lastCharIndex = Math.max(lastBracket, lastBrace);
+            if (lastCharIndex === -1) throw new Error("No closing bracket/brace found after cleaning.");
+            jsonString = jsonString.substring(0, lastCharIndex + 1);
+
+            // 4. Reconstruct the object by adding missing closing brackets using a stack.
+            const stack = [];
+            let inString = false;
+            for (let i = 0; i < jsonString.length; i++) {
+                const char = jsonString[i];
+                if (char === '"' && (i === 0 || jsonString[i-1] !== '\\')) {
+                    inString = !inString;
+                } else if (!inString) {
+                    if (char === '{' || char === '[') {
+                        stack.push(char);
+                    } else if (char === '}') {
+                        if (stack.length > 0 && stack[stack.length - 1] === '{') stack.pop();
+                    } else if (char === ']') {
+                        if (stack.length > 0 && stack[stack.length - 1] === '[') stack.pop();
+                    }
+                }
+            }
+            while (stack.length > 0) {
+                const openChar = stack.pop();
+                jsonString += (openChar === '{') ? '}' : ']';
+            }
+
+            // 5. Perform final syntax repairs.
+            jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":'); // Add quotes to unquoted keys.
+            jsonString = jsonString.replace(/,\s*([}\]])/g, '$1'); // Remove trailing commas.
+
+            const parsedData = JSON.parse(jsonString);
+            return parsedData;
+
+        } catch (error) {
+            this.handleError('ai_response_parsing_failed', error, { rawResponse: response });
+            return null; // Return null to indicate a parsing failure
+        }
     }
 }
 
 // Initialize and start the agent
-const debtDemolisher = new DebtDemolisherAI();
-debtDemolisher.start().catch(console.error);
+document.addEventListener('DOMContentLoaded', () => {
+    const agent = new DebtDemolisherAI();
+    agent.start();
+});
 
