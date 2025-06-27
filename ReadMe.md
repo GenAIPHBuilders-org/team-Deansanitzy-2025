@@ -58,8 +58,8 @@ Kita-kita is a comprehensive AI-powered banking and financial management platfor
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/team-Deansanitzy-2025.git
-cd team-Deansanitzy-2025
+git clone https://github.com/Deansanitzy/team-Deansanitzy-2025-main.git
+cd team-Deansanitzy-2025-main
 ```
 
 ### 2. API Configuration
@@ -69,9 +69,9 @@ The project uses `public/js/config.js` for API configuration. The file is alread
 - **Gemini AI API Key**: Pre-configured for AI features
 - **Firebase Configuration**: Connected to the Kita-kita Firebase project
 
-### 3. Install Dependencies (Optional)
+### 3. Install Dependencies for Backend Development
 
-If using Node.js backend features:
+If you plan to run the Node.js backend for development or additional features, you'll need to install the dependencies.
 
 ```bash
 npm install
@@ -125,39 +125,31 @@ FIREBASE_API_KEY=your_firebase_api_key
 
 ### 🤖 AI Agents & How to Use Them
 
-#### 1. **Expense Forecaster Agent**
+Our platform features a suite of specialized AI assistants designed to tackle specific financial goals.
 
-- **Purpose**: Predicts future expenses based on historical data
+#### 1. **Debt Demolisher**
+
+- **Purpose**: Creates a personalized and automated debt-elimination plan. It analyzes your liabilities and simulates the most effective payoff strategies (like the Avalanche and Snowball methods) to help you become debt-free faster.
 - **How to Test**:
-  - Navigate to Dashboard
-  - Click "Expense Forecaster" in the AI Agents section
-  - Ask questions like "What will my expenses be next month?"
-  - Provide transaction history for accurate predictions
+  - Link accounts that have a negative balance (e.g., credit cards, loans).
+  - Navigate to the "Debt Demolisher" agent from the dashboard.
+  - The agent will automatically analyze your debt and present you with a tailored repayment plan, showing you the estimated payoff date and potential interest savings.
 
-#### 2. **Subscription Manager Agent**
+#### 2. **Cashflow Optimizer**
 
-- **Purpose**: Tracks recurring payments and suggests optimizations
+- **Purpose**: Analyzes your spending habits to identify opportunities for improvement. It automatically detects recurring subscriptions, highlights areas of high spending, and provides actionable tips to help you increase your savings.
 - **How to Test**:
-  - Add recurring transactions (Netflix, Spotify, etc.)
-  - Access Subscription Manager agent
-  - Ask "Show me my subscriptions" or "Which subscriptions should I cancel?"
+  - Ensure you have a variety of transactions logged, including recurring ones (like Netflix or Spotify).
+  - Access the "Cashflow Optimizer" from the dashboard.
+  - Review the agent's findings, which will include a list of your subscriptions and personalized recommendations for reducing expenses.
 
-#### 3. **Financial Time Machine Agent**
+#### 3. **Wealth Builder**
 
-- **Purpose**: Explores alternate financial scenarios and "what-if" analysis
+- **Purpose**: Acts as your long-term investment and wealth-growth assistant. It provides guidance on building a diversified portfolio with a focus on the Philippine financial context, suggesting investments like index funds, UITFs, and Pag-IBIG MP2.
 - **How to Test**:
-  - Click on "Financial Time Machine" agent
-  - Ask scenarios like "What if I saved ₱5000 more last year?"
-  - Explore different financial decisions and their outcomes
-
-#### 4. **Ipon Coach Agent**
-
-- **Purpose**: Provides personalized savings advice and financial tips
-- **How to Access**: Navigate to `./agents/iponCoach.html`
-- **How to Test**:
-  - Ask for savings tips: "How can I save more money?"
-  - Request budget advice: "Help me create a monthly budget"
-  - Get financial goal guidance: "I want to save for a house"
+  - Make sure your income, savings, and investment accounts are set up.
+  - Open the "Wealth Builder" agent.
+  - Ask for an investment plan, and the agent will provide personalized recommendations based on your financial profile and long-term goals.
 
 ### 💰 Core Features Testing
 
@@ -251,58 +243,51 @@ FIREBASE_API_KEY=your_firebase_api_key
 team-Deansanitzy-2025/
 ├── public/                   # Frontend application files
 │   ├── index.html            # Main application entry point
-│   ├── css/                  # Stylesheets and themes
-│   │   ├── main.css          # Core application styles
-│   │   ├── dashboard.css     # Dashboard-specific styles
-│   │   └── themes/           # Light/Dark theme files
+│   ├── css/                  # Stylesheets
 │   ├── js/                   # JavaScript modules
 │   │   ├── config.js         # API configuration (Gemini AI, Firebase)
-│   │   ├── auth.js           # Authentication logic
+│   │   ├── auth-helpers.js   # Authentication logic
 │   │   ├── dashboard.js      # Dashboard functionality
 │   │   ├── transactions.js   # Transaction management
-│   │   ├── accounts.js       # Account management
-│   │   └── agents/           # AI agent modules
-│   ├── pages/                # HTML pages
-│   │   ├── dashboard.html    # Main dashboard
-│   │   ├── transactions.html # Transaction management
-│   │   ├── accounts.html     # Account management
-│   │   └── agents/           # AI agent interfaces
-│   └── assets/               # Images, icons, and static files
-├── crew_ai/                  # Python CrewAI backend (optional)
-├── server.js                 # Node.js Express server (optional)
+│   │   ├── firestoredb.js    # Firestore database helpers
+│   │   └── utils/            # Utility functions
+│   ├── pages/                # HTML pages for different sections
+│   └── agents/               # AI agent HTML, CSS, and JS files
+│       ├── cashflowOptimizer.js
+│       ├── debtDemolisher.js
+│       └── wealthBuilder.js
+├── lib/
+│   └── ai-engine.js          # Core AI engine logic
+├── scripts/                  # Utility and build scripts
+├── server.js                 # Node.js Express server
+├── firebase.json             # Firebase configuration
+├── firestore.rules           # Firestore security rules
+├── setup.sh                  # Setup script for Unix-based systems
+├── setup.bat                 # Setup script for Windows
 ├── package.json              # Node.js dependencies
-└── README.md                 # This file
+└── ReadMe.md                 # This file
 ```
 
 ## 🧪 Testing the AI Agents
 
 ### Quick Test Scenarios
 
-1. **Expense Forecasting**:
-
+1. **Debt Demolisher**:
    ```
-   User: "Based on my spending, how much will I spend on food next month?"
-   Expected: AI analyzes transaction patterns and provides forecast
-   ```
-
-2. **Subscription Management**:
-
-   ```
-   User: "List all my recurring payments and suggest which ones to cancel"
-   Expected: AI identifies subscription patterns and provides recommendations
+   User Action: Link a credit card with a ₱50,000 balance and a personal loan.
+   Expected: The agent compares the Snowball and Avalanche methods, recommending the optimal strategy and showing a clear payoff timeline and interest saved.
    ```
 
-3. **Financial Time Machine**:
+2. **Cashflow Optimizer**:
+   ```
+   User Action: Add several transactions, including monthly subscriptions for Spotify and Netflix.
+   Expected: The agent identifies and lists all recurring payments and suggests areas where spending can be cut back to improve cash flow.
+   ```
 
+3. **Wealth Builder**:
    ```
-   User: "What would happen if I had saved ₱10,000 instead of spending it last year?"
-   Expected: AI calculates alternate timeline with compound savings
-   ```
-
-4. **Ipon Coach**:
-   ```
-   User: "I want to save ₱100,000 in 2 years, how should I budget?"
-   Expected: AI provides personalized savings plan and budgeting advice
+   User Action: Configure savings accounts and ask the agent, "How can I start investing with ₱10,000?"
+   Expected: The agent provides a personalized, beginner-friendly investment plan, suggesting a mix of local options like a high-yield savings account, Pag-IBIG MP2, or a Philippine index fund (UITF).
    ```
 
 ## 🚀 Deployment
