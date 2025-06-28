@@ -1,4 +1,4 @@
-![Kita-kita Banner](Banner.jpg)
+![Kita-kita Banner](img/Banner.jpg)
 
 # 🏦 Kita-kita - AI Banking Platform
 
