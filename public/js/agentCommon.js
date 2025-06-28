@@ -80,13 +80,14 @@ export async function callLocalAI(prompt, options = {}) {
     console.log('🤖 Calling LOCAL AI (Ollama) via agentCommon.js');
     const endpoint = 'http://localhost:11434/api/generate';
     const body = {
-        model: "phi3", // The model you just downloaded
+        model: "llama3:latest", // Updated to use Llama 3
         prompt: prompt,
         stream: false, // Receive the full response at once
         options: {
-            temperature: options.temperature || 0.7,
+            temperature: options.temperature || 0.2,
             top_p: options.topP || 0.95,
             top_k: options.topK || 40,
+            num_ctx: 4096,
             num_predict: options.maxTokens || 4096, // Increased token limit
         }
     };

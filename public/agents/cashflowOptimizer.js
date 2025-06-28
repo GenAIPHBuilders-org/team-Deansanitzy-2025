@@ -69,7 +69,8 @@ function runFallbackAnalyses(transactions, accounts) {
     displaySubscriptions(null, transactions);
     displayOptimizationTips(null, transactions, accounts);
     displaySpendingAnalysis(null, transactions);
-    displayCashflowForecast(null);
+    const forecast = getFallbackForecast(transactions);
+    displayCashflowForecast(forecast);
 }
 
 async function getConsolidatedAnalysis(transactions, accounts) {
@@ -200,11 +201,52 @@ function displayCashflowForecast(forecastText) {
         forecastContent.innerHTML = `<p>${forecastText}</p>`;
     } else {
         // Fallback message
-        forecastContent.innerHTML = '<p>Could not generate a forecast at this time. Please check back later.</p>';
+        forecastContent.innerHTML = '<p>Not enough transaction data is available to generate a reliable forecast.</p>';
     }
 }
 
 // --- Fallback Functions (Rule-Based) ---
+
+function getFallbackForecast(transactions) {
+    if (!transactions || transactions.length < 3) {
+        return null;
+    }
+
+    const monthlyData = transactions.reduce((acc, t) => {
+        // Ensure date is valid before processing
+        if (!t.date || isNaN(new Date(t.date))) return acc;
+        
+        const month = new Date(t.date).toISOString().slice(0, 7);
+        if (!acc[month]) {
+            acc[month] = { income: 0, expenses: 0, count: 0 };
+        }
+        if (t.type === 'income') {
+            acc[month].income += (t.amount || 0);
+        } else if (t.type === 'expense') {
+            acc[month].expenses += Math.abs(t.amount || 0);
+        }
+        acc[month].count++;
+        return acc;
+    }, {});
+
+    const sortedMonths = Object.keys(monthlyData).sort().slice(-3); // Use last 3 months
+    if (sortedMonths.length === 0) {
+        return null;
+    }
+
+    const totalIncome = sortedMonths.reduce((sum, m) => sum + monthlyData[m].income, 0);
+    const totalExpenses = sortedMonths.reduce((sum, m) => sum + monthlyData[m].expenses, 0);
+
+    const avgMonthlyNet = (totalIncome - totalExpenses) / sortedMonths.length;
+
+    if (avgMonthlyNet > 100) {
+        return `Based on your average net cashflow of ₱${avgMonthlyNet.toFixed(2)}/month over the last ${sortedMonths.length} months, you are trending towards a healthy surplus. Keep this momentum to reach your financial goals faster.`;
+    } else if (avgMonthlyNet < -100) {
+        return `Your average net cashflow is ₱${avgMonthlyNet.toFixed(2)}/month. It's important to review your spending habits to prevent potential shortfalls and get back on track.`;
+    } else {
+        return `Your income and expenses have been closely matched recently. This is a good time to look for opportunities to increase your savings or reduce non-essential costs to build a stronger financial buffer.`;
+    }
+}
 
 function getFallbackSubscriptions(transactions) {
     const recurring = {};
@@ -233,15 +275,46 @@ function getFallbackSubscriptions(transactions) {
 
 function getFallbackTips(transactions, accounts) {
     const tips = [];
-    const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    if (!transactions || !accounts) return tips;
 
-    if (totalBalance < totalExpenses * 3) {
-        tips.push("Build an emergency fund of 3-6 months' worth of expenses.");
+    const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+    const expenses = transactions.filter(t => t.type === 'expense');
+    const totalExpenses = expenses.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+    const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+    const netCashflow = totalIncome - totalExpenses;
+
+    // Tip 1: Emergency Fund
+    if (totalExpenses > 0 && totalBalance < totalExpenses) {
+        tips.push("Your current balance is less than one month of your expenses. Focus on building an emergency fund to cover unexpected costs.");
     }
-    if (transactions.filter(t => t.category.toLowerCase() === 'food').length > 5) {
-        tips.push("You have frequent 'Food' expenses. Consider cooking at home more often.");
+
+    // Tip 2: High Spending Categories
+    const spendingByCategory = getFallbackSpending(transactions);
+    if (Object.keys(spendingByCategory).length > 1 && totalExpenses > 0) {
+        const topCategory = Object.entries(spendingByCategory).sort(([, a], [, b]) => b - a)[0];
+        if (topCategory) {
+            const percentageOfExpenses = (topCategory[1] / totalExpenses) * 100;
+            if (percentageOfExpenses > 30) {
+                tips.push(`Your spending on '${topCategory[0]}' makes up ${percentageOfExpenses.toFixed(0)}% of your expenses. Review this area for potential savings.`);
+            }
+        }
     }
+
+    // Tip 3: Subscriptions
+    const subscriptions = getFallbackSubscriptions(transactions);
+    if (subscriptions.length > 2) {
+        tips.push(`You have ${subscriptions.length} recurring payments detected. Take a moment to review them and cancel any you no longer need.`);
+    }
+
+    // Tip 4: Cashflow Status
+    if (netCashflow > 0 && totalIncome > 0) {
+        tips.push(`With a positive cashflow of ₱${netCashflow.toFixed(2)}, consider allocating this surplus towards savings, investments, or paying down high-interest debt.`);
+    }
+
+    if (tips.length === 0) {
+        tips.push("Your cashflow appears stable and well-managed. To further improve, consider setting a specific savings goal or exploring investment options.");
+    }
+
     return tips;
 }
 
@@ -250,9 +323,9 @@ function getFallbackSpending(transactions) {
     transactions.filter(t => t.type === 'expense').forEach(t => {
         const category = t.category || 'Uncategorized';
         if (spending[category]) {
-            spending[category] += Math.abs(t.amount);
+            spending[category] += Math.abs(t.amount || 0);
         } else {
-            spending[category] = Math.abs(t.amount);
+            spending[category] = Math.abs(t.amount || 0);
         }
     });
     return spending;
