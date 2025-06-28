@@ -2,29 +2,41 @@
 
 # 🏦 Kita-kita - AI Banking Platform
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.19.2-green.svg)](https://nodejs.org/)
+
 ### Kita-kita: Your AI Financial Co-pilot
 
 ![Landing Page](img/LandingPage.jpg)
 
 Kita-kita is a comprehensive AI-powered financial platform designed to empower Filipinos to take control of their financial lives. It features a suite of intelligent AI agents—the Debt Demolisher, Cashflow Optimizer, and Wealth Builder—that provide personalized guidance on everything from debt management to investment strategies. By combining modern web technology with a deep understanding of the Philippine financial context, Kita-kita makes expert financial advice accessible to everyone.
 
-## 🛠️ Tech Stack
-
--   **Frontend**: HTML5, CSS3, JavaScript (ES6+)
--   **Backend**: Node.js, Express.js
--   **Database**: Firebase Firestore
--   **AI**: Llama 3 (local)
--   **Authentication**: Firebase Authentication
--   **Deployment**: Firebase Hosting (implied)
--   **Libraries**: Chart.js, Helmet, Express Rate Limit
--   **Development Tools**: Jest, Nodemon, Sentry
+---
 
 ## Table of Contents
-1. [Features](#features)
-2. [Usage Guide](#usage-guide)
-3. [Quick Start](#quick-start)
-4. [Repository Structure](#repository-structure)
-5. [Team Members](#team-members)
+1. [Tech Stack](#tech-stack)
+2. [Features](#features)
+3. [Usage Guide](#usage-guide)
+4. [Quick Start](#quick-start)
+5. [Repository Structure](#repository-structure)
+6. [Team Members](#team-members)
+
+---
+
+## Tech Stack
+
+| Category       | Technologies                               |
+| -------------- | ------------------------------------------ |
+| **Frontend**   | `HTML5`, `CSS3`, `JavaScript (ES6+)`       |
+| **Backend**    | `Node.js`, `Express.js`                    |
+| **Database**   | `Firebase Firestore`                       |
+| **AI**         | `Llama 3 (local)`                          |
+| **Platform**   | `Firebase (Auth, Hosting)`                 |
+| **Libraries**  | `Chart.js`, `Helmet`, `Express Rate Limit` |
+| **Dev Tools**  | `Jest`, `Nodemon`, `Sentry`                |
+
+---
 
 ## Features
 
@@ -43,6 +55,8 @@ Kita-kita is a comprehensive AI-powered financial platform designed to empower F
     -   **Expense Forecasting**: Leverage AI-powered predictions to anticipate future spending.
     -   **Financial Time Machine**: Simulate different financial scenarios to make informed decisions.
 
+---
+
 ## Usage Guide
 
 1.  **Create an Account**: Sign up or log in to the platform.
@@ -50,6 +64,8 @@ Kita-kita is a comprehensive AI-powered financial platform designed to empower F
 3.  **Link Your Accounts**: Add your bank accounts and e-wallets to begin tracking your finances.
 4.  **Log Transactions**: Record your daily income and expenses to keep your financial data up-to-date.
 5.  **Engage the AI Agents**: Select an AI agent from the dashboard—Debt Demolisher, Cashflow Optimizer, or Wealth Builder—to receive personalized financial guidance.
+
+---
 
 ## Quick Start
 
@@ -77,6 +93,8 @@ Kita-kita is a comprehensive AI-powered financial platform designed to empower F
     ```
     The application will be accessible at `http://localhost:3000`.
 
+---
+
 ## Repository Structure
 ```
 team-Deansanitzy-2025-main/
@@ -95,11 +113,15 @@ team-Deansanitzy-2025-main/
 └── README.md                 # This file
 ```
 
+---
+
 ## Team Members
 
-- **Adriel Magalona** - Lead Developer & Financial Systems Architect
-- **James Rafael Mendiola** - Full Stack Developer & AI Integration Specialist
-- **Jude Vincent Puti** - Frontend Developer & UI/UX Designer
+| Member                  | Role                                         |
+| ----------------------- | -------------------------------------------- |
+| **Adriel Magalona**     | Lead Developer & Financial Systems Architect |
+| **James Rafael Mendiola** | Full Stack Developer & AI Integration Specialist |
+| **Jude Vincent Puti**   | Frontend Developer & UI/UX Designer        |
 
 ---
 
