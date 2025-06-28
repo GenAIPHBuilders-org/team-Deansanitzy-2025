@@ -1,8 +1,14 @@
+![Kita-kita Banner](Banner.jpg)
+
 # 🏦 Kita-kita - AI Banking Platform
 
-**An intelligent personal finance management platform powered by AI agents and modern web technologies.**
+### Kita-kita: Your AI Financial Co-pilot
 
-## �� Project Overview
+![Landing Page](Landing Page.jpg)
+
+Kita-kita is a comprehensive AI-powered financial platform designed to empower Filipinos to take control of their financial lives. It features a suite of intelligent AI agents—the Debt Demolisher, Cashflow Optimizer, and Wealth Builder—that provide personalized guidance on everything from debt management to investment strategies. By combining modern web technology with a deep understanding of the Philippine financial context, Kita-kita makes expert financial advice accessible to everyone.
+
+##  Project Overview
 
 Kita-kita is a comprehensive AI-powered banking and financial management platform that helps users track expenses, manage bank accounts, forecast financial trends, and make informed financial decisions through intelligent AI agents.
 
@@ -22,29 +28,6 @@ Kita-kita is a comprehensive AI-powered banking and financial management platfor
 - **Adriel Magalona** - Lead Developer & Financial Systems Architect
 - **James Rafael Mendiola** - Full Stack Developer & AI Integration Specialist
 - **Jude Vincent Puti** - Frontend Developer & UI/UX Designer
-
-## 🛠️ Technology Stack
-
-### Frontend
-
-- **HTML5/CSS3/JavaScript (ES6+)** - Core web technologies
-- **Chart.js** - Interactive financial charts and data visualization
-- **Firebase SDK** - Authentication, Firestore database, and storage
-- **Modern CSS Grid/Flexbox** - Responsive layout design
-
-### Backend & Services
-
-- **Firebase Authentication** - Secure user authentication
-- **Firebase Firestore** - NoSQL database for real-time data
-- **Firebase Storage** - File upload and document storage
-- **Google Gemini AI API** - Advanced AI capabilities for financial agents
-- **Node.js/Express** - Backend API services (server.js)
-
-### AI & Analytics
-
-- **Google Gemini 1.5 Pro** - Large Language Model for intelligent conversations
-- **Custom Financial Algorithms** - Expense forecasting and trend analysis
-- **Real-time Data Processing** - Live financial health monitoring
 
 ## 🚀 Setup Instructions
 
