@@ -8,6 +8,105 @@
 
 Kita-kita is a comprehensive AI-powered financial platform designed to empower Filipinos to take control of their financial lives. It features a suite of intelligent AI agents—the Debt Demolisher, Cashflow Optimizer, and Wealth Builder—that provide personalized guidance on everything from debt management to investment strategies. By combining modern web technology with a deep understanding of the Philippine financial context, Kita-kita makes expert financial advice accessible to everyone.
 
+## 🛠️ Tech Stack
+
+-   **Frontend**: HTML5, CSS3, JavaScript (ES6+)
+-   **Backend**: Node.js, Express.js
+-   **Database**: Firebase Firestore
+-   **AI**: Llama 3 (local)
+-   **Authentication**: Firebase Authentication
+-   **Deployment**: Firebase Hosting (implied)
+-   **Libraries**: Chart.js, Helmet, Express Rate Limit
+-   **Development Tools**: Jest, Nodemon, Sentry
+
+## Table of Contents
+1. [Features](#features)
+2. [Usage Guide](#usage-guide)
+3. [Quick Start](#quick-start)
+4. [Repository Structure](#repository-structure)
+5. [Team Members](#team-members)
+
+## Features
+
+- **🤖 AI Financial Agents**: Take control of your finances with a suite of AI-powered assistants:
+    -   **Debt Demolisher**: Creates a personalized, automated debt-elimination plan using proven strategies like the Avalanche and Snowball methods.
+    -   **Cashflow Optimizer**: Analyzes spending habits, detects recurring subscriptions, and provides actionable tips to increase your savings.
+    -   **Wealth Builder**: Delivers long-term investment guidance tailored to the Philippine financial landscape, including local options like UITFs and Pag-IBIG MP2.
+
+- **💰 Comprehensive Financial Management**:
+    -   **Transaction Tracking**: Easily add, track, and categorize your income and expenses.
+    -   **Bank & E-Wallet Integration**: Manage all your accounts from a single, unified dashboard.
+    -   **Subscription Management**: Identify and optimize all your recurring payments.
+
+- **📊 Advanced Analytics & Insights**:
+    -   **Financial Analytics**: Visualize your financial health with real-time charts and dashboards.
+    -   **Expense Forecasting**: Leverage AI-powered predictions to anticipate future spending.
+    -   **Financial Time Machine**: Simulate different financial scenarios to make informed decisions.
+
+## Usage Guide
+
+1.  **Create an Account**: Sign up or log in to the platform.
+2.  **Navigate the Dashboard**: Get a complete overview of your finances, including total balance, income vs. expenses, and recent transactions.
+3.  **Link Your Accounts**: Add your bank accounts and e-wallets to begin tracking your finances.
+4.  **Log Transactions**: Record your daily income and expenses to keep your financial data up-to-date.
+5.  **Engage the AI Agents**: Select an AI agent from the dashboard—Debt Demolisher, Cashflow Optimizer, or Wealth Builder—to receive personalized financial guidance.
+
+## Quick Start
+
+### Prerequisites
+-   A modern web browser (Chrome, Firefox, Safari, etc.)
+-   [Node.js](https://nodejs.org/en) (v20.19.2 or higher)
+-   [npm](https://www.npmjs.com/) (v10.0.0 or higher)
+
+### Installation
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/Deansanitzy/team-Deansanitzy-2025-main.git
+    cd team-Deansanitzy-2025-main
+    ```
+2.  Install the dependencies:
+    ```bash
+    npm install
+    ```
+3.  Run the application:
+    For a simple setup, open the `public/index.html` file using the **Live Server** extension in VS Code.
+
+    Alternatively, you can start the development server:
+    ```bash
+    npm start
+    ```
+    The application will be accessible at `http://localhost:3000`.
+
+## Repository Structure
+```
+team-Deansanitzy-2025-main/
+├── public/                   # Frontend application files
+│   ├── index.html            # Main application entry point
+│   ├── css/                  # Stylesheets
+│   ├── js/                   # JavaScript modules
+│   └── agents/               # AI agent HTML, CSS, and JS files
+├── lib/
+│   └── ai-engine.js          # Core AI engine logic
+├── scripts/                  # Utility and build scripts
+├── server.js                 # Node.js Express server
+├── firebase.json             # Firebase configuration
+├── firestore.rules           # Firestore security rules
+├── package.json              # Node.js dependencies
+└── README.md                 # This file
+```
+
+## Team Members
+
+- **Adriel Magalona** - Lead Developer & Financial Systems Architect
+- **James Rafael Mendiola** - Full Stack Developer & AI Integration Specialist
+- **Jude Vincent Puti** - Frontend Developer & UI/UX Designer
+
+---
+
+**Built with ❤️ by Team Deansanitzy**
+
+![Team Members](img/TeamMembers.png)
+
 ##  Project Overview
 
 Kita-kita is a comprehensive AI-powered banking and financial management platform that helps users track expenses, manage bank accounts, forecast financial trends, and make informed financial decisions through intelligent AI agents.
