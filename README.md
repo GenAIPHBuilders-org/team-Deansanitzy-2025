@@ -4,7 +4,7 @@
 
 ### Kita-kita: Your AI Financial Co-pilot
 
-![Landing Page](img/Landing Page.jpg)
+![Landing Page](img/LandingPage.jpg)
 
 Kita-kita is a comprehensive AI-powered financial platform designed to empower Filipinos to take control of their financial lives. It features a suite of intelligent AI agents—the Debt Demolisher, Cashflow Optimizer, and Wealth Builder—that provide personalized guidance on everything from debt management to investment strategies. By combining modern web technology with a deep understanding of the Philippine financial context, Kita-kita makes expert financial advice accessible to everyone.
 
